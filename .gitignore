@@ -42,3 +42,4 @@ desktop.ini
 
 # Exceções: imagens próprias do mod
 !mod/assets/**
+!mod/Boot.class
