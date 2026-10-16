@@ -1,0 +1,44 @@
+# Binários e arquivos do jogo original (não versionar)
+*.exe
+*.dll
+*.jar
+*.class
+*.bin
+*.dat
+*.ban
+*.so
+*.pak
+
+# Assets pesados
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.ico
+*.wav
+*.mp3
+*.ogg
+*.ttf
+*.zip
+*.rar
+*.7z
+
+# Saves, logs e saída de build
+saves/
+save/
+*.sav
+*.log
+build/
+dist/
+out/
+*.tmp
+
+# Sistema / editor
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Exceções: imagens próprias do mod
+!mod/assets/**
