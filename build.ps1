@@ -5,15 +5,16 @@
     1. separa o stub do .jar;
     2. recria o .jar trocando o Rsrc-Main-Class do MANIFEST para mod.Boot,
        substituindo as imagens de mod\assets e adicionando mod\Boot.class e mod\red.js;
-    3. junta stub + novo .jar no executavel de saida.
+    3. junta stub + novo .jar no executavel de saida;
+    4. copia mod\files (ex.: fundos de img\) para a pasta do executavel.
 
   Uso:
     powershell -ExecutionPolicy Bypass -File .\build.ps1
-    powershell -ExecutionPolicy Bypass -File .\build.ps1 -Original C:\Brasfoot22-23\bf22-23.exe -Output C:\Brasfoot22-23-Brombila\BrombilaBrasfoot.exe
+    powershell -ExecutionPolicy Bypass -File .\build.ps1 -Original C:\Brasfoot22-23\bf22-23.exe -Output C:\BrombilaBrasfoot\BrombilaBrasfoot.exe
 #>
 param(
     [string]$Original = 'C:\Brasfoot22-23\bf22-23.exe',
-    [string]$Output   = 'C:\Brasfoot22-23-Brombila\BrombilaBrasfoot.exe'
+    [string]$Output   = 'C:\BrombilaBrasfoot\BrombilaBrasfoot.exe'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -98,5 +99,18 @@ $fs.Write($exe, 0, $stubLen)
 $jar = $outJar.ToArray()
 $fs.Write($jar, 0, $jar.Length)
 $fs.Close()
+
+# Arquivos soltos do mod (fora do .jar), ex.: img\f01.jpg e img\f02.jpg
+$files = Join-Path $modDir 'files'
+if ($outDir -and (Test-Path $files)) {
+    Get-ChildItem -Path $files -Recurse -File | ForEach-Object {
+        $rel  = $_.FullName.Substring($files.Length + 1)
+        $dest = Join-Path $outDir $rel
+        $dDir = Split-Path -Parent $dest
+        if (-not (Test-Path $dDir)) { New-Item -ItemType Directory -Path $dDir | Out-Null }
+        Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
+        Write-Host "Copiado: $rel"
+    }
+}
 
 Write-Host ("Pronto: {0} ({1:N0} bytes, {2} arquivos do mod)" -f $Output, ($stubLen + $jar.Length), $replace.Count)
