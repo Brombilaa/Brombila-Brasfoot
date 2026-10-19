@@ -2,10 +2,11 @@
 
 Mod pessoal do Brasfoot 22-23 que deixa a interface vermelha e troca o título para "Brombila Brasfoot".
 
-Este repositório guarda só os arquivos do mod. O jogo original (`bf22-23.exe`, imagens, sons, times, saves) **não** é versionado.
+Além dos arquivos do mod, a pasta `jogo/` guarda uma cópia completa do jogo do mod (`C:\BrombilaBrasfoot`, sem o backup zip): `BrombilaBrasfoot.exe`, times, escudos, camisas, troféus, sons e configs. Por isso o repositório deve continuar **privado**.
 
 ## Estrutura
 
+- `jogo/` — o jogo pronto para jogar. Copie o conteúdo para `C:\BrombilaBrasfoot` e abra `BrombilaBrasfoot.exe` (precisa de Java 8).
 - `mod/red.js` — script Nashorn que roda antes do jogo: pinta a paleta Swing/Nimbus de vermelho, troca o título das janelas e depois chama o `main` original (`best.h2`).
 - `mod/Boot.java` / `mod/Boot.class` — ponto de entrada do mod; só executa o `red.js`. O `.class` fica versionado para quem não tem JDK.
 - `mod/assets/` — imagens do jogo já recoloridas para vermelho (substituem as originais dentro do .jar).
