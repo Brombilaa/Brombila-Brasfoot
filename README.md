@@ -17,7 +17,7 @@ Além dos arquivos do mod, a pasta `jogo/` guarda uma cópia completa do jogo do
   - `RolagemUI` / `RolagemSuave` — barra de rolagem fina e rolagem animada da rodinha do mouse.
   - `Animacao` — fade-in das janelas sem borda (popups do jogo) e curvas de animação.
 - `mod/classes/` — as classes já compiladas, versionadas para quem não tem JDK.
-- `mod/assets/` — ícones que eram azuis, recoloridos para verde, e as caixinhas de marcar das tabelas redesenhadas para o fundo escuro (substituem os originais dentro do .jar).
+- `mod/assets/` — ícones da barra de cima no estilo "Linha neon" (gerados por `tools/icones/IconesNeon.java`), ícones que eram azuis recoloridos para verde, e as caixinhas de marcar das tabelas redesenhadas para o fundo escuro (substituem os originais dentro do .jar).
 - `mod/files/` — arquivos soltos do mod copiados para a pasta do jogo (fundos do estádio `img/f01.jpg` e `img/f02.jpg` em verde).
 - `build.ps1` — monta o `BrombilaBrasfoot.exe` a partir do executável original.
 
