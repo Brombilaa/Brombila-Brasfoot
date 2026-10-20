@@ -4,7 +4,7 @@
   O .exe do jogo e um stub Launch4j seguido de um .jar. Este script:
     1. separa o stub do .jar;
     2. recria o .jar trocando o Rsrc-Main-Class do MANIFEST para mod.Boot,
-       substituindo as imagens de mod\assets e adicionando mod\Boot.class e mod\red.js;
+       substituindo as imagens de mod\assets e adicionando as classes do tema (mod\classes);
     3. junta stub + novo .jar no executavel de saida;
     4. copia mod\files (ex.: fundos de img\) para a pasta do executavel.
 
@@ -25,19 +25,22 @@ $root   = $PSScriptRoot
 $modDir = Join-Path $root 'mod'
 $assets = Join-Path $modDir 'assets'
 
-# Compila mod\Boot.java se houver JDK; senao usa o mod\Boot.class versionado.
-$bootClass = Join-Path $modDir 'Boot.class'
+# Compila mod\src (tema verde) se houver JDK; senao usa as classes versionadas em mod\classes.
+$classes = Join-Path $modDir 'classes'
 if (Get-Command javac -ErrorAction SilentlyContinue) {
     $tmpCls = Join-Path ([IO.Path]::GetTempPath()) ('brombila-cls-' + [guid]::NewGuid())
-    & javac -source 8 -target 8 -nowarn -d $tmpCls (Join-Path $modDir 'Boot.java')
-    if ($LASTEXITCODE -ne 0) { throw 'javac falhou ao compilar mod\Boot.java' }
-    $bootClass = Join-Path $tmpCls 'mod\Boot.class'
+    $fontes = Get-ChildItem -Path (Join-Path $modDir 'src') -Recurse -Filter *.java | ForEach-Object { $_.FullName }
+    & javac -source 8 -target 8 -nowarn -encoding UTF-8 -d $tmpCls $fontes
+    if ($LASTEXITCODE -ne 0) { throw 'javac falhou ao compilar mod\src' }
+    $classes = $tmpCls
 }
 
 # Arquivos que entram no .jar: caminho dentro do jar -> bytes
 $replace = @{}
-$replace['mod/red.js']     = [IO.File]::ReadAllBytes((Join-Path $modDir 'red.js'))
-$replace['mod/Boot.class'] = [IO.File]::ReadAllBytes($bootClass)
+Get-ChildItem -Path $classes -Recurse -File -Filter *.class | ForEach-Object {
+    $rel = $_.FullName.Substring($classes.Length + 1).Replace('\', '/')
+    $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
+}
 Get-ChildItem -Path $assets -Recurse -File | ForEach-Object {
     $rel = $_.FullName.Substring($assets.Length + 1).Replace('\', '/')
     $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
@@ -75,7 +78,7 @@ foreach ($entry in $src.Entries) {
     if ($name -eq 'META-INF/MANIFEST.MF') {
         $r = New-Object IO.StreamReader($entry.Open())
         $mf = $r.ReadToEnd(); $r.Close()
-        if ($mf -notmatch 'Rsrc-Main-Class: best\.h2') { Write-Warning 'MANIFEST nao tem Rsrc-Main-Class: best.h2; red.js chama best.h2 mesmo assim.' }
+        if ($mf -notmatch 'Rsrc-Main-Class: best\.h2') { Write-Warning 'MANIFEST nao tem Rsrc-Main-Class: best.h2; mod.Boot chama best.h2 mesmo assim.' }
         $mf = $mf -replace 'Rsrc-Main-Class: \S+', 'Rsrc-Main-Class: mod.Boot'
         Write-Entry $dst $name ([Text.Encoding]::ASCII.GetBytes($mf))
     } elseif ($replace.ContainsKey($name)) {
