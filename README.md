@@ -1,21 +1,23 @@
 # Brasfoot 22-23 — Mod Brombila
 
-Mod pessoal do Brasfoot 22-23 com um tema verde próprio (cores, botões arredondados com animação, painéis com textura, rolagem suave) e o título "Brombila Brasfoot".
+Mod pessoal do Brasfoot 22-23 com o tema "Noite de jogo": interface escura, verde neon, cartões de vidro com brilho de refletor, botões e barras animados, rolagem suave e o título "Brombila Brasfoot".
 
 Além dos arquivos do mod, a pasta `jogo/` guarda uma cópia completa do jogo do mod (`C:\BrombilaBrasfoot`, sem o backup zip): `BrombilaBrasfoot.exe`, times, escudos, camisas, troféus, sons e configs. Por isso o repositório deve continuar **privado**.
 
 ## Estrutura
 
 - `jogo/` — o jogo pronto para jogar. Copie o conteúdo para `C:\BrombilaBrasfoot` e abra `BrombilaBrasfoot.exe` (precisa de Java 8).
-- `mod/src/mod/` — código do tema verde (Java, compila para Java 8; não depende mais do Nashorn):
+- `mod/src/mod/` — código do tema "Noite de jogo" (Java, compila para Java 8; não depende do Nashorn):
   - `Boot` — ponto de entrada: liga o antialiasing do texto, instala o tema e chama o `main` original (`best.h2`).
-  - `Tema` — paleta; troca qualquer azul por verde e as cores dos 5 temas internos do jogo pelo verde do mod; título das janelas; tabelas zebradas com destaque animado da linha sob o mouse.
-  - `BotaoUI` — botões verdes arredondados, com degradê, sombra e hover/clique animados.
-  - `PainelUI` — painéis escuros com degradê suave e textura leve.
-  - `RolagemSuave` — rolagem animada da rodinha do mouse.
+  - `Tema` — paleta e regras de cor: fundos (temas internos do jogo, azuis e fundos claros) viram verde quase preto, textos escuros viram claros, amarelo vira neon; título das janelas; tabelas zebradas com a linha sob o mouse acendendo.
+  - `BotaoUI` — botões neon com degradê e brilho animado no hover; "Voltar/Cancelar/Sair" ficam só com contorno; botões só de ícone ganham halo e sublinhado neon.
+  - `PainelUI` — fundo com degradê, brilho de refletores e granulado; painéis internos viram cartões de vidro.
+  - `BarraUI` — barras de energia/confiança arredondadas com a ponta brilhando (verde, amarelo, vermelho).
+  - `Icones` — caixinhas de marcar e bolinhas de opção neon.
+  - `RolagemUI` / `RolagemSuave` — barra de rolagem fina e rolagem animada da rodinha do mouse.
   - `Animacao` — fade-in das janelas sem borda (popups do jogo) e curvas de animação.
 - `mod/classes/` — as classes já compiladas, versionadas para quem não tem JDK.
-- `mod/assets/` — ícones que eram azuis, recoloridos para verde (substituem os originais dentro do .jar).
+- `mod/assets/` — ícones que eram azuis, recoloridos para verde, e as caixinhas de marcar das tabelas redesenhadas para o fundo escuro (substituem os originais dentro do .jar).
 - `mod/files/` — arquivos soltos do mod copiados para a pasta do jogo (fundos do estádio `img/f01.jpg` e `img/f02.jpg` em verde).
 - `build.ps1` — monta o `BrombilaBrasfoot.exe` a partir do executável original.
 
