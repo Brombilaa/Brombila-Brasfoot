@@ -34,6 +34,8 @@ public class BotaoUI extends BasicButtonUI {
     private static final int MARGEM = 2; // espaco para o brilho do hover
     // Botao principal na tela "Noite de estreia" (dourado); os outros ficam so com contorno.
     static final String PRIMARIO = "brombila.primario";
+    // Botao redondo (o X de fechar das janelas).
+    static final String REDONDO = "brombila.redondo";
 
     private float hover;   // 0..1, animado
     private float aperto;  // 0..1, animado
@@ -138,7 +140,7 @@ public class BotaoUI extends BasicButtonUI {
     private static void estreia(Graphics2D g2, AbstractButton b, int w, int h, float hv, int dy) {
         float sobe = primario(b) ? 1.5f * hv : 0f;
         // pilula; botoes quase quadrados (so de icone) ficam com cantos arredondados
-        float raio = (w < 2 * h) ? RAIO : h - 2 * MARGEM;
+        float raio = (w < 2 * h && b.getClientProperty(REDONDO) == null) ? RAIO : h - 2 * MARGEM;
         Shape corpo = new RoundRectangle2D.Float(MARGEM, MARGEM + dy - sobe, w - 2 * MARGEM - 1, h - 2 * MARGEM - 1, raio, raio);
         if (!b.isEnabled()) {
             g2.setColor(new Color(244, 241, 234, 30));
