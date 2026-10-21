@@ -221,6 +221,9 @@ public final class Tema {
         registraUI("PanelUI", PainelUI.class);
         registraUI("ProgressBarUI", BarraUI.class);
         registraUI("ScrollBarUI", RolagemUI.class);
+        registraUI("MenuItemUI", Menus.Item.class);
+        registraUI("PopupMenuUI", Menus.Popup.class);
+        registraUI("PopupMenuSeparatorUI", Menus.Separador.class);
 
         // Perguntas do jogo em portugues (o Java mostra "Yes/No" por padrao).
         UIManager.put("OptionPane.yesButtonText", "Sim");
