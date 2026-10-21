@@ -52,6 +52,7 @@ final class Dialogos {
         else if (n.equals("a.di")) galeria(p);
         else if (n.equals("a.fB")) opcoes(p);
         else if (n.equals("a.gx")) procura(p);
+        else if (n.equals("a.jp")) sobre(p);
         else Fichas.aplica(p, n);
     }
 
@@ -520,6 +521,35 @@ final class Dialogos {
         if (todos instanceof JLabel) ((JLabel) todos).setHorizontalAlignment(SwingConstants.RIGHT);
         pos(todos, 538, 575, 200, 20);
         a.revalidate();
+    }
+
+    // ------------------------------------------------------------- Sobre (Opcoes)
+
+    // Titulo grande e os creditos em duas colunas. So muda o que aparece nesta janela:
+    // as travas da versao nao registrada continuam as do jogo.
+    static void sobre(JPanel jp) {
+        if (!base(jp) || !absoluto(jp)) return;
+        Object t = campo(jp, "ug");
+        titulo(t, 30f);
+        pos(t, 30, 18, 380, 40);
+        fechar(campo(jp, "vm"), 496);
+        for (String s : new String[] {"uh", "vx", "vy", "a_", "ur", "us"}) {
+            Object o = campo(jp, s);
+            if (o instanceof Component) ((Component) o).setVisible(false);
+        }
+        credito(jp, 30, "Jogo criado por", "Emmanuel Santos");
+        credito(jp, 260, "Modificado por", "Leonardo Brombila");
+        JLabel direitos = new JLabel("Todos os direitos reservados.");
+        fonte(direitos, Estreia.texto(11.5f), Estreia.FRACO);
+        adiciona(jp, direitos, 30, 140, 430, 18);
+        jp.revalidate();
+    }
+
+    private static void credito(JPanel pai, int x, String rotulo, String nome) {
+        adiciona(pai, rotulo(rotulo), x, 76, 210, 16);
+        JLabel l = new JLabel(nome);
+        fonte(l, Estreia.semi(16f), Estreia.BRANCO);
+        adiciona(pai, l, x, 96, 210, 24);
     }
 
     // ------------------------------------------------------------- Galeria de trofeus
