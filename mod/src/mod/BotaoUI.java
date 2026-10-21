@@ -142,6 +142,11 @@ public class BotaoUI extends BasicButtonUI {
         // pilula; botoes quase quadrados (so de icone) ficam com cantos arredondados
         float raio = (w < 2 * h && b.getClientProperty(REDONDO) == null) ? RAIO : h - 2 * MARGEM;
         Shape corpo = new RoundRectangle2D.Float(MARGEM, MARGEM + dy - sobe, w - 2 * MARGEM - 1, h - 2 * MARGEM - 1, raio, raio);
+        if (b.getClientProperty(REDONDO) != null) {
+            // circulo no meio do espaco que o layout do jogo deu ao botao
+            float d = Math.min(w, h) - 2 * MARGEM - 1;
+            corpo = new java.awt.geom.Ellipse2D.Float((w - d) / 2f, (h - d) / 2f + dy - sobe, d, d);
+        }
         if (!b.isEnabled()) {
             g2.setColor(new Color(244, 241, 234, 52));
             g2.draw(corpo);

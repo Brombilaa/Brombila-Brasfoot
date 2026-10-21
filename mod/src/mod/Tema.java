@@ -472,6 +472,9 @@ public final class Tema {
         if (c.getClass().getName().equals("a.ds") && c instanceof javax.swing.JPanel) {
             try { Janelas.juniores((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
         }
+        if (c instanceof javax.swing.JPanel && c.getClass().getName().startsWith("a.")) {
+            try { Dialogos.aplica(c); } catch (Throwable t) { t.printStackTrace(); }
+        }
         // Telas "Noite de estreia" (menu e configuracoes) tem cores proprias.
         boolean estreia = Estreia.dentro(c);
         try {

@@ -123,6 +123,7 @@ final class Estreia {
     // Desenha o icone com o canto superior esquerdo em (x, y) e lado "lado".
     static void icone(Graphics2D g, String nome, double x, double y, double lado, Color cor) {
         Shape[] s = ICONES.get(nome);
+        if (s == null) s = Menus.ICONES.get(nome); // icones dos menus (calendario, taca...)
         if (s == null) return;
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
