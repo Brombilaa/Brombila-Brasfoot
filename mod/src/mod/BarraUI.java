@@ -23,6 +23,15 @@ public class BarraUI extends BasicProgressBarUI {
         return new BarraUI();
     }
 
+    // Sem a moldura quadrada do Metal: so o trilho arredondado (mesmos espacos).
+    @Override
+    protected void installDefaults() {
+        super.installDefaults();
+        java.awt.Insets i = progressBar.getInsets();
+        progressBar.setBorder(new javax.swing.border.EmptyBorder(i));
+        javax.swing.LookAndFeel.installProperty(progressBar, "opaque", Boolean.FALSE);
+    }
+
     @Override
     protected void paintDeterminate(Graphics g, JComponent c) {
         JProgressBar pb = (JProgressBar) c;
@@ -34,39 +43,50 @@ public class BarraUI extends BasicProgressBarUI {
             int x = in.left, y = in.top, w = pb.getWidth() - in.left - in.right, h = pb.getHeight() - in.top - in.bottom;
             if (w <= 0 || h <= 0) return;
             boolean texto = pb.isStringPainted();
-            // com texto a barra ocupa a celula toda; sem texto fica uma faixa fina
-            int bh = texto ? h : Math.min(h, 10);
-            int by = y + (h - bh) / 2;
-            float raio = texto ? 8 : bh;
-            g2.setColor(new Color(255, 255, 255, 20));
-            g2.fill(new RoundRectangle2D.Float(x, by, w, bh, raio, raio));
             double pct = pb.getPercentComplete();
-            int fw = (int) Math.round(w * pct);
             Color cor = cor(pb, pct);
-            if (fw > 0 && texto) {
-                // com texto: preenchimento mais escuro (o texto branco continua legivel)
-                // e uma linha neon embaixo
-                g2.setPaint(new GradientPaint(0, by, Tema.mistura(cor, Tema.BASE, 0.45f), 0, by + bh, Tema.mistura(cor, Tema.BASE, 0.65f)));
-                g2.fill(new RoundRectangle2D.Float(x, by, fw, bh, raio, raio));
-                g2.setColor(cor);
-                g2.fillRect(x + 2, by + bh - 2, Math.max(0, fw - 4), 2);
-            } else if (fw > 0) {
-                g2.setPaint(new GradientPaint(0, by, Tema.mistura(cor, Color.WHITE, 0.25f), 0, by + bh, Tema.mistura(cor, Color.BLACK, 0.15f)));
-                g2.fill(new RoundRectangle2D.Float(x, by, fw, bh, raio, raio));
-                float gr = Math.max(8f, bh * 1.2f);
-                g2.setPaint(new RadialGradientPaint(x + fw, by + bh / 2f, gr, new float[] {0f, 1f},
-                    new Color[] {Tema.alfa(cor, 150), Tema.alfa(cor, 0)}));
-                g2.fillRect(Math.round(x + fw - gr), Math.round(by + bh / 2f - gr), Math.round(gr * 2), Math.round(gr * 2));
-            }
+            int bx = x, bw = w;
             if (texto) {
+                // valor escrito a esquerda, na cor da barra; a barra fica fina ao lado
                 String s = pb.getString();
-                FontMetrics fm = g2.getFontMetrics(pb.getFont());
-                g2.setFont(pb.getFont());
-                int tx = x + (w - fm.stringWidth(s)) / 2, ty = y + (h - fm.getHeight()) / 2 + fm.getAscent();
-                g2.setColor(new Color(0, 0, 0, 120));
-                g2.drawString(s, tx, ty + 1);
-                g2.setColor(Color.WHITE);
-                g2.drawString(s, tx, ty);
+                java.awt.Font f = pb.getFont().deriveFont(java.awt.Font.BOLD);
+                FontMetrics fm = g2.getFontMetrics(f);
+                int larg = fm.stringWidth("100%");
+                g2.setFont(f);
+                int ty = y + (h - fm.getHeight()) / 2 + fm.getAscent();
+                g2.setColor(new Color(0, 0, 0, 110));
+                g2.drawString(s, x + 2 + larg - fm.stringWidth(s), ty + 1);
+                g2.setColor(Tema.mistura(cor, Color.WHITE, 0.25f));
+                g2.drawString(s, x + 2 + larg - fm.stringWidth(s), ty);
+                bx = x + larg + 8;
+                bw = w - larg - 10;
+                if (bw < 10) return;
+            }
+            float bh = Math.min(h, texto ? 6f : 8f);
+            float by = y + (h - bh) / 2f;
+            RoundRectangle2D trilho = new RoundRectangle2D.Float(bx, by, bw, bh, bh, bh);
+            g2.setColor(new Color(0, 0, 0, 120));
+            g2.fill(trilho);
+            g2.setColor(new Color(255, 255, 255, 18));
+            g2.draw(new RoundRectangle2D.Float(bx - 0.5f, by - 0.5f, bw + 1, bh + 1, bh + 1, bh + 1));
+            float fw = (float) (bw * pct);
+            if (fw > 0.5f) {
+                fw = Math.max(fw, bh);
+                // brilho difuso por baixo do preenchimento
+                for (int i = 3; i >= 1; i--) {
+                    g2.setColor(Tema.alfa(cor, 14));
+                    g2.fill(new RoundRectangle2D.Float(bx - i, by - i, fw + 2 * i, bh + 2 * i, bh + 2 * i, bh + 2 * i));
+                }
+                g2.setPaint(new GradientPaint(bx, 0, Tema.mistura(cor, Tema.BASE, 0.45f), bx + fw, 0, cor));
+                g2.fill(new RoundRectangle2D.Float(bx, by, fw, bh, bh, bh));
+                // fio de luz em cima
+                g2.setColor(new Color(255, 255, 255, 70));
+                g2.fill(new RoundRectangle2D.Float(bx + bh / 2f, by + 1f, Math.max(0, fw - bh), Math.max(1f, bh / 4f), 2, 2));
+                // ponta acesa
+                float gr = bh * 1.1f;
+                g2.setPaint(new RadialGradientPaint(bx + fw - bh / 2f, by + bh / 2f, gr, new float[] {0f, 1f},
+                    new Color[] {Tema.alfa(Tema.mistura(cor, Color.WHITE, 0.5f), 120), Tema.alfa(cor, 0)}));
+                g2.fill(new java.awt.geom.Ellipse2D.Float(bx + fw - bh / 2f - gr, by + bh / 2f - gr, gr * 2, gr * 2));
             }
         } finally {
             g2.dispose();
