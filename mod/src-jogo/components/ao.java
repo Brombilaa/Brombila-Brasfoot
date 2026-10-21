@@ -287,7 +287,8 @@ public class ao {
             return mod.Escalacao.rotulo(f2.getNome(), pos, improvisado, forca, f2.fp(), null, null, true);
         }
         if (n2 == 2) {
-            return mod.Escalacao.rotulo(f2.getNome(), aq.rI[f2.getPosicao()], false, forca, f2.fp(), aq.rK[f2.getLado()], null);
+            // na lista de disponiveis o nome cabe no cartao (86 px), para nao invadir o vizinho
+            return mod.Escalacao.rotulo(f2.getNome(), aq.rI[f2.getPosicao()], false, forca, f2.fp(), aq.rK[f2.getLado()], null, false, 92);
         }
         String pos = "";
         if (n3 >= 1 && n3 <= 25) {

@@ -62,11 +62,14 @@ public final class Escalacao {
         FontMetrics fm = g.getFontMetrics();
         int tx = x + (w - fm.stringWidth(s)) / 2;
         int ty = y + Math.round(h * 0.47f) + fm.getAscent() / 2 - 1;
+        // contorno em volta do numero: le bem em camisa lisa, listrada ou com estampa
         boolean clara = luminancia(camisa) > 0.62f;
-        g.setColor(clara ? new Color(255, 255, 255, 110) : new Color(0, 0, 0, 140));
-        g.drawString(s, tx, ty + 1);
+        java.awt.Shape forma = g.getFont().createGlyphVector(g.getFontRenderContext(), s).getOutline(tx, ty);
+        g.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setColor(clara ? new Color(255, 255, 255, 200) : new Color(0, 0, 0, 190));
+        g.draw(forma);
         g.setColor(clara ? new Color(0x15130E) : Color.WHITE);
-        g.drawString(s, tx, ty);
+        g.fill(forma);
     }
 
     private static final Map<Image, Float> LUZ = new WeakHashMap<Image, Float>();
@@ -106,12 +109,17 @@ public final class Escalacao {
     // extra (se nao for nulo) substitui forca/energia por um texto.
     public static Image rotulo(String nome, String posicao, boolean improvisado, int forca, int energia,
                                String lado, String extra) {
-        return rotulo(nome, posicao, improvisado, forca, energia, lado, extra, false);
+        return rotulo(nome, posicao, improvisado, forca, energia, lado, extra, false, ROTULO_L - 6);
+    }
+
+    public static Image rotulo(String nome, String posicao, boolean improvisado, int forca, int energia,
+                               String lado, String extra, boolean pilula) {
+        return rotulo(nome, posicao, improvisado, forca, energia, lado, extra, pilula, ROTULO_L - 6);
     }
 
     // pilula = fundo escuro atras do rotulo (no campo, onde rotulos vizinhos podem se encostar).
     public static Image rotulo(String nome, String posicao, boolean improvisado, int forca, int energia,
-                               String lado, String extra, boolean pilula) {
+                               String lado, String extra, boolean pilula, int largura) {
         BufferedImage img = new BufferedImage(ROTULO_L, ROTULO_A, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
         prepara(g);
@@ -119,13 +127,13 @@ public final class Escalacao {
         Font fn = Estreia.semi(11.5f);
         g.setFont(fn);
         FontMetrics fm = g.getFontMetrics();
-        while (fm.stringWidth(nome) > ROTULO_L - 6 && fn.getSize2D() > 9.5f) {
+        while (fm.stringWidth(nome) > largura && fn.getSize2D() > 9.5f) {
             fn = fn.deriveFont(fn.getSize2D() - 0.5f);
             g.setFont(fn);
             fm = g.getFontMetrics();
         }
         String n = nome;
-        while (fm.stringWidth(n) > ROTULO_L - 6 && n.length() > 3) n = n.substring(0, n.length() - 2) + "…";
+        while (fm.stringWidth(n) > largura && n.length() > 3) n = n.substring(0, n.length() - 2) + "…";
         int nx = (ROTULO_L - fm.stringWidth(n)) / 2;
         int ny = fm.getAscent() + 1;
 

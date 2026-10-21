@@ -41,6 +41,15 @@ Get-ChildItem -Path $classes -Recurse -File -Filter *.class | ForEach-Object {
     $rel = $_.FullName.Substring($classes.Length + 1).Replace('\', '/')
     $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
 }
+# Classes do proprio jogo reescritas pelo mod (ex.: components/ao.class, fonte em mod\src-jogo).
+# Precisam do .jar do jogo para compilar, entao entram sempre ja compiladas de mod\classes.
+$versionadas = Join-Path $modDir 'classes'
+Get-ChildItem -Path $versionadas -Recurse -File -Filter *.class | ForEach-Object {
+    $rel = $_.FullName.Substring($versionadas.Length + 1).Replace('\', '/')
+    if (-not $rel.StartsWith('mod/') -and -not $replace.ContainsKey($rel)) {
+        $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
+    }
+}
 Get-ChildItem -Path $assets -Recurse -File | ForEach-Object {
     $rel = $_.FullName.Substring($assets.Length + 1).Replace('\', '/')
     $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
