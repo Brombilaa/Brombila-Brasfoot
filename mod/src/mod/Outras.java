@@ -29,6 +29,8 @@ final class Outras {
         else if (n.equals("a.cW")) financas(p);
         else if (n.equals("a.fw")) salvar(p);
         else if (n.equals("a.bz")) escalar(p);
+        else if (n.equals("a.bl")) demissoes(p);
+        else if (n.equals("a.gO")) convites(p);
         else return false;
         return true;
     }
@@ -478,5 +480,186 @@ final class Outras {
             g.drawString(s, (w - tw) / 2f, (h - fm.getHeight()) / 2f + fm.getAscent());
             g.dispose();
         }
+    }
+
+    // ------------------------------------------------------------- Demissoes na rodada
+
+    static void demissoes(JPanel bl) {
+        if (!Dialogos.base(bl) || !Dialogos.absoluto(bl)) return;
+        Object o = campo(bl, "vd");
+        if (!(o instanceof JPanel)) return;
+        JPanel vd = (JPanel) o;
+        vd.setOpaque(false);
+        vd.setBorder(null);
+        pos(vd, 0, 0, 608, 304);
+        if (!Dialogos.absoluto(vd)) return;
+        Object t = campo(bl, "ug");
+        if (t instanceof JLabel) ((JLabel) t).setText("Demissões na rodada");
+        Dialogos.titulo(t, 28f);
+        pos(t, 24, 16, 400, 40);
+        Object seguir = campo(bl, "zK");
+        Editor.botao(seguir, "Continuar", "seta", true);
+        if (seguir instanceof javax.swing.AbstractButton) ((javax.swing.AbstractButton) seguir).setHorizontalTextPosition(SwingConstants.LEFT);
+        pos(seguir, 452, 18, 132, 36);
+        Object lista = campo(bl, "ut");
+        Dialogos.rolagem(lista);
+        pos(lista, 24, 68, 560, 214);
+        Object tab = campo(bl, "zV");
+        if (tab instanceof JTable) {
+            JTable tb = (JTable) tab;
+            tb.setRowHeight(24);
+            int[] larg = {128, 140, 150, 140};
+            for (int i = 0; i < larg.length && i < tb.getColumnCount(); i++) tb.getColumnModel().getColumn(i).setPreferredWidth(larg[i]);
+            tb.setDefaultRenderer(components.h.class, new Demissao(tb.getDefaultRenderer(components.h.class)));
+        }
+        bl.revalidate();
+    }
+
+    // Demitido apagado, novo tecnico com seta e o motivo como chip colorido.
+    static class Demissao implements javax.swing.table.TableCellRenderer {
+        private final javax.swing.table.TableCellRenderer orig;
+        private final MotivoChip chip = new MotivoChip();
+        Demissao(javax.swing.table.TableCellRenderer orig) { this.orig = orig; }
+
+        public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int row, int col) {
+            Component c = orig.getTableCellRendererComponent(t, v, sel, foc, row, col);
+            if (!(c instanceof JLabel)) return c;
+            JLabel l = (JLabel) c;
+            int m = t.convertColumnIndexToModel(col);
+            if (m == 1) {
+                l.setForeground(Estreia.FRACO);
+                l.setFont(Estreia.texto(12.5f));
+            } else if (m == 2) {
+                l.setForeground(Estreia.BRANCO);
+                l.setFont(Estreia.semi(12.5f));
+                l.setIcon(new Estreia.Icone("seta", 12, Estreia.OURO));
+                l.setIconTextGap(6);
+            } else if (m == 3) {
+                String s = l.getText() == null ? "" : l.getText().trim();
+                chip.texto = s.isEmpty() ? "Pediu demissão" : s.equals("Pressão torcida") ? "Pressão da torcida" : s;
+                chip.cor = s.startsWith("Crise") ? new Color(0xFF8A6E) : s.startsWith("Press") ? new Color(0xF2C14E)
+                    : s.isEmpty() ? new Color(0x6CB8E6) : new Color(0xE0A050);
+                chip.setBackground(l.getBackground());
+                chip.setOpaque(l.isOpaque());
+                return chip;
+            }
+            return l;
+        }
+    }
+
+    static class MotivoChip extends JComponent {
+        String texto = "";
+        Color cor = Estreia.OURO;
+        @Override
+        protected void paintComponent(java.awt.Graphics g0) {
+            java.awt.Graphics2D g = (java.awt.Graphics2D) g0.create();
+            int w = getWidth(), h = getHeight();
+            if (isOpaque()) {
+                g.setColor(getBackground());
+                g.fillRect(0, 0, w, h);
+            }
+            g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            java.awt.Font f = Estreia.negrito(11f);
+            java.awt.FontMetrics fm = g.getFontMetrics(f);
+            int tw = fm.stringWidth(texto), cw = Math.min(w - 8, tw + 18), ch = Math.min(18, h - 4);
+            java.awt.geom.RoundRectangle2D r = new java.awt.geom.RoundRectangle2D.Float(4.5f, (h - ch) / 2f, cw, ch, ch, ch);
+            g.setColor(Tema.alfa(cor, 34));
+            g.fill(r);
+            g.setColor(Tema.alfa(cor, 140));
+            g.draw(r);
+            g.setFont(f);
+            g.setColor(cor);
+            g.drawString(texto, 4.5f + (cw - tw) / 2f, (h - fm.getHeight()) / 2f + fm.getAscent());
+            g.dispose();
+        }
+    }
+
+    // ------------------------------------------------------------- Convites para ser tecnico
+
+    static void convites(JPanel go) {
+        if (!Dialogos.base(go) || !Dialogos.absoluto(go)) return;
+        Object o = campo(go, "vd");
+        if (!(o instanceof JPanel)) return;
+        JPanel vd = (JPanel) o;
+        vd.setOpaque(false);
+        vd.setBorder(null);
+        pos(vd, 0, 0, 774, 462);
+        if (!Dialogos.absoluto(vd)) return;
+        Object t = campo(go, "ug");
+        Dialogos.titulo(t, 28f);
+        if (t instanceof JLabel) ((JLabel) t).setHorizontalAlignment(SwingConstants.LEFT);
+        pos(t, 28, 16, 700, 40);
+        Object nome = campo(go, "Fs");
+        if (nome instanceof JLabel) {
+            ((JLabel) nome).setText("Técnico · " + ((JLabel) nome).getText());
+            Dialogos.rotulo(nome);
+            ((JLabel) nome).setHorizontalAlignment(SwingConstants.LEFT);
+        }
+        pos(nome, 28, 58, 400, 16);
+        Object recebidos = campo(go, "ur");
+        if (recebidos instanceof JLabel) ((JLabel) recebidos).setText("Convites recebidos");
+        Dialogos.rotulo(recebidos);
+        pos(recebidos, 28, 96, 300, 16);
+        Object lista = campo(go, "wi");
+        Dialogos.rolagem(lista);
+        pos(lista, 28, 118, 430, 330);
+        Object tab = campo(go, "vn");
+        if (tab instanceof JTable) ((JTable) tab).setRowHeight(26);
+
+        JPanel c = new JPanel(null);
+        Dialogos.cartao(c);
+        Dialogos.fundo(vd, c, 474, 118, 272, 330);
+        Dialogos.adiciona(vd, Dialogos.rotulo("Time escolhido"), 490, 134, 240, 16);
+        Object time = campo(go, "uu");
+        Dialogos.fonte(time, Estreia.titulo(22f), Estreia.BRANCO);
+        if (time instanceof JLabel) {
+            ((JLabel) time).setIconTextGap(8);
+            ((JLabel) time).setHorizontalAlignment(SwingConstants.LEFT);
+        }
+        pos(time, 490, 154, 240, 40);
+        Dialogos.adiciona(vd, Dialogos.rotulo("Ver do time"), 490, 206, 240, 16);
+        Object atalhos = campo(go, "ve");
+        if (atalhos instanceof javax.swing.JToolBar) {
+            javax.swing.JToolBar tb = (javax.swing.JToolBar) atalhos;
+            tb.setOpaque(false);
+            tb.setFloatable(false);
+            tb.setBorder(BorderFactory.createEmptyBorder());
+            tb.setLayout(new java.awt.GridLayout(0, 1, 0, 8));
+            Dialogos.atalho(campo(go, "HR"), "Calendário", "calendario");
+            Dialogos.atalho(campo(go, "aeN"), "Tabelas", "todos");
+            Dialogos.atalho(campo(go, "HY"), "Retrospecto", "historico");
+        }
+        pos(atalhos, 490, 228, 177, 118);
+        Editor.botao(campo(go, "Ki"), null, "maleta", true);
+        pos(campo(go, "Ki"), 488, 358, 244, 36);
+        Editor.botao(campo(go, "Kj"), null, "fechar", false);
+        pos(campo(go, "Kj"), 488, 400, 244, 36);
+
+        // "Equipe atual" vira "Elenco do <time escolhido>"
+        final Object elenco = campo(go, "uh");
+        Dialogos.rotulo(elenco);
+        if (elenco instanceof JLabel && time instanceof JLabel) {
+            final JLabel e = (JLabel) elenco;
+            final JLabel tl = (JLabel) time;
+            Runnable r = new Runnable() {
+                public void run() {
+                    String n = tl.getText() == null ? "" : tl.getText().trim();
+                    e.setText(n.isEmpty() ? "ELENCO" : ("ELENCO · " + n).toUpperCase());
+                }
+            };
+            r.run();
+            final Runnable rr = r;
+            tl.addPropertyChangeListener("text", new java.beans.PropertyChangeListener() {
+                public void propertyChange(java.beans.PropertyChangeEvent ev) { rr.run(); }
+            });
+        }
+        pos(elenco, 28, 476, 600, 16);
+        Object ut = campo(go, "ut");
+        Dialogos.rolagem(ut);
+        pos(ut, 28, 500, 718, 206);
+        Object zj = campo(go, "zj");
+        if (zj instanceof JTable) ((JTable) zj).putClientProperty(Principal.POSICAO, 0);
+        go.revalidate();
     }
 }
