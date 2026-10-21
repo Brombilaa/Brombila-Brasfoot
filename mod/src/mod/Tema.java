@@ -673,6 +673,10 @@ public final class Tema {
                     if (fg != null && !igual(c.getForeground(), fg)) c.setForeground(fg);
                     pintados.put(c, new Color[] {bg, base, fg, baseFg});
                     if (c instanceof JComponent) borda((JComponent) c);
+                    // posicao na lista do elenco da tela principal: chip colorido
+                    Object pc = t.getClientProperty(Principal.POSICAO);
+                    if (row >= 0 && pc instanceof Integer && (Integer) pc == t.convertColumnIndexToModel(col) && c instanceof JLabel)
+                        return Principal.chip((JLabel) c);
                 } catch (Throwable e) {}
                 return c;
             }

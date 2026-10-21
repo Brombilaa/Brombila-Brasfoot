@@ -52,11 +52,12 @@ final class Dialogos {
         else if (n.equals("a.di")) galeria(p);
         else if (n.equals("a.fB")) opcoes(p);
         else if (n.equals("a.gx")) procura(p);
+        else Fichas.aplica(p, n);
     }
 
     // ------------------------------------------------------------- pecas comuns
 
-    private static Object campo(Object dono, String nome) {
+    static Object campo(Object dono, String nome) {
         for (Class<?> k = dono.getClass(); k != null; k = k.getSuperclass()) {
             try {
                 Field f = k.getDeclaredField(nome);
@@ -71,7 +72,7 @@ final class Dialogos {
         return null;
     }
 
-    private static Object restricao(int x, int y, int w, int h) {
+    static Object restricao(int x, int y, int w, int h) {
         try {
             return Class.forName("components.a").getConstructor(int.class, int.class, int.class, int.class)
                 .newInstance(x, y, w, h);
@@ -81,7 +82,7 @@ final class Dialogos {
     }
 
     // Troca o layout do painel pelo absoluto do jogo; cada filho precisa de posicao depois.
-    private static boolean absoluto(Container c) {
+    static boolean absoluto(Container c) {
         try {
             c.setLayout((LayoutManager) Class.forName("components.b").newInstance());
             return true;
@@ -90,23 +91,23 @@ final class Dialogos {
         }
     }
 
-    private static void adiciona(Container pai, Component c, int x, int y, int w, int h) {
+    static void adiciona(Container pai, Component c, int x, int y, int w, int h) {
         Object k = restricao(x, y, w, h);
         if (k != null) pai.add(c, k, 0);
     }
 
     // Componente novo atras dos outros (pintado primeiro).
-    private static void fundo(Container pai, Component c, int x, int y, int w, int h) {
+    static void fundo(Container pai, Component c, int x, int y, int w, int h) {
         Object k = restricao(x, y, w, h);
         if (k != null) pai.add(c, k);
     }
 
-    private static void pos(Object o, int x, int y, int w, int h) {
+    static void pos(Object o, int x, int y, int w, int h) {
         if (o instanceof Component) Janelas.posicao((Component) o, x, y, w, h);
     }
 
     // Largura natural (-1) para um componente ja posicionado no layout absoluto.
-    private static void larguraLivre(Component c) {
+    static void larguraLivre(Component c) {
         if (c.getParent() == null) return;
         Object l = c.getParent().getLayout();
         Object tabela = campo(l, "NA");
@@ -121,7 +122,7 @@ final class Dialogos {
         }
     }
 
-    private static void moveX(Component c, int x) {
+    static void moveX(Component c, int x) {
         if (c.getParent() == null) return;
         Object tabela = campo(c.getParent().getLayout(), "NA");
         if (!(tabela instanceof java.util.Map)) return;
@@ -134,7 +135,7 @@ final class Dialogos {
         }
     }
 
-    private static boolean base(JPanel p) {
+    static boolean base(JPanel p) {
         if (p.getClientProperty(Janelas.FEITO) != null) return false;
         p.putClientProperty(Janelas.FEITO, Boolean.TRUE);
         p.setOpaque(false);
@@ -143,7 +144,7 @@ final class Dialogos {
         return true;
     }
 
-    private static void titulo(Object o, float px) {
+    static void titulo(Object o, float px) {
         if (!(o instanceof JLabel)) return;
         JLabel l = (JLabel) o;
         l.setFont(Estreia.titulo(px));
@@ -153,13 +154,13 @@ final class Dialogos {
         l.setUI(new DuasCores());
     }
 
-    private static JLabel rotulo(String texto) {
+    static JLabel rotulo(String texto) {
         JLabel l = new JLabel(texto);
         rotulo(l);
         return l;
     }
 
-    private static void rotulo(Object o) {
+    static void rotulo(Object o) {
         if (!(o instanceof JLabel)) return;
         JLabel l = (JLabel) o;
         l.setFont(Estreia.espacada(Estreia.negrito(10.5f), 0.18f));
@@ -173,24 +174,24 @@ final class Dialogos {
         }
     }
 
-    private static void fonte(Object o, java.awt.Font f, Color cor) {
+    static void fonte(Object o, java.awt.Font f, Color cor) {
         if (!(o instanceof JComponent)) return;
         ((JComponent) o).setFont(f);
         if (cor != null) ((JComponent) o).setForeground(cor);
     }
 
-    private static void cartao(Object o) {
+    static void cartao(Object o) {
         if (!(o instanceof JComponent)) return;
         ((JComponent) o).setOpaque(false);
         ((JComponent) o).setBorder(new Editor.Cartao(true));
     }
 
-    private static void rolagem(Object o) {
+    static void rolagem(Object o) {
         if (o instanceof JScrollPane) ((JScrollPane) o).setBorder(BorderFactory.createLineBorder(new Color(244, 241, 234, 30)));
     }
 
     // Lista vazia: mensagem discreta no meio, em vez de um quadro preto mudo.
-    private static void vazio(Object rolagem, String titulo, String texto) {
+    static void vazio(Object rolagem, String titulo, String texto) {
         if (!(rolagem instanceof JScrollPane)) return;
         Component v = ((JScrollPane) rolagem).getViewport().getView();
         if (!(v instanceof JTable)) return;
@@ -199,7 +200,7 @@ final class Dialogos {
         t.setBorder(new Vazio(titulo, texto));
     }
 
-    private static void interruptor(Object o) {
+    static void interruptor(Object o) {
         if (!(o instanceof JCheckBox)) return;
         JCheckBox c = (JCheckBox) o;
         c.setUI(new ConfigEstreia.Interruptor());
@@ -209,7 +210,7 @@ final class Dialogos {
         c.setFocusPainted(false);
     }
 
-    private static void fechar(Object x, int largura) {
+    static void fechar(Object x, int largura) {
         Janelas.fechar(x);
         pos(x, largura - 56, 16, 36, 36);
     }
@@ -303,7 +304,7 @@ final class Dialogos {
         ge.revalidate();
     }
 
-    private static void atalho(Object o, String texto, String icone) {
+    static void atalho(Object o, String texto, String icone) {
         if (!(o instanceof JButton)) return;
         JButton b = (JButton) o;
         b.setText(texto);
@@ -456,7 +457,7 @@ final class Dialogos {
 
     // ------------------------------------------------------------- Campeoes e Artilheiros
 
-    private static void faixaDeAbas(Object vd, Object barra) {
+    static void faixaDeAbas(Object vd, Object barra) {
         if (vd instanceof JComponent) {
             ((JComponent) vd).setOpaque(false);
             ((JComponent) vd).setBorder(new Telas.Filete());
@@ -490,7 +491,7 @@ final class Dialogos {
         r.revalidate();
     }
 
-    private static void reajusta(Object o, final Runnable r) {
+    static void reajusta(Object o, final Runnable r) {
         if (!(o instanceof Component)) return;
         ((Component) o).addComponentListener(new java.awt.event.ComponentAdapter() {
             public void componentShown(java.awt.event.ComponentEvent e) { r.run(); }
@@ -758,6 +759,11 @@ final class Dialogos {
             if (i > 0) {
                 a = t.substring(0, i);
                 b = t.substring(i + 3);
+            } else if (t.endsWith(")") && t.lastIndexOf(" (") > 0) {
+                // "Rodolfo Castro (G)": posicao em dourado
+                i = t.lastIndexOf(" (");
+                a = t.substring(0, i);
+                b = t.substring(i + 2, t.length() - 1);
             }
             a = a.toUpperCase();
             g.setColor(Estreia.BRANCO);
@@ -777,6 +783,7 @@ final class Dialogos {
     // Mensagem no meio da tabela vazia, desenhada pela borda da propria tabela.
     static class Vazio extends AbstractBorder {
         final String titulo, texto;
+        int linhasFixas = 1; // paineis de linhas: so o cabecalho = vazio
         Vazio(String titulo, String texto) { this.titulo = titulo; this.texto = texto; }
         @Override
         public Insets getBorderInsets(Component c) { return new Insets(0, 0, 0, 0); }
@@ -784,8 +791,12 @@ final class Dialogos {
         public Insets getBorderInsets(Component c, Insets i) { i.set(0, 0, 0, 0); return i; }
         @Override
         public void paintBorder(Component c, Graphics g0, int x, int y, int w, int h) {
-            if (!(c instanceof JTable) || ((JTable) c).getRowCount() > 0) return;
-            Rectangle v = ((JTable) c).getVisibleRect();
+            if (c instanceof JTable) {
+                if (((JTable) c).getRowCount() > 0) return;
+            } else if (!(c instanceof Container) || ((Container) c).getComponentCount() > linhasFixas) {
+                return;
+            }
+            Rectangle v = ((JComponent) c).getVisibleRect();
             if (v.height < 60) return;
             Graphics2D g = (Graphics2D) g0.create();
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
