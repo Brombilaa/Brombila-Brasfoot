@@ -53,7 +53,7 @@ final class Dialogos {
         else if (n.equals("a.fB")) opcoes(p);
         else if (n.equals("a.gx")) procura(p);
         else if (n.equals("a.jp")) sobre(p);
-        else Fichas.aplica(p, n);
+        else if (!Outras.aplica(p, n)) Fichas.aplica(p, n);
     }
 
     // ------------------------------------------------------------- pecas comuns
