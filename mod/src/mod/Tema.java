@@ -222,6 +222,15 @@ public final class Tema {
         registraUI("ProgressBarUI", BarraUI.class);
         registraUI("ScrollBarUI", RolagemUI.class);
 
+        // Perguntas do jogo em portugues (o Java mostra "Yes/No" por padrao).
+        UIManager.put("OptionPane.yesButtonText", "Sim");
+        UIManager.put("OptionPane.noButtonText", "Não");
+        UIManager.put("OptionPane.cancelButtonText", "Cancelar");
+        UIManager.put("OptionPane.okButtonText", "OK");
+        UIManager.put("OptionPane.questionIcon", new Estreia.Aviso("?", Estreia.OURO));
+        UIManager.put("OptionPane.informationIcon", new Estreia.Aviso("i", Estreia.OURO));
+        UIManager.put("OptionPane.warningIcon", new Estreia.Aviso("!", Estreia.OURO));
+        UIManager.put("OptionPane.errorIcon", new Estreia.Aviso("×", VERMELHO));
         UIManager.put("Button.foreground", new ColorUIResource(BASE));
         UIManager.put("Button.border", new BorderUIResource.EmptyBorderUIResource(4, 12, 4, 12));
         UIManager.put("Button.margin", new javax.swing.plaf.InsetsUIResource(2, 10, 2, 10));
@@ -374,6 +383,9 @@ public final class Tema {
         boolean amostra = coresDoTime && c instanceof JLabel && c.isOpaque();
         if (c.getClass().getName().equals("a.hU") && c instanceof javax.swing.JPanel) {
             try { ConfigEstreia.aplica((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
+        }
+        if (c.getClass().getName().equals("a.bV") && c instanceof javax.swing.JPanel) {
+            try { ConfigEstreia.tecnico((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
         }
         // Telas "Noite de estreia" (menu e configuracoes) tem cores proprias.
         boolean estreia = Estreia.dentro(c);

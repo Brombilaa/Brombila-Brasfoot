@@ -111,6 +111,7 @@ final class Estreia {
         ICONES.put("volta", new Shape[] {svg("M19 12H5M11 6l-6 6 6 6")});
         ICONES.put("ajuste", new Shape[] {svg("M4 7h10M18 7h2M4 17h4M12 17h8"),
             new Ellipse2D.Double(14, 5, 4, 4), new Ellipse2D.Double(8, 15, 4, 4)});
+        ICONES.put("mais", new Shape[] {svg("M12 5v14M5 12h14")});
         ICONES.put("todos", new Shape[] {svg("M4 6.5l2 2 3.5-4M4 13.5l2 2 3.5-4M12 7h8M12 14h8M12 20h8")});
     }
 
@@ -139,6 +140,29 @@ final class Estreia {
         public int getIconHeight() { return lado; }
         public void paintIcon(Component c, Graphics g, int x, int y) {
             icone((Graphics2D) g, nome, x, y, lado, cor != null ? cor : c.getForeground());
+        }
+    }
+
+    // Icone das perguntas e avisos do jogo (JOptionPane): circulo fino com o sinal.
+    static class Aviso implements Icon {
+        final String sinal;
+        final Color cor;
+        Aviso(String sinal, Color cor) { this.sinal = sinal; this.cor = cor; }
+        public int getIconWidth() { return 34; }
+        public int getIconHeight() { return 34; }
+        public void paintIcon(Component c, Graphics g, int x, int y) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setColor(new Color(cor.getRed(), cor.getGreen(), cor.getBlue(), 36));
+            g2.fill(new Ellipse2D.Float(x + 1, y + 1, 32, 32));
+            g2.setColor(cor);
+            g2.setStroke(new BasicStroke(1.8f));
+            g2.draw(new Ellipse2D.Float(x + 1.5f, y + 1.5f, 31, 31));
+            g2.setFont(negrito(18f));
+            java.awt.FontMetrics fm = g2.getFontMetrics();
+            g2.drawString(sinal, x + 17 - fm.stringWidth(sinal) / 2f, y + 17 - fm.getHeight() / 2f + fm.getAscent());
+            g2.dispose();
         }
     }
 

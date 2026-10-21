@@ -72,7 +72,7 @@ final class ConfigEstreia {
         if (pai != null && !(pai instanceof Fundo)) {
             pai.remove(hU);
             pai.setLayout(new BorderLayout());
-            Fundo f = new Fundo();
+            Fundo f = new Fundo(true);
             f.add(hU);
             pai.add(f, BorderLayout.CENTER);
             pai.revalidate();
@@ -183,6 +183,101 @@ final class ConfigEstreia {
         hU.repaint();
     }
 
+    // Tela "Adicionar tecnico humano" (a.bV). Aqui o tema continua trocando as
+    // cores, porque o jogo acende em amarelo a divisao escolhida (vira dourado).
+    static void tecnico(final JPanel bV) {
+        if (bV.getClientProperty(TECNICO) != null) return;
+        bV.putClientProperty(TECNICO, Boolean.TRUE);
+        bV.setOpaque(false);
+        Container pai = bV.getParent();
+        if (pai != null && !(pai instanceof Fundo)) {
+            pai.remove(bV);
+            pai.setLayout(new BorderLayout());
+            Fundo f = new Fundo(false);
+            f.add(bV);
+            pai.add(f, BorderLayout.CENTER);
+            pai.revalidate();
+            pai.repaint();
+        }
+
+        JLabel kicker = (JLabel) campo(bV, "a_");
+        if (kicker != null) {
+            kicker.setText("NOVO JOGO");
+            kicker.setFont(Estreia.espacada(Estreia.semi(12f), 0.3f));
+            kicker.setForeground(Estreia.OURO);
+        }
+        final JLabel titulo = (JLabel) campo(bV, "vf");
+        if (titulo != null) {
+            titulo.setFont(Estreia.titulo(44f));
+            titulo.setForeground(Estreia.BRANCO);
+            titulo.setBorder(BorderFactory.createEmptyBorder(0, 0, 6, 0));
+            maiusculas(titulo);
+            // "Adicionar tecnico humano 2", 3...: o jogo troca o texto ao incluir outro
+            titulo.addPropertyChangeListener("text", new java.beans.PropertyChangeListener() {
+                public void propertyChange(java.beans.PropertyChangeEvent e) { maiusculas(titulo); }
+            });
+        }
+        Object treinar = campo(bV, "BO");
+        if (treinar instanceof JLabel) {
+            ((JLabel) treinar).setFont(Estreia.semi(15f));
+            ((JLabel) treinar).setForeground(Estreia.OURO);
+        }
+        for (String n : new String[] {"BH", "BI", "BJ", "BK", "uF", "BL", "BM"}) {
+            Object o = campo(bV, n);
+            if (o instanceof JLabel) ((JLabel) o).setFont(Estreia.texto(14f));
+        }
+        Object time = campo(bV, "BN");
+        if (time instanceof JLabel) ((JLabel) time).setFont(Estreia.negrito(16f));
+        for (String n : new String[] {"ue", "Bz", "BA", "BB", "BC", "BD"}) {
+            Object o = campo(bV, n);
+            if (o instanceof javax.swing.JComboBox) {
+                javax.swing.JComboBox<?> cb = (javax.swing.JComboBox<?>) o;
+                cb.setFont(Estreia.semi(13f));
+                cb.setBorder(BorderFactory.createLineBorder(new Color(244, 241, 234, 46)));
+            }
+        }
+        Object nome = campo(bV, "uf");
+        if (nome instanceof javax.swing.JTextField) {
+            javax.swing.JTextField tf = (javax.swing.JTextField) nome;
+            tf.setFont(Estreia.semi(14f));
+            tf.setBackground(CELULA);
+            tf.setForeground(Estreia.BRANCO);
+            tf.setCaretColor(Estreia.OURO);
+            tf.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(244, 241, 234, 60)), BorderFactory.createEmptyBorder(3, 8, 3, 8)));
+        }
+        Object aleatorio = campo(bV, "By");
+        if (aleatorio instanceof JCheckBox) {
+            JCheckBox c = (JCheckBox) aleatorio;
+            c.setUI(new Interruptor());
+            c.setFont(Estreia.texto(14f));
+            c.setOpaque(false);
+        }
+        for (String n : new String[] {"BE", "BF", "BG"}) {
+            Object o = campo(bV, n);
+            if (o instanceof javax.swing.JSeparator) {
+                ((javax.swing.JSeparator) o).setForeground(new Color(244, 241, 234, 40));
+                ((javax.swing.JSeparator) o).setBackground(new Color(0, 0, 0, 0));
+            }
+        }
+        botao(bV, "Bw", "Iniciar jogo", "seta", true);
+        botao(bV, "Bx", "Adicionar e incluir outro", "mais", false);
+        JLabel nota = (JLabel) campo(bV, "ug");
+        if (nota != null) {
+            nota.setFont(Estreia.texto(12f));
+            nota.setForeground(Estreia.FRACO);
+        }
+        bV.revalidate();
+        bV.repaint();
+    }
+
+    static final String TECNICO = "brombila.tecnico";
+
+    private static void maiusculas(JLabel l) {
+        String s = l.getText();
+        if (s != null && !s.equals(s.toUpperCase())) l.setText(s.toUpperCase());
+    }
+
     private static void secao(JPanel hU, String nome, String texto) {
         Object o = campo(hU, nome);
         if (!(o instanceof JLabel)) return;
@@ -212,9 +307,10 @@ final class ConfigEstreia {
     static class Fundo extends JPanel {
         private BufferedImage cache;
 
-        Fundo() {
+        // marca = true: a tela usa so as cores proprias (o tema nao mexe nela)
+        Fundo(boolean marca) {
             super(new GridBagLayout());
-            putClientProperty(Estreia.MARCA, Boolean.TRUE);
+            if (marca) putClientProperty(Estreia.MARCA, Boolean.TRUE);
             setOpaque(true);
         }
 
