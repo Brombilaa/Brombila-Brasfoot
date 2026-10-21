@@ -462,9 +462,20 @@ public final class Tema {
     // Os renderers pintam celula por celula; embrulhamos cada um para trocar as
     // cores na hora, zebrar as linhas e acender a linha sob o mouse.
     static TableCellRenderer embrulha(final TableCellRenderer orig) {
+        // tabela de jogos da rodada (tela da partida): celulas redesenhadas
+        final CelulaRodada rodada = orig.getClass().getName().equals("b.aG") ? new CelulaRodada() : null;
         TableCellRenderer w = new TableCellRenderer() {
             public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int row, int col) {
                 Component c = orig.getTableCellRendererComponent(t, v, sel, foc, row, col);
+                if (rodada != null && c instanceof JLabel && row >= 0) {
+                    try {
+                        if (!igual(t.getBackground(), FUNDO)) t.setBackground(FUNDO);
+                        Object lm = t.getClientProperty(LINHA_MOUSE), br = t.getClientProperty(BRILHO);
+                        float hv = (lm instanceof Integer && (Integer) lm == row) ? ((br instanceof Float) ? (Float) br : 1f) : 0f;
+                        rodada.prepara((JLabel) c, t.convertColumnIndexToModel(col), hv);
+                        return rodada;
+                    } catch (Throwable e) {}
+                }
                 try {
                     // Renderer que nao repoe as cores a cada celula: volta para a cor
                     // original em vez de acumular zebra/hover da celula anterior.
