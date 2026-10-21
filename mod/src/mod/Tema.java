@@ -251,7 +251,17 @@ public final class Tema {
         long mask = AWTEvent.CONTAINER_EVENT_MASK | AWTEvent.WINDOW_EVENT_MASK;
         Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
             public void eventDispatched(AWTEvent e) {
-                if (e.getID() == WindowEvent.WINDOW_OPENED) Animacao.fadeIn((Window) e.getSource());
+                if (e instanceof ContainerEvent && e.getID() == ContainerEvent.COMPONENT_ADDED) {
+                    // tela inicial do jogo sendo montada: esconde ate trocar pelo menu novo
+                    Object s = e.getSource();
+                    Window w = (s instanceof Window) ? (Window) s : SwingUtilities.getWindowAncestor((Component) s);
+                    if (w != null && w.getClass().getName().equals("a.gq") && !w.isShowing()) MenuInicial.prepara(w);
+                }
+                if (e.getID() == WindowEvent.WINDOW_OPENED) {
+                    Window w = (Window) e.getSource();
+                    if (w.getClass().getName().equals("a.gq")) MenuInicial.instala((javax.swing.JFrame) w);
+                    Animacao.fadeIn(w);
+                }
                 final Object src = (e instanceof ContainerEvent) ? ((ContainerEvent) e).getChild() : e.getSource();
                 if (src instanceof Component) {
                     SwingUtilities.invokeLater(new Runnable() {
@@ -351,18 +361,23 @@ public final class Tema {
         if (c == null) return;
         coresDoTime = coresDoTime || c.getClass().getName().equals("a.bb");
         boolean amostra = coresDoTime && c instanceof JLabel && c.isOpaque();
+        if (c.getClass().getName().equals("a.hU") && c instanceof javax.swing.JPanel) {
+            try { ConfigEstreia.aplica((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
+        }
+        // Telas "Noite de estreia" (menu e configuracoes) tem cores proprias.
+        boolean estreia = Estreia.dentro(c);
         try {
             if (c instanceof Frame || c instanceof Dialog) trocaTitulo((Window) c);
             boolean botao = c instanceof AbstractButton && !(c instanceof javax.swing.JCheckBox) && !(c instanceof javax.swing.JRadioButton);
-            if (c.isBackgroundSet() && !botao && !amostra) {
+            if (c.isBackgroundSet() && !botao && !amostra && !estreia) {
                 Color bg = c.getBackground(), n = fundo(bg);
                 if (!igual(bg, n)) c.setBackground(n);
             }
-            if (c.isForegroundSet() && !botao && !amostra) {
+            if (c.isForegroundSet() && !botao && !amostra && !estreia) {
                 Color fg = c.getForeground(), n = texto(fg);
                 if (!igual(fg, n)) c.setForeground(n);
             }
-            if (c instanceof JComponent) borda((JComponent) c);
+            if (c instanceof JComponent && !estreia) borda((JComponent) c);
             if (c instanceof JLabel && "Brasfoot".equals(((JLabel) c).getText())) ((JLabel) c).setText(NOME);
             if (c instanceof JTable) tabela((JTable) c);
             if (c instanceof JTableHeader) cabecalho((JTableHeader) c);
@@ -495,6 +510,31 @@ public final class Tema {
                     if (ult != null && igual(atualFg, ult[2])) atualFg = ult[3];
                     Color base = atual, baseFg = atualFg;
                     Color bg, fg;
+                    if (Estreia.dentro(t)) {
+                        // tabelas da tela de configuracoes: neutras com destaque dourado
+                        if (row < 0) {
+                            bg = ConfigEstreia.CABECALHO;
+                            fg = Estreia.FRACO;
+                            if (c instanceof JComponent) ((JComponent) c).setOpaque(true);
+                        } else if (sel) {
+                            bg = ConfigEstreia.SELECAO;
+                            fg = Estreia.BRANCO;
+                        } else {
+                            bg = (row % 2 == 1) ? ConfigEstreia.ZEBRA : ConfigEstreia.CELULA;
+                            Object lm = t.getClientProperty(LINHA_MOUSE);
+                            if (lm instanceof Integer && (Integer) lm == row) {
+                                Object br = t.getClientProperty(BRILHO);
+                                bg = mistura(bg, Estreia.OURO, 0.10f * ((br instanceof Float) ? (Float) br : 1f));
+                            }
+                            fg = new Color(0xE6E2DA);
+                        }
+                        if (!igual(c.getBackground(), bg)) c.setBackground(bg);
+                        if (!igual(c.getForeground(), fg)) c.setForeground(fg);
+                        pintados.put(c, new Color[] {bg, base, fg, baseFg});
+                        if (c instanceof JComponent && row < 0) ((JComponent) c).setBorder(BorderFactory.createCompoundBorder(
+                            BorderFactory.createMatteBorder(0, 0, 1, 0, Estreia.LINHA), BorderFactory.createEmptyBorder(4, 6, 3, 6)));
+                        return c;
+                    }
                     if (row < 0) {
                         // Cabecalho: escuro com texto menta.
                         bg = BASE;

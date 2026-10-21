@@ -34,7 +34,7 @@ public class RolagemUI extends BasicScrollBarUI {
 
     @Override
     protected void paintTrack(Graphics g, JComponent c, Rectangle r) {
-        g.setColor(Tema.BASE);
+        g.setColor(Estreia.dentro(scrollbar) ? ConfigEstreia.CELULA : Tema.BASE);
         g.fillRect(r.x, r.y, r.width, r.height);
     }
 
@@ -49,6 +49,7 @@ public class RolagemUI extends BasicScrollBarUI {
         int y = vertical ? r.y + 2 : r.y + (r.height - esp) / 2;
         int w = vertical ? esp : r.width - 4, h = vertical ? r.height - 4 : esp;
         Color cor = isDragging ? Tema.NEON : isThumbRollover() ? Tema.MENTA : new Color(0x3C5A47);
+        if (Estreia.dentro(scrollbar)) cor = isDragging ? Estreia.OURO : isThumbRollover() ? Estreia.BRANCO : new Color(244, 241, 234, 70);
         g2.setColor(cor);
         g2.fillRoundRect(x, y, w, h, esp, esp);
         g2.dispose();

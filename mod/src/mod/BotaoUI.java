@@ -32,6 +32,8 @@ import javax.swing.plaf.basic.BasicGraphicsUtils;
 public class BotaoUI extends BasicButtonUI {
     private static final int RAIO = 12;
     private static final int MARGEM = 2; // espaco para o brilho do hover
+    // Botao principal na tela "Noite de estreia" (dourado); os outros ficam so com contorno.
+    static final String PRIMARIO = "brombila.primario";
 
     private float hover;   // 0..1, animado
     private float aperto;  // 0..1, animado
@@ -115,7 +117,9 @@ public class BotaoUI extends BasicButtonUI {
             int w = c.getWidth(), h = c.getHeight();
             float hv = Animacao.suave(hover);
             int dy = Math.round(aperto);
-            if (b.isContentAreaFilled()) {
+            if (b.isContentAreaFilled() && Estreia.dentro(b)) {
+                estreia(g2, b, w, h, hv, dy);
+            } else if (b.isContentAreaFilled()) {
                 int m = Math.min(MARGEM, Math.max(0, (h - 14) / 2));
                 Shape corpo = new RoundRectangle2D.Float(m, m + dy, w - 2 * m - 1, h - 2 * m - 1, RAIO, RAIO);
                 if (!b.isEnabled()) {
@@ -155,6 +159,31 @@ public class BotaoUI extends BasicButtonUI {
         paint(g, c);
     }
 
+    // Pilula dourada (principal) ou contorno claro, como no modelo "Noite de estreia".
+    private static void estreia(Graphics2D g2, AbstractButton b, int w, int h, float hv, int dy) {
+        float sobe = Boolean.TRUE.equals(b.getClientProperty(PRIMARIO)) ? 1.5f * hv : 0f;
+        Shape corpo = new RoundRectangle2D.Float(MARGEM, MARGEM + dy - sobe, w - 2 * MARGEM - 1, h - 2 * MARGEM - 1, h - 2 * MARGEM, h - 2 * MARGEM);
+        if (!b.isEnabled()) {
+            g2.setColor(new Color(244, 241, 234, 30));
+            g2.draw(corpo);
+        } else if (Boolean.TRUE.equals(b.getClientProperty(PRIMARIO))) {
+            for (int i = 3; i > 0 && hv > 0; i--) {
+                g2.setColor(Tema.alfa(Estreia.OURO, Math.round(22 * hv)));
+                g2.setStroke(new BasicStroke(i * 2f));
+                g2.draw(corpo);
+            }
+            g2.setStroke(new BasicStroke(1f));
+            g2.setColor(Tema.mistura(Estreia.OURO, new Color(0xFFD978), hv));
+            g2.fill(corpo);
+        } else {
+            g2.setColor(new Color(244, 241, 234, Math.round(8 + 14 * hv)));
+            g2.fill(corpo);
+            g2.setStroke(new BasicStroke(1.2f));
+            g2.setColor(Tema.mistura(new Color(244, 241, 234, 56), Estreia.BRANCO, hv));
+            g2.draw(corpo);
+        }
+    }
+
     // Brilho neon ao redor do corpo (desenhado na margem do botao).
     private static void brilho(Graphics2D g2, int w, int h, float forca) {
         for (int i = MARGEM + 2; i > 0; i--) {
@@ -171,7 +200,12 @@ public class BotaoUI extends BasicButtonUI {
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         Color fg;
-        if (!b.isContentAreaFilled()) {
+        boolean estreia = b.isContentAreaFilled() && Estreia.dentro(b);
+        if (estreia) {
+            if (!b.isEnabled()) fg = Estreia.APAGADO;
+            else if (Boolean.TRUE.equals(b.getClientProperty(PRIMARIO))) fg = Estreia.OURO_ESCURO;
+            else fg = Tema.mistura(Estreia.FRACO, Estreia.BRANCO, Animacao.suave(hover));
+        } else if (!b.isContentAreaFilled()) {
             fg = Tema.texto(b.getForeground());
             if (hover > 0 && b.isEnabled()) fg = Tema.mistura(fg, Tema.NEON, Animacao.suave(hover));
         } else if (!b.isEnabled()) {
@@ -183,6 +217,7 @@ public class BotaoUI extends BasicButtonUI {
         }
         if (!b.isEnabled() && !b.isContentAreaFilled()) fg = Tema.TEXTO_FRACO;
         int dy = Math.round(aperto);
+        if (estreia && Boolean.TRUE.equals(b.getClientProperty(PRIMARIO))) dy -= Math.round(1.5f * Animacao.suave(hover));
         java.awt.FontMetrics fm = g2.getFontMetrics(b.getFont());
         g2.setFont(b.getFont());
         g2.setColor(fg);

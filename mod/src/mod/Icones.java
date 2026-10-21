@@ -34,8 +34,9 @@ final class Icones {
             boolean on = m.isSelected(), ativo = m.isEnabled();
             Graphics2D g2 = prepara(g);
             RoundRectangle2D q = new RoundRectangle2D.Float(x + 0.5f, y + 0.5f, 15, 15, 5, 5);
+            boolean ouro = Estreia.dentro(c);
             if (on && ativo) {
-                g2.setColor(Tema.NEON);
+                g2.setColor(ouro ? Estreia.OURO : Tema.NEON);
                 g2.fill(q);
                 g2.setColor(new Color(0x04150B));
                 g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -47,7 +48,7 @@ final class Icones {
             } else {
                 g2.setColor(new Color(255, 255, 255, ativo ? 18 : 8));
                 g2.fill(q);
-                g2.setColor(on ? Tema.alfa(Tema.NEON, 90) : new Color(255, 255, 255, ativo && m.isRollover() ? 150 : ativo ? 80 : 35));
+                g2.setColor(on ? Tema.alfa(ouro ? Estreia.OURO : Tema.NEON, 90) : new Color(255, 255, 255, ativo && m.isRollover() ? 150 : ativo ? 80 : 35));
                 g2.draw(q);
             }
             g2.dispose();
