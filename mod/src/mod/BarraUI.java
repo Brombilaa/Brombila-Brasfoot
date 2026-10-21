@@ -99,7 +99,7 @@ public class BarraUI extends BasicProgressBarUI {
             float[] hsb = Color.RGBtoHSB(fg.getRed(), fg.getGreen(), fg.getBlue(), null);
             if (hsb[1] > 0.3f && hsb[2] > 0.3f) return Tema.texto(fg);
         }
-        if (pct > 0.7) return Tema.NEON;
+        if (pct > 0.7) return Tema.BOM;
         if (pct > 0.4) return Tema.OURO;
         return Tema.VERMELHO;
     }

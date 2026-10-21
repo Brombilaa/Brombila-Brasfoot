@@ -64,23 +64,27 @@ public final class Tema {
     public static final String NOME = "Brombila Brasfoot";
 
     // Paleta
-    public static final Color BASE = new Color(0x07120C);
-    public static final Color FUNDO = new Color(0x0B1811);
-    public static final Color PAINEL = new Color(0x0F1F16);
-    public static final Color SUPERFICIE = new Color(0x111E16);
-    public static final Color ZEBRA = new Color(0x182B20);
-    public static final Color BORDA = new Color(0x27402F);
-    public static final Color SELECAO = new Color(0x1D5537);
-    public static final Color TEXTO = new Color(0xE3F1E8);
-    public static final Color TEXTO_FRACO = new Color(0x8FAE9A);
-    public static final Color NEON = new Color(0x3DFF8F);
-    public static final Color NEON_ESCURO = new Color(0x1BC266);
-    public static final Color MENTA = new Color(0x7FE3A8);
+    // Desde 2026-10-21 a paleta e a "Noite de estreia" (dourado sobre quase preto),
+    // a mesma do menu inicial. Os nomes NEON/MENTA ficaram por compatibilidade:
+    // NEON e o dourado de destaque e MENTA o creme dos cabecalhos.
+    public static final Color BASE = new Color(0x090B0A);
+    public static final Color FUNDO = new Color(0x0D100F);
+    public static final Color PAINEL = new Color(0x121614);
+    public static final Color SUPERFICIE = new Color(0x131715);
+    public static final Color ZEBRA = new Color(0x1A1F1C);
+    public static final Color BORDA = new Color(0x2E3430);
+    public static final Color SELECAO = new Color(0x3A3120);
+    public static final Color TEXTO = new Color(0xF1EEE7);
+    public static final Color TEXTO_FRACO = new Color(0x9E9B92);
+    public static final Color NEON = new Color(0xF2C14E);
+    public static final Color NEON_ESCURO = new Color(0xC28E2C);
+    public static final Color MENTA = new Color(0xE8D7AE);
     public static final Color OURO = new Color(0xFFD84D);
     public static final Color VERMELHO = new Color(0xFF5A4D);
+    public static final Color BOM = new Color(0x5FCF8E); // verde so para "bom" (energia, confianca)
 
-    // Matiz alvo (0..1). 0.40 ~ 144 graus.
-    static final float MATIZ = 0.40f;
+    // Matiz alvo (0..1). 0.11 ~ 40 graus (ambar).
+    static final float MATIZ = 0.11f;
 
     private Tema() {}
 
@@ -142,8 +146,8 @@ public final class Tema {
         if (amarelo(h, s, b)) return SELECAO; // selecao amarela do jogo
         Color v = c;
         if (s >= 0.10f && h >= 0.45f && h <= 0.78f) {
-            // azul -> verde escuro dessaturado (fundo "noite")
-            v = new Color(Color.HSBtoRGB(MATIZ, Math.min(0.6f, s * 0.6f), Math.min(b, 0.5f) * 0.55f));
+            // azul -> quase preto levemente quente (fundo "noite")
+            v = new Color(Color.HSBtoRGB(MATIZ, Math.min(0.2f, s * 0.2f), Math.min(b, 0.5f) * 0.5f));
         }
         float l = luminancia(v);
         if (l > 0.55f) {
@@ -151,8 +155,16 @@ public final class Tema {
             // um toque da cor original
             return s > 0.2f ? mistura(SUPERFICIE, v, 0.10f) : SUPERFICIE;
         }
+        if (s >= 0.4f && h >= 0.2f && h <= 0.45f && b < 0.6f) {
+            // faixas verdes do jogo (ex.: "Banco de reservas"): viram faixa escura com toque dourado
+            return mistura(PAINEL, NEON, 0.06f);
+        }
+        if (s < 0.12f && b >= 0.45f && b < 0.7f) {
+            // cinza medio (paineis da escalacao): superficie escura
+            return SUPERFICIE;
+        }
         if (s < 0.12f && b < 0.45f) {
-            // cinzas/pretos escuros: puxa para o verde da paleta
+            // cinzas/pretos escuros: puxa para os escuros da paleta
             return mistura(BASE, PAINEL, Math.min(1f, b * 2.5f));
         }
         return v;
@@ -163,9 +175,8 @@ public final class Tema {
         float h = hsb[0], s = hsb[1], b = hsb[2];
         if (amarelo(h, s, b)) return NEON;
         if (s >= 0.10f && h >= 0.45f && h <= 0.78f) {
-            // azul -> verde, sempre claro o bastante para ler no escuro
-            float nh = MATIZ + (h - 0.58f) * 0.25f;
-            return new Color(Color.HSBtoRGB(nh, Math.min(0.75f, s), Math.max(b, 0.82f)));
+            // azul -> creme dourado, sempre claro o bastante para ler no escuro
+            return new Color(Color.HSBtoRGB(MATIZ, Math.min(0.45f, s * 0.6f), Math.max(b, 0.86f)));
         }
         if (s < 0.15f) {
             // preto/cinza escuro -> texto claro; cinza medio -> texto fraco
@@ -224,7 +235,7 @@ public final class Tema {
                 BorderFactory.createEmptyBorder(4, 6, 3, 6))));
         UIManager.put("Table.selectionBackground", new ColorUIResource(SELECAO));
         UIManager.put("Table.selectionForeground", new ColorUIResource(Color.WHITE));
-        UIManager.put("Table.gridColor", new ColorUIResource(0x1C2E22));
+        UIManager.put("Table.gridColor", new ColorUIResource(0x232825));
         UIManager.put("ScrollPane.border", new BorderUIResource(BorderFactory.createLineBorder(BORDA)));
         UIManager.put("ScrollBar.width", 12);
         UIManager.put("ToolTip.background", new ColorUIResource(PAINEL));
@@ -449,7 +460,7 @@ public final class Tema {
         if (!igual(t.getSelectionBackground(), SELECAO)) t.setSelectionBackground(SELECAO);
         if (!igual(t.getSelectionForeground(), Color.WHITE)) t.setSelectionForeground(Color.WHITE);
         Color gc = t.getGridColor();
-        if (!igual(gc, new Color(0x1C2E22))) t.setGridColor(new Color(0x1C2E22));
+        if (!igual(gc, new Color(0x232825))) t.setGridColor(new Color(0x232825));
         for (Class<?> tipo : TIPOS) {
             TableCellRenderer r = t.getDefaultRenderer(tipo);
             if (r != null && !nossos.containsKey(r)) t.setDefaultRenderer(tipo, embrulha(r));

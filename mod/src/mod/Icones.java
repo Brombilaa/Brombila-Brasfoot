@@ -38,7 +38,7 @@ final class Icones {
             if (on && ativo) {
                 g2.setColor(ouro ? Estreia.OURO : Tema.NEON);
                 g2.fill(q);
-                g2.setColor(new Color(0x04150B));
+                g2.setColor(new Color(0x1A1408));
                 g2.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 Path2D v = new Path2D.Float();
                 v.moveTo(x + 4, y + 8.5);

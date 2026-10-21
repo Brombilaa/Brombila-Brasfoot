@@ -13,10 +13,10 @@ import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.SwingConstants;
 
-// Celula da tabela de jogos da rodada (tela da partida), desenhada no estilo "Noite de jogo":
+// Celula da tabela de jogos da rodada (tela da partida), desenhada no estilo "Noite de estreia":
 //  - time: cartao de vidro escuro com uma faixa nas duas cores do clube;
-//  - placar: quadradinho escuro com o numero; no gol pisca neon;
-//  - estadio e lances: texto solto; titulo de divisao: texto neon com linha embaixo.
+//  - placar: quadradinho escuro com o numero; no gol acende dourado;
+//  - estadio e lances: texto solto; titulo de divisao: texto dourado com linha embaixo.
 public class CelulaRodada extends JLabel {
     static final int ESTADIO = 0, TIME = 1, PLACAR = 2, LANCE = 3, TITULO = 4;
     static final Color PLACAR_PADRAO = new Color(84, 127, 59);
@@ -45,7 +45,7 @@ public class CelulaRodada extends JLabel {
         } else if (col == 2 || col == 3) {
             tipo = (txt == null || txt.isEmpty()) ? ESTADIO : PLACAR;
             gol = bg != null && !Tema.igual(bg, PLACAR_PADRAO);
-            setForeground(gol ? new Color(0x04150B) : Color.WHITE);
+            setForeground(gol ? new Color(0x1A1408) : Color.WHITE);
             setFont(getFont().deriveFont(Font.BOLD));
         } else if (col == 0 && bg != null && Tema.igual(bg, new Color(27, 50, 24))) {
             tipo = TITULO;
@@ -73,7 +73,7 @@ public class CelulaRodada extends JLabel {
             }
             if (tipo == TIME) {
                 RoundRectangle2D r = new RoundRectangle2D.Float(0.5f, 0.5f, w - 1, h - 1, 8, 8);
-                g2.setPaint(new GradientPaint(0, 0, new Color(0x1A2E22), 0, h, new Color(0x122019)));
+                g2.setPaint(new GradientPaint(0, 0, new Color(0x1C201E), 0, h, new Color(0x131614)));
                 g2.fill(r);
                 // faixa do clube: cor principal com a secundaria por dentro
                 java.awt.Shape clip = g2.getClip();
@@ -94,9 +94,9 @@ public class CelulaRodada extends JLabel {
                     g2.setColor(Tema.alfa(Tema.NEON, 70));
                     g2.setStroke(new BasicStroke(4f));
                     g2.draw(r);
-                    g2.setPaint(new GradientPaint(0, 0, new Color(0x7BFFB8), 0, h, Tema.NEON_ESCURO));
+                    g2.setPaint(new GradientPaint(0, 0, new Color(0xFFE08A), 0, h, Tema.NEON_ESCURO));
                 } else {
-                    g2.setPaint(new GradientPaint(0, 0, new Color(0x0B1811), 0, h, new Color(0x050D08)));
+                    g2.setPaint(new GradientPaint(0, 0, new Color(0x0F1211), 0, h, new Color(0x080A09)));
                 }
                 g2.fill(r);
                 g2.setStroke(new BasicStroke(1f));
@@ -154,7 +154,7 @@ public class CelulaRodada extends JLabel {
     // Cor do clube legivel no escuro: preto vira cinza, branco fica branco.
     static Color vivo(Color c) {
         if (c == null) return Tema.TEXTO_FRACO;
-        if (Tema.luminancia(c) < 0.12f) return new Color(0x3A4A40);
+        if (Tema.luminancia(c) < 0.12f) return new Color(0x47433C);
         return c;
     }
 

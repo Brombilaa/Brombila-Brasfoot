@@ -101,7 +101,7 @@ public class PainelUI extends BasicPanelUI {
         Rectangle i = area.intersection(clip);
         if (i.isEmpty()) return;
         g2.setPaint(new RadialGradientPaint(cx, cy, raio, new float[] {0f, 0.5f, 1f},
-            new Color[] {Tema.alfa(new Color(0x2FD67A), alfa), Tema.alfa(new Color(0x2FD67A), alfa / 4), Tema.alfa(new Color(0x2FD67A), 0)}));
+            new Color[] {Tema.alfa(new Color(0xE0A93A), alfa), Tema.alfa(new Color(0xE0A93A), alfa / 4), Tema.alfa(new Color(0xE0A93A), 0)}));
         g2.fill(i);
     }
 
