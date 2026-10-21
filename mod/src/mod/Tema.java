@@ -340,15 +340,25 @@ public final class Tema {
     // ------------------------------------------------------ arvore de telas
 
     static void aplica(Component c) {
+        boolean cores = false;
+        for (Component p = c; p != null && !cores; p = p.getParent()) cores = p.getClass().getName().equals("a.bb");
+        aplica(c, cores);
+    }
+
+    // Janela "Cores do Time" (a.bb): os quadrinhos e a previa mostram as cores do
+    // clube e nao podem ser trocados pelas cores do tema.
+    static void aplica(Component c, boolean coresDoTime) {
         if (c == null) return;
+        coresDoTime = coresDoTime || c.getClass().getName().equals("a.bb");
+        boolean amostra = coresDoTime && c instanceof JLabel && c.isOpaque();
         try {
             if (c instanceof Frame || c instanceof Dialog) trocaTitulo((Window) c);
             boolean botao = c instanceof AbstractButton && !(c instanceof javax.swing.JCheckBox) && !(c instanceof javax.swing.JRadioButton);
-            if (c.isBackgroundSet() && !botao) {
+            if (c.isBackgroundSet() && !botao && !amostra) {
                 Color bg = c.getBackground(), n = fundo(bg);
                 if (!igual(bg, n)) c.setBackground(n);
             }
-            if (c.isForegroundSet() && !botao) {
+            if (c.isForegroundSet() && !botao && !amostra) {
                 Color fg = c.getForeground(), n = texto(fg);
                 if (!igual(fg, n)) c.setForeground(n);
             }
@@ -369,7 +379,7 @@ public final class Tema {
             // nunca derrubar o jogo por causa do tema
         }
         if (c instanceof Container) {
-            for (Component k : ((Container) c).getComponents()) aplica(k);
+            for (Component k : ((Container) c).getComponents()) aplica(k, coresDoTime);
         }
         if (c instanceof JMenu) aplica(((JMenu) c).getPopupMenu());
     }
