@@ -131,7 +131,7 @@ final class Editor {
 
     // Cor fixa: o editor pinta os textos com a cor do time a cada time escolhido
     // (texto escuro sumiria no cartao), entao a cor volta sempre para a nossa.
-    private static void cor(Object o, java.awt.Font fonte, final Color cor) {
+    static void cor(Object o, java.awt.Font fonte, final Color cor) {
         if (!(o instanceof JLabel)) return;
         final JLabel l = (JLabel) o;
         l.setFont(fonte);
@@ -143,7 +143,7 @@ final class Editor {
         });
     }
 
-    private static void compacto(Object o, final int altura) {
+    static void compacto(Object o, final int altura) {
         if (!(o instanceof JLabel)) return;
         final JLabel l = (JLabel) o;
         final Runnable mede = new Runnable() {
@@ -207,7 +207,7 @@ final class Editor {
             new Cartao.Linha(), BorderFactory.createEmptyBorder(1, 7, 1, 7)));
     }
 
-    private static void botao(Object o, String texto, String icone, boolean primario) {
+    static void botao(Object o, String texto, String icone, boolean primario) {
         if (!(o instanceof JButton)) return;
         JButton b = (JButton) o;
         if (texto != null) b.setText(texto);

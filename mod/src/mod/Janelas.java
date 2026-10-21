@@ -49,7 +49,7 @@ final class Janelas {
     }
 
     // Reposiciona um componente num painel com o AbsoluteLayout do jogo (components.b).
-    private static void posicao(Component c, int x, int y, int w, int h) {
+    static void posicao(Component c, int x, int y, int w, int h) {
         if (c == null || c.getParent() == null) return;
         LayoutManager l = c.getParent().getLayout();
         if (!(l instanceof LayoutManager2)) return;

@@ -143,7 +143,7 @@ public class BotaoUI extends BasicButtonUI {
         float raio = (w < 2 * h && b.getClientProperty(REDONDO) == null) ? RAIO : h - 2 * MARGEM;
         Shape corpo = new RoundRectangle2D.Float(MARGEM, MARGEM + dy - sobe, w - 2 * MARGEM - 1, h - 2 * MARGEM - 1, raio, raio);
         if (!b.isEnabled()) {
-            g2.setColor(new Color(244, 241, 234, 30));
+            g2.setColor(new Color(244, 241, 234, 52));
             g2.draw(corpo);
         } else if (primario(b)) {
             for (int i = 3; i > 0 && hv > 0; i--) {

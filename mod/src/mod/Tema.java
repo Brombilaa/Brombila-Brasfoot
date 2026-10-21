@@ -460,6 +460,12 @@ public final class Tema {
                 else if (nome.equals("d.ai")) Editor.janela((javax.swing.JPanel) c, null, "QU");
             } catch (Throwable t) { t.printStackTrace(); }
         }
+        if (c.getClass().getName().equals("a.ay") && c instanceof javax.swing.JPanel) {
+            try { Telas.tabelas((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
+        }
+        if (c.getClass().getName().equals("a.iA") && c instanceof javax.swing.JPanel) {
+            try { Telas.times((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
+        }
         if (c.getClass().getName().equals("a.cl") && c instanceof javax.swing.JPanel) {
             try { Janelas.estadio((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
         }
