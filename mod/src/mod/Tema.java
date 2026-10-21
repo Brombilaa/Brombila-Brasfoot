@@ -280,6 +280,13 @@ public final class Tema {
                 if (e.getID() == WindowEvent.WINDOW_OPENED) {
                     Window w = (Window) e.getSource();
                     if (w.getClass().getName().equals("a.gq")) MenuInicial.instala((javax.swing.JFrame) w);
+                    if (w instanceof javax.swing.JDialog && temPergunta(w)) {
+                        // perguntas (JOptionPane): a fonte nova muda a largura do texto,
+                        // entao a janela e refeita no tamanho certo
+                        aplica(w);
+                        w.pack();
+                        w.setLocationRelativeTo(w.getOwner() != null && w.getOwner().isShowing() ? w.getOwner() : null);
+                    }
                     Animacao.fadeIn(w);
                 }
                 final Object src = (e instanceof ContainerEvent) ? ((ContainerEvent) e).getChild() : e.getSource();
@@ -304,6 +311,14 @@ public final class Tema {
                 t.start();
             }
         });
+    }
+
+    private static boolean temPergunta(Container c) {
+        for (Component k : c.getComponents()) {
+            if (k instanceof javax.swing.JOptionPane) return true;
+            if (k instanceof Container && temPergunta((Container) k)) return true;
+        }
+        return false;
     }
 
     private static void registraUI(String id, Class<?> cls) {
@@ -358,13 +373,43 @@ public final class Tema {
             boolean ehFundo = nome.contains("background") || nome.endsWith("control") || nome.equals("window")
                 || nome.contains("shadow") || nome.contains("highlight") || nome.equals("text") || nome.equals("menu")
                 || nome.equals("info") || nome.contains("selection") && !nome.contains("foreground");
-            if (v instanceof Color && v.getClass().getName().indexOf("Derived") < 0) {
+            if (v instanceof java.awt.Font && nome.endsWith("font")) {
+                java.awt.Font n = fonte((java.awt.Font) v);
+                if (n != v) d.put(k, new javax.swing.plaf.FontUIResource(n));
+            } else if (v instanceof Color && v.getClass().getName().indexOf("Derived") < 0) {
                 Color n = ehFundo ? fundo((Color) v) : texto((Color) v);
                 if (!igual(v, n)) d.put(k, n);
             } else if (v instanceof List && nome.contains("gradient")) {
                 // gradientes ja vem do TemaMetal
             }
         }
+    }
+
+    // ---------------------------------------------------------------- fontes
+
+    // O jogo usa Tahoma (e a fonte padrao do Java) em tudo. Trocamos pela Manrope,
+    // a mesma do menu: largura parecida com a Tahoma, entao o tamanho fica igual.
+    private static final java.util.Set<String> FAMILIAS = new java.util.HashSet<String>(java.util.Arrays.asList(
+        "tahoma", "dialog", "sansserif", "arial", "verdana", "segoe ui", "lucida sans", "lucida grande", "microsoft sans serif"));
+    private static final Map<String, java.awt.Font> cacheFontes = new HashMap<String, java.awt.Font>();
+
+    static java.awt.Font fonte(java.awt.Font f) {
+        if (f == null || !FAMILIAS.contains(f.getFamily().toLowerCase())) return f;
+        String chave = f.getStyle() + "/" + f.getSize2D();
+        java.awt.Font n = cacheFontes.get(chave);
+        if (n == null) {
+            n = f.isBold() ? Estreia.negrito(f.getSize2D()) : Estreia.texto(f.getSize2D());
+            if (f.isItalic()) n = n.deriveFont(n.getStyle() | java.awt.Font.ITALIC);
+            if (f instanceof UIResource) n = new javax.swing.plaf.FontUIResource(n);
+            cacheFontes.put(chave, n);
+        }
+        return n;
+    }
+
+    private static void trocaFonte(Component c) {
+        if (!c.isFontSet()) return;
+        java.awt.Font f = c.getFont(), n = fonte(f);
+        if (n != f) c.setFont(n);
     }
 
     // ------------------------------------------------------ arvore de telas
@@ -400,6 +445,7 @@ public final class Tema {
                 Color fg = c.getForeground(), n = texto(fg);
                 if (!igual(fg, n)) c.setForeground(n);
             }
+            trocaFonte(c);
             if (c instanceof JComponent && !estreia) borda((JComponent) c);
             if (c instanceof JLabel && "Brasfoot".equals(((JLabel) c).getText())) ((JLabel) c).setText(NOME);
             if (c instanceof JTable) tabela((JTable) c);
@@ -515,6 +561,7 @@ public final class Tema {
         TableCellRenderer w = new TableCellRenderer() {
             public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int row, int col) {
                 Component c = orig.getTableCellRendererComponent(t, v, sel, foc, row, col);
+                try { trocaFonte(c); } catch (Throwable e) {}
                 if (rodada != null && c instanceof JLabel && row >= 0) {
                     try {
                         if (!igual(t.getBackground(), FUNDO)) t.setBackground(FUNDO);

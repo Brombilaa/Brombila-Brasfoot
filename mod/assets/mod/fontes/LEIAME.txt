@@ -1,0 +1,4 @@
+Fontes do menu e do jogo (SIL Open Font License 1.1, licencas ao lado).
+Manrope-*.ttf: instancias estaticas (500/600/700) da Manrope variavel do Google Fonts,
+com o espaco alargado de 0,20 para 0,28 em, para as palavras nao grudarem em
+tamanhos pequenos no Swing (que arredonda a largura do espaco para pixels inteiros).
