@@ -113,6 +113,7 @@ final class Estreia {
             new Ellipse2D.Double(14, 5, 4, 4), new Ellipse2D.Double(8, 15, 4, 4)});
         ICONES.put("mais", new Shape[] {svg("M12 5v14M5 12h14")});
         ICONES.put("fechar", new Shape[] {svg("M7 7l10 10M17 7L7 17")});
+        ICONES.put("busca", new Shape[] {new Ellipse2D.Double(4.5, 4.5, 11, 11), svg("M14 14l5.5 5.5")});
         ICONES.put("cima", new Shape[] {svg("M12 19V5M6 11l6-6 6 6")});
         ICONES.put("etiqueta", new Shape[] {svg("M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9z"), new Ellipse2D.Double(7, 7, 3, 3)});
         ICONES.put("obra", new Shape[] {svg("M3 20h18M5 20V11l7-5 7 5v9M9.5 20v-5h5v5")});

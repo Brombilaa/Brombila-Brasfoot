@@ -423,9 +423,17 @@ public final class Tema {
 
     // ------------------------------------------------------ arvore de telas
 
+    // Telas em que o jogo guarda a cor do quadrinho (getBackground) como cor escolhida:
+    // Cores do Time (a.bb), Editar Time do editor (d.ac), cores da lista (a.aX) e o
+    // seletor de cores. Trocar essas cores pelo tema gravaria a cor errada no time.
+    static boolean guardaCores(Component c) {
+        String n = c.getClass().getName();
+        return n.equals("a.bb") || n.equals("d.ac") || n.equals("a.aX") || c instanceof javax.swing.JColorChooser;
+    }
+
     static void aplica(Component c) {
         boolean cores = false;
-        for (Component p = c; p != null && !cores; p = p.getParent()) cores = p.getClass().getName().equals("a.bb");
+        for (Component p = c; p != null && !cores; p = p.getParent()) cores = guardaCores(p);
         aplica(c, cores);
     }
 
@@ -433,13 +441,24 @@ public final class Tema {
     // clube e nao podem ser trocados pelas cores do tema.
     static void aplica(Component c, boolean coresDoTime) {
         if (c == null) return;
-        coresDoTime = coresDoTime || c.getClass().getName().equals("a.bb");
+        coresDoTime = coresDoTime || guardaCores(c);
         boolean amostra = coresDoTime && c instanceof JLabel && c.isOpaque();
         if (c.getClass().getName().equals("a.hU") && c instanceof javax.swing.JPanel) {
             try { ConfigEstreia.aplica((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
         }
         if (c.getClass().getName().equals("a.bV") && c instanceof javax.swing.JPanel) {
             try { ConfigEstreia.tecnico((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
+        }
+        if (c.getClass().getName().equals("d.n") && c instanceof javax.swing.JFrame) {
+            try { Editor.aplica((javax.swing.JFrame) c); } catch (Throwable t) { t.printStackTrace(); }
+        }
+        if (c instanceof javax.swing.JPanel && c.getClass().getName().startsWith("d.")) {
+            String nome = c.getClass().getName();
+            try {
+                if (nome.equals("d.ac")) Editor.janela((javax.swing.JPanel) c, "VB", "QU");
+                else if (nome.equals("d.f")) Editor.janela((javax.swing.JPanel) c, "vd", "ug");
+                else if (nome.equals("d.ai")) Editor.janela((javax.swing.JPanel) c, null, "QU");
+            } catch (Throwable t) { t.printStackTrace(); }
         }
         if (c.getClass().getName().equals("a.cl") && c instanceof javax.swing.JPanel) {
             try { Janelas.estadio((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
@@ -612,6 +631,8 @@ public final class Tema {
                                 bg = mistura(bg, Estreia.OURO, 0.10f * ((br instanceof Float) ? (Float) br : 1f));
                             }
                             fg = new Color(0xE6E2DA);
+                            // time marcado no editor (o jogo pinta de vermelho)
+                            if (igual(atualFg, Color.RED)) fg = new Color(0xFF7A6E);
                         }
                         if (!igual(c.getBackground(), bg)) c.setBackground(bg);
                         if (!igual(c.getForeground(), fg)) c.setForeground(fg);

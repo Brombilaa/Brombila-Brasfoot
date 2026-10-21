@@ -281,16 +281,7 @@ final class Janelas {
         ds.putClientProperty(FEITO, Boolean.TRUE);
         ds.setOpaque(false);
         ds.setBorder(new EmptyBorder(0, 0, 0, 0));
-        Container pai = ds.getParent();
-        if (pai != null && !(pai instanceof Cartao)) {
-            pai.remove(ds);
-            pai.setLayout(new BorderLayout());
-            Cartao c = new Cartao();
-            c.add(ds);
-            pai.add(c, BorderLayout.CENTER);
-            pai.revalidate();
-            pai.repaint();
-        }
+        embrulha(ds);
         Object cab = campo(ds, "vd");
         if (cab instanceof JPanel) {
             ((JPanel) cab).setOpaque(false);
@@ -321,6 +312,19 @@ final class Janelas {
         }
         ds.revalidate();
         ds.repaint();
+    }
+
+    // Poe o painel da janela dentro do cartao escuro.
+    static void embrulha(JComponent p) {
+        Container pai = p.getParent();
+        if (pai == null || pai instanceof Cartao) return;
+        pai.remove(p);
+        pai.setLayout(new BorderLayout());
+        Cartao c = new Cartao();
+        c.add(p);
+        pai.add(c, BorderLayout.CENTER);
+        pai.revalidate();
+        pai.repaint();
     }
 
     // Fundo da janela: cartao escuro, luz de refletor no alto, filete dourado e contorno fino.
