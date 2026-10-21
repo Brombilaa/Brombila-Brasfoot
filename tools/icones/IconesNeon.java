@@ -15,7 +15,9 @@ public class IconesNeon {
     // Uma forma do icone: tracada ou preenchida; "destaque" pinta com a cor de acento.
     static class F {
         Shape s; boolean cheio, destaque;
+        Color cor; // opcional: cor fixa, ignora a cor do icone
         F(Shape s, boolean cheio, boolean destaque) { this.s = s; this.cheio = cheio; this.destaque = destaque; }
+        F cor(Color c) { cor = c; return this; }
     }
     static F t(Shape s) { return new F(s, false, false); }
     static F td(Shape s) { return new F(s, false, true); }

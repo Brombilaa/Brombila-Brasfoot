@@ -98,6 +98,8 @@ public class BotaoUI extends BasicButtonUI {
     // Botoes de "voltar/cancelar" ficam so com contorno.
     static boolean secundario(AbstractButton b) {
         String t = b.getText();
+        // botao so de icone: corpo de vidro, para o icone neon nao sumir no fundo neon
+        if ((t == null || t.trim().isEmpty()) && b.getIcon() != null) return true;
         if (t == null) return false;
         t = t.trim().toLowerCase();
         return t.startsWith("<<") || t.startsWith("voltar") || t.startsWith("cancelar") || t.startsWith("sair")

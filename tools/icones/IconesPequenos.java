@@ -16,9 +16,16 @@ public class IconesPequenos extends IconesNeon {
     static final Color OURO = new Color(0xFFD84D), VERM = new Color(0xFF5A4D);
 
     static class Ic {
-        String arq, nome; Color acento; List<F> g;
+        String arq, nome, pasta = ""; Color acento, cor = NEON; List<F> g;
+        boolean vidro;      // formas cheias: preenchimento translucido + contorno
+        float brilho = 0.5f, traco = 1f; // traco: espessura relativa da linha
         Ic(String arq, String nome, Color acento) { this.arq = arq; this.nome = nome; this.acento = acento; this.g = new ArrayList<F>(); }
         Ic add(F f) { g.add(f); return this; }
+        Ic em(String p) { pasta = p + "/"; return this; }
+        Ic vidro() { vidro = true; return this; }
+        // versao desativada do botao: cinza, sem brilho
+        Ic apagado() { cor = new Color(0x5E7466); acento = cor; brilho = 0.15f; return this; }
+        String caminho() { return pasta + arq + ".png"; }
     }
 
     static Shape texto(String s, double cx, double cy, double alt) {
@@ -42,8 +49,8 @@ public class IconesPequenos extends IconesNeon {
 
     static List<Ic> lista() {
         List<Ic> l = new ArrayList<Ic>();
-        l.add(new Ic("estrela", "Destaque", OURO).add(cd(estrela(12, 12.8, 10))));
-        l.add(new Ic("estrelared", "Craque", VERM).add(cd(estrela(12, 12.8, 10))));
+        l.add(new Ic("estrela", "Destaque", OURO).vidro().add(cd(estrela(12, 12.8, 10))));
+        l.add(new Ic("estrelared", "Craque", VERM).vidro().add(cd(estrela(12, 12.8, 10))));
         l.add(new Ic("captain", "Capitão", NEON).add(t(Lz(3, 6, 21, 4, 21, 18, 3, 20))).add(cd(texto("C", 12, 12, 9))));
         l.add(new Ic("iconsetup", "Preferências", NEON).add(t(engrenagem(12, 12, 7, 2.2, 8))).add(td(O(12, 12, 2.8))));
         l.add(new Ic("icon_search", "Procurar", NEON).add(t(O(10.5, 10.5, 6.5))).add(td(L(15.3, 15.3, 20.5, 20.5))));
@@ -74,20 +81,20 @@ public class IconesPequenos extends IconesNeon {
         int tam = Math.min(w, h);
         AffineTransform at = escala(tam, tam * 0.04);
         at.preConcatenate(AffineTransform.getTranslateInstance((w - tam) / 2.0, (h - tam) / 2.0));
-        float lw = tam / 12.5f;
+        float lw = tam / 12.5f * ic.traco;
         BufferedImage gl = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D gg = prep(gl.createGraphics());
-        pintaGlifo(gg, ic.g, at, lw * 1.7f, NEON, ic.acento);
+        pintaGlifo(gg, ic.g, at, lw * 1.7f, ic.cor, ic.acento);
         gg.dispose();
         Composite o = g.getComposite();
-        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.5f));
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ic.brilho));
         g.drawImage(desfoca(gl, Math.max(1, Math.min(tam / 12, 12))), 0, 0, null);
         g.setComposite(o);
         // formas cheias com acento: preenchimento translucido + contorno
         for (F f : ic.g) {
             Shape s = at.createTransformedShape(f.s);
-            Color cor = f.destaque ? ic.acento : NEON;
-            if (f.cheio && f.s instanceof Path2D && !(f.s instanceof Path2D.Float && false) && ic.arq.startsWith("estrela")) {
+            Color cor = f.cor != null ? f.cor : f.destaque ? ic.acento : ic.cor;
+            if (f.cheio && ic.vidro) {
                 g.setColor(new Color(cor.getRed(), cor.getGreen(), cor.getBlue(), 70));
                 g.fill(s);
                 g.setColor(cor);
@@ -115,20 +122,24 @@ public class IconesPequenos extends IconesNeon {
     }
 
     public static void main(String[] a) throws Exception {
+        gera(a, lista(), "Ícones pequenos");
+    }
+
+    // a = {pasta original, pasta de saida, [folha.png]}; ic.pasta e relativa a elas.
+    static void gera(String[] a, List<Ic> l, String titulo) throws Exception {
         String orig = a[0], out = a[1];
-        new File(out).mkdirs();
-        new File(out, "4x").mkdirs();
-        List<Ic> l = lista();
         for (Ic ic : l) {
-            BufferedImage o = ImageIO.read(new File(orig, ic.arq + ".png"));
-            ImageIO.write(render(ic, o.getWidth(), o.getHeight(), 8), "png", new File(out, ic.arq + ".png"));
-            ImageIO.write(render(ic, o.getWidth() * 4, o.getHeight() * 4, 2), "png", new File(out, "4x/" + ic.arq + ".png"));
+            BufferedImage o = ImageIO.read(new File(orig, ic.caminho()));
+            File f = new File(out, ic.caminho()), f4 = new File(out, "4x/" + ic.caminho());
+            f.getParentFile().mkdirs(); f4.getParentFile().mkdirs();
+            ImageIO.write(render(ic, o.getWidth(), o.getHeight(), 8), "png", f);
+            ImageIO.write(render(ic, o.getWidth() * 4, o.getHeight() * 4, 2), "png", f4);
         }
-        if (a.length > 2) folha(orig, out, a[2], l);
+        if (a.length > 2) folha(orig, out, a[2], l, titulo);
     }
 
     // Folha de aprovacao: original x novo, em tamanho real e ampliado 3x.
-    static void folha(String orig, String novo, String arq, List<Ic> l) throws Exception {
+    static void folha(String orig, String novo, String arq, List<Ic> l, String titulo) throws Exception {
         int cols = 4, cw = 350, ch = 112, top = 96;
         int rows = (l.size() + cols - 1) / cols;
         int W = cols * cw + 40, H = top + rows * ch + 20;
@@ -137,7 +148,7 @@ public class IconesPequenos extends IconesNeon {
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setPaint(new GradientPaint(0, 0, new Color(0x0F2218), 0, H, new Color(0x050D08)));
         g.fillRect(0, 0, W, H);
-        g.setFont(new Font("Inter", Font.BOLD, 24)); g.setColor(NEON); g.drawString("Ícones pequenos — Linha neon (para aprovar)", 20, 42);
+        g.setFont(new Font("Inter", Font.BOLD, 24)); g.setColor(NEON); g.drawString(titulo + " — Linha neon (para aprovar)", 20, 42);
         g.setFont(new Font("Inter", Font.PLAIN, 14)); g.setColor(new Color(0x8FAE9A));
         g.drawString("Em cada quadro: original e novo no tamanho real do jogo, depois o novo em alta resolução", 20, 68);
                 for (int i = 0; i < l.size(); i++) {
@@ -145,13 +156,13 @@ public class IconesPequenos extends IconesNeon {
             int x = 20 + (i % cols) * cw, y = top + (i / cols) * ch;
             g.setColor(new Color(0, 0, 0, 90)); g.fillRoundRect(x, y, cw - 14, ch - 12, 14, 14);
             g.setColor(new Color(255, 255, 255, 22)); g.drawRoundRect(x, y, cw - 14, ch - 12, 14, 14);
-            BufferedImage o = ImageIO.read(new File(orig, ic.arq + ".png"));
-            BufferedImage n = ImageIO.read(new File(novo, ic.arq + ".png"));
+            BufferedImage o = ImageIO.read(new File(orig, ic.caminho()));
+            BufferedImage n = ImageIO.read(new File(novo, ic.caminho()));
             int cy = y + 50;
             g.drawImage(o, x + 18, cy - o.getHeight() / 2, null);
             g.setColor(new Color(0x8FAE9A)); g.setFont(new Font("Inter", Font.PLAIN, 16)); g.drawString("→", x + 52, cy + 6);
             g.drawImage(n, x + 78, cy - n.getHeight() / 2, null);
-            BufferedImage z = ImageIO.read(new File(novo, "4x/" + ic.arq + ".png"));
+            BufferedImage z = ImageIO.read(new File(novo, "4x/" + ic.caminho()));
             double kz = 76.0 / Math.max(z.getWidth(), z.getHeight());
             int zw = (int) Math.round(z.getWidth() * kz), zh = (int) Math.round(z.getHeight() * kz);
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
