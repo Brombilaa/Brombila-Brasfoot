@@ -229,7 +229,112 @@ final class Dialogos {
         rolagem(s);
         pos(s, 30, 70, 760, 505);
         vazio(s, "Sem jogos marcados", "Os jogos do time aparecem aqui quando a temporada tiver datas.");
+        final Object time = campo(l, "uk");
+        final Object tab = campo(l, "vN");
+        if (tab instanceof JTable) {
+            final JTable t2 = (JTable) tab;
+            Placar.instala(t2, time);
+            t2.addPropertyChangeListener("model", new java.beans.PropertyChangeListener() {
+                public void propertyChange(java.beans.PropertyChangeEvent e) {
+                    javax.swing.SwingUtilities.invokeLater(new Runnable() { public void run() { Placar.instala(t2, time); } });
+                }
+            });
+        }
         l.revalidate();
+    }
+
+    // Placar do Calendario: chip V/E/D (verde, cinza, vermelho) do ponto de vista do time
+    // e o placar; nos jogos decididos nos penaltis, o placar dos penaltis embaixo.
+    static class Placar extends JComponent implements javax.swing.table.TableCellRenderer {
+        static final Color VITORIA = new Color(0x7CCB7A), EMPATE = new Color(0xB9B4A8), DERROTA = new Color(0xFF8A6E);
+        private final javax.swing.table.TableCellRenderer orig;
+        private final Object time;
+        private String letra, placar, penaltis;
+        private Color cor;
+
+        private Placar(javax.swing.table.TableCellRenderer orig, Object time) {
+            this.orig = orig;
+            this.time = time;
+        }
+
+        static void instala(JTable t, Object time) {
+            javax.swing.table.TableCellRenderer r = t.getDefaultRenderer(best.I.class);
+            if (r == null || r instanceof Placar) return;
+            t.setDefaultRenderer(best.I.class, new Placar(r, time));
+            int[] larg = {84, 135, 104, 135, 160, 70, 76};
+            for (int i = 0; i < larg.length && i < t.getColumnCount(); i++) t.getColumnModel().getColumn(i).setPreferredWidth(larg[i]);
+        }
+
+        public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int row, int col) {
+            Component c = orig.getTableCellRendererComponent(t, v, sel, foc, row, col);
+            if (t.convertColumnIndexToModel(col) != 2 || !(v instanceof best.I)) return c;
+            best.I j = (best.I) v;
+            if (!j.e()) {
+                letra = null;
+                placar = "x";
+                penaltis = null;
+            } else {
+                boolean casa = j.hc() == time;
+                int pro = casa ? j.hu() : j.hw(), contra = casa ? j.hw() : j.hu();
+                int[] pen = j.hQ();
+                boolean temPen = pen != null && pen.length > 1 && pen[0] >= 0 && pen[1] >= 0;
+                placar = j.hu() + " x " + j.hw();
+                penaltis = temPen ? "pên " + pen[0] + "-" + pen[1] : null;
+                if (j.hc() != time && j.hd() != time) {
+                    letra = null;
+                } else if (pro > contra) {
+                    letra = "V";
+                    cor = VITORIA;
+                } else if (pro < contra) {
+                    letra = "D";
+                    cor = DERROTA;
+                } else {
+                    letra = "E";
+                    cor = EMPATE;
+                }
+            }
+            setBackground(c.getBackground());
+            setOpaque(c instanceof JComponent && ((JComponent) c).isOpaque());
+            return this;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g0) {
+            Graphics2D g = (Graphics2D) g0.create();
+            int w = getWidth(), h = getHeight();
+            if (isOpaque()) {
+                g.setColor(getBackground());
+                g.fillRect(0, 0, w, h);
+            }
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            java.awt.Font fp = Estreia.negrito(13f), fl = Estreia.negrito(11f), fs = Estreia.semi(9.5f);
+            FontMetrics mp = g.getFontMetrics(fp), ml = g.getFontMetrics(fl), ms = g.getFontMetrics(fs);
+            int chip = letra == null ? 0 : 20, vao = letra == null ? 0 : 8;
+            int larg = chip + vao + mp.stringWidth(placar);
+            int x = (w - larg) / 2;
+            int yPlacar = penaltis == null ? (h - mp.getHeight()) / 2 + mp.getAscent() : h / 2 + 1;
+            if (letra != null) {
+                RoundRectangle2D r = new RoundRectangle2D.Float(x + 0.5f, (h - 20) / 2f, 20, 20, 8, 8);
+                g.setColor(Tema.alfa(cor, 46));
+                g.fill(r);
+                g.setColor(Tema.alfa(cor, 170));
+                g.draw(r);
+                g.setFont(fl);
+                g.setColor(cor);
+                g.drawString(letra, x + (20 - ml.stringWidth(letra)) / 2f + 0.5f, (h - ml.getHeight()) / 2f + ml.getAscent());
+            }
+            g.setFont(fp);
+            g.setColor(letra == null ? Estreia.FRACO : Estreia.BRANCO);
+            int xp = x + chip + vao;
+            g.drawString(placar, xp, yPlacar);
+            if (penaltis != null) {
+                g.setFont(fs);
+                g.setColor(Estreia.FRACO);
+                g.drawString(penaltis, xp + (mp.stringWidth(placar) - ms.stringWidth(penaltis)) / 2f, yPlacar + ms.getAscent() + 1);
+            }
+            g.dispose();
+        }
     }
 
     // ------------------------------------------------------------- Central de Empregos
