@@ -141,6 +141,8 @@ final class ConfigEstreia {
         botao(hU, "Me", "Configurar", "ajuste", false);
         botao(hU, "Mc", "Preferências", "ajuste", false);
         botao(hU, "Mf", null, "todos", false);
+        Object todos = campo(hU, "Mf");
+        if (todos instanceof JButton) ((JButton) todos).setToolTipText("Marcar todas as ligas");
 
         for (String n : new String[] {"ut", "My"}) {
             Object o = campo(hU, n);
@@ -412,7 +414,7 @@ final class ConfigEstreia {
         public Dimension getPreferredSize(JComponent c) {
             AbstractButton b = (AbstractButton) c;
             FontMetrics fm = b.getFontMetrics(b.getFont());
-            return new Dimension(chave.getIconWidth() + 12 + fm.stringWidth(b.getText()) + 4, Math.max(24, fm.getHeight() + 6));
+            return new Dimension(chave.getIconWidth() + 12 + largura(b) + 6, Math.max(24, fm.getHeight() + 6));
         }
 
         @Override
@@ -431,6 +433,15 @@ final class ConfigEstreia {
         }
     }
 
+    // Largura do texto como ele e desenhado (com metricas fracionarias). O
+    // stringWidth comum mede menos e a ultima letra saia cortada.
+    static int largura(AbstractButton b) {
+        String t = b.getText();
+        if (t == null || t.isEmpty()) return 0;
+        java.awt.font.FontRenderContext frc = new java.awt.font.FontRenderContext(null, true, true);
+        return (int) Math.ceil(b.getFont().getStringBounds(t, frc).getWidth());
+    }
+
     // -------------------------------------------- opcoes (radio) em pilula
 
     static class Pilula extends BasicRadioButtonUI {
@@ -438,7 +449,7 @@ final class ConfigEstreia {
         public Dimension getPreferredSize(JComponent c) {
             AbstractButton b = (AbstractButton) c;
             FontMetrics fm = b.getFontMetrics(b.getFont());
-            return new Dimension(fm.stringWidth(b.getText()) + 32, Math.max(30, fm.getHeight() + 14));
+            return new Dimension(largura(b) + 32, Math.max(30, fm.getHeight() + 14));
         }
 
         @Override
