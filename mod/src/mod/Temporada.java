@@ -47,7 +47,7 @@ final class Temporada {
 
     static boolean aplica(JPanel p, String n) {
         if (n.equals("a.cR")) fimDaTemporada(p);
-        else if (n.equals("a.dJ")) campeao(p);
+        else if (n.equals("a.dJ")) Campeao.aplica(p);
         else if (n.equals("a.dm")) demitido(p);
         else if (n.equals("a.iQ")) treino(p);
         else if (n.equals("a.il")) taticas(p);
@@ -303,66 +303,6 @@ final class Temporada {
                 l.setFont(Estreia.negrito(13f));
             }
             return l;
-        }
-    }
-
-    // ------------------------------------------------------------- E campeao!
-
-    static void campeao(JPanel dj) {
-        if (!Dialogos.base(dj)) return;
-        // o carimbo "CAMPEAO!" saiu do fundo (tools/tema/campeao.py): o titulo e escrito aqui
-        Object t = campo(dj, "ug");
-        if (t instanceof JLabel) {
-            JLabel l = (JLabel) t;
-            l.setText("CAMPEÃO!");
-            l.setFont(Estreia.espacada(Estreia.titulo(40f), 0.04f));
-            l.setForeground(Estreia.OURO);
-            l.setHorizontalAlignment(SwingConstants.CENTER);
-        }
-        pos(t, 20, 26, 266, 48);
-        Object x = campo(dj, "uh");
-        if (x instanceof JLabel) {
-            JLabel l = (JLabel) x;
-            l.setText("");
-            l.setOpaque(false);
-            l.setToolTipText("Fechar");
-            l.setIcon(new Estreia.Icone("fechar", 14, Estreia.BRANCO));
-            l.setHorizontalAlignment(SwingConstants.CENTER);
-            l.setUI(new XRedondo());
-            l.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
-        }
-        pos(x, 262, 10, 32, 32);
-        Object comp = campo(dj, "Sx");
-        Dialogos.rotulo(comp);
-        centro(comp);
-        pos(comp, 14, 80, 278, 16);
-        Object time = campo(dj, "uu");
-        Dialogos.fonte(time, Estreia.titulo(26f), Estreia.BRANCO);
-        centro(time);
-        if (time instanceof JLabel) ((JLabel) time).setIconTextGap(8);
-        pos(time, 14, 104, 278, 36);
-        Object tec = campo(dj, "Fs");
-        if (tec instanceof JLabel && !texto(tec).isEmpty()) ((JLabel) tec).setText("Técnico · " + texto(tec));
-        Dialogos.fonte(tec, Estreia.texto(12.5f), Estreia.FRACO);
-        centro(tec);
-        pos(tec, 14, 142, 278, 18);
-        dj.revalidate();
-    }
-
-    // X redondo para rotulos que fecham a janela (o jogo usa um JLabel com clique).
-    static class XRedondo extends BasicLabelUI {
-        @Override
-        public void paint(Graphics g0, JComponent c) {
-            Graphics2D g = (Graphics2D) g0.create();
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int d = Math.min(c.getWidth(), c.getHeight()) - 1;
-            Ellipse2D e = new Ellipse2D.Float((c.getWidth() - d) / 2f, (c.getHeight() - d) / 2f, d, d);
-            g.setColor(new Color(12, 14, 13, 190));
-            g.fill(e);
-            g.setColor(new Color(244, 241, 234, 70));
-            g.draw(e);
-            g.dispose();
-            super.paint(g0, c);
         }
     }
 
@@ -1097,7 +1037,8 @@ final class Temporada {
             sp.setOpaque(false);
             sp.getViewport().setOpaque(false);
         }
-        pos(s, 13, 158, 857, 628);
+        pos(s, 13, 198, 857, 588);
+        if (s instanceof JScrollPane) Chaves.instala(al, (JScrollPane) s);
         Object tab = campo(al, "wp");
         if (tab instanceof JTable) {
             final JTable tb = (JTable) tab;
