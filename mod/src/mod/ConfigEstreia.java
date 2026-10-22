@@ -141,6 +141,8 @@ final class ConfigEstreia {
         botao(hU, "Me", "Configurar", "ajuste", false);
         botao(hU, "Mc", "Preferências", "ajuste", false);
         botao(hU, "Mf", null, "todos", false);
+        Object todos = campo(hU, "Mf");
+        if (todos instanceof JButton) ((JButton) todos).setToolTipText("Marcar todas as ligas");
 
         for (String n : new String[] {"ut", "My"}) {
             Object o = campo(hU, n);
@@ -262,6 +264,22 @@ final class ConfigEstreia {
         }
         botao(bV, "Bw", "Iniciar jogo", "seta", true);
         botao(bV, "Bx", "Adicionar e incluir outro", "mais", false);
+        // Caixas mais largas (nomes de pais e de time inteiros, sem "...") e a de
+        // nacionalidade da mesma altura do campo Nome.
+        congela(bV);
+        for (String n : new String[] {"ue", "Bz", "BA", "BB", "BC", "BD", "uf", "BE", "BF", "BG"}) {
+            Object o = campo(bV, n);
+            if (o instanceof Component) ajusta((Component) o, 0, 0, LARGURA_EXTRA, 0);
+        }
+        Object nac = campo(bV, "BD");
+        if (nac instanceof Component && ((Component) nac).getHeight() < 28) ajusta((Component) nac, 0, -4, 0, 8);
+        if (aleatorio instanceof Component) ajusta((Component) aleatorio, LARGURA_EXTRA, 0, 0, 0);
+        // O formulario cresceu para a direita: o titulo acompanha para seguir centrado.
+        for (String n : new String[] {"a_", "vf"}) {
+            Object o = campo(bV, n);
+            if (o instanceof Component) ajusta((Component) o, LARGURA_EXTRA / 2, 0, 0, 0);
+        }
+
         JLabel nota = (JLabel) campo(bV, "ug");
         if (nota != null) {
             nota.setFont(Estreia.texto(12f));
@@ -272,6 +290,48 @@ final class ConfigEstreia {
     }
 
     static final String TECNICO = "brombila.tecnico";
+    static final int LARGURA_EXTRA = 86;
+
+    // Troca o GroupLayout da tela pelo layout absoluto do jogo, mantendo cada
+    // componente onde ele estava, para poder alargar as caixas sem desmontar a tela.
+    private static void congela(JPanel p) {
+        p.setSize(p.getPreferredSize());
+        p.doLayout();
+        Component[] filhos = p.getComponents();
+        java.awt.Rectangle[] r = new java.awt.Rectangle[filhos.length];
+        int larg = 0, alt = 0;
+        for (int i = 0; i < filhos.length; i++) {
+            r[i] = filhos[i].getBounds();
+            larg = Math.max(larg, r[i].x + r[i].width);
+            alt = Math.max(alt, r[i].y + r[i].height);
+        }
+        if (!Dialogos.absoluto(p)) return;
+        java.awt.LayoutManager2 l = (java.awt.LayoutManager2) p.getLayout();
+        for (int i = 0; i < filhos.length; i++)
+            l.addLayoutComponent(filhos[i], Dialogos.restricao(r[i].x, r[i].y, r[i].width, r[i].height));
+        p.setPreferredSize(new Dimension(larg + LARGURA_EXTRA, alt));
+    }
+
+    // Mexe na posicao/tamanho guardados no layout absoluto do jogo (components.b).
+    private static void ajusta(Component c, int dx, int dy, int dw, int dh) {
+        if (c.getParent() == null) return;
+        Object tabela = campo(c.getParent().getLayout(), "NA");
+        if (!(tabela instanceof Map)) return;
+        Object k = ((Map<?, ?>) tabela).get(c);
+        if (k == null) return;
+        try {
+            Class<?> t = k.getClass();
+            int w = t.getField("width").getInt(k), h = t.getField("height").getInt(k);
+            if (w < 0) w = c.getPreferredSize().width;
+            if (h < 0) h = c.getPreferredSize().height;
+            t.getField("x").setInt(k, t.getField("x").getInt(k) + dx);
+            t.getField("y").setInt(k, t.getField("y").getInt(k) + dy);
+            t.getField("width").setInt(k, w + dw);
+            t.getField("height").setInt(k, h + dh);
+        } catch (Throwable e) {
+            // fica como estava
+        }
+    }
 
     private static void maiusculas(JLabel l) {
         String s = l.getText();
@@ -412,7 +472,7 @@ final class ConfigEstreia {
         public Dimension getPreferredSize(JComponent c) {
             AbstractButton b = (AbstractButton) c;
             FontMetrics fm = b.getFontMetrics(b.getFont());
-            return new Dimension(chave.getIconWidth() + 12 + fm.stringWidth(b.getText()) + 4, Math.max(24, fm.getHeight() + 6));
+            return new Dimension(chave.getIconWidth() + 12 + largura(b) + 6, Math.max(24, fm.getHeight() + 6));
         }
 
         @Override
@@ -431,6 +491,15 @@ final class ConfigEstreia {
         }
     }
 
+    // Largura do texto como ele e desenhado (com metricas fracionarias). O
+    // stringWidth comum mede menos e a ultima letra saia cortada.
+    static int largura(AbstractButton b) {
+        String t = b.getText();
+        if (t == null || t.isEmpty()) return 0;
+        java.awt.font.FontRenderContext frc = new java.awt.font.FontRenderContext(null, true, true);
+        return (int) Math.ceil(b.getFont().getStringBounds(t, frc).getWidth());
+    }
+
     // -------------------------------------------- opcoes (radio) em pilula
 
     static class Pilula extends BasicRadioButtonUI {
@@ -438,7 +507,7 @@ final class ConfigEstreia {
         public Dimension getPreferredSize(JComponent c) {
             AbstractButton b = (AbstractButton) c;
             FontMetrics fm = b.getFontMetrics(b.getFont());
-            return new Dimension(fm.stringWidth(b.getText()) + 32, Math.max(30, fm.getHeight() + 14));
+            return new Dimension(largura(b) + 32, Math.max(30, fm.getHeight() + 14));
         }
 
         @Override
