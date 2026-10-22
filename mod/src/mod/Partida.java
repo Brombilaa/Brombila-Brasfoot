@@ -1468,7 +1468,7 @@ public class Partida extends JComponent implements ActionListener {
             FontMetrics fm = g.getFontMetrics();
             String n = String.valueOf(a.numero);
             g.setColor(brilho(fundo) > 0.55 ? new Color(0x14110A) : Color.WHITE);
-            g.drawString(n, (float) (cx - fm.stringWidth(n) / 2.0), (float) (cy + fm.getAscent() * 0.36));
+            centro(g, n, cx, cy);
         }
         // marcas (cartao, contusao, substituicao)
         for (Marca m : marcas) {
@@ -1785,7 +1785,7 @@ public class Partida extends JComponent implements ActionListener {
             g.setColor(cc);
             g.fill(ch);
             g.setColor(new Color(0x14110A));
-            g.drawString(chip, (float) (x + 30 - fm.stringWidth(chip) / 2.0), (float) (cy + fm.getAscent() / 2.0 - 1));
+            centro(g, chip, x + 30, cy);
             // numero
             Color fundo = a.vaga == 1 ? (a.lado == 0 ? new Color(0x2B2E2C) : new Color(0xD8B35A)) : cor[a.lado];
             Ellipse2D.Double bol = new Ellipse2D.Double(x + 52, cy - 9, 18, 18);
@@ -1797,7 +1797,7 @@ public class Partida extends JComponent implements ActionListener {
             fm = g.getFontMetrics();
             String n = String.valueOf(a.numero);
             g.setColor(brilho(fundo) > 0.55 ? new Color(0x14110A) : Color.WHITE);
-            g.drawString(n, (float) (x + 61 - fm.stringWidth(n) / 2.0), (float) (cy + fm.getAscent() / 2.0 - 1));
+            centro(g, n, x + 61, cy);
             // nome
             boolean foraPos = Boolean.TRUE.equals(chama(a.f, "gF"));
             int[] ex = extras.get(a.f);
@@ -1838,7 +1838,7 @@ public class Partida extends JComponent implements ActionListener {
             fm = g.getFontMetrics();
             String ns = Notas.texto(nt);
             g.setColor(ncor);
-            g.drawString(ns, (float) (nc.getCenterX() - fm.stringWidth(ns) / 2.0), (float) (cy + fm.getAscent() / 2.0 - 1.5));
+            centro(g, ns, nc.getCenterX(), cy);
             double[] td = tendencia.get(a.f);
             long agoraT = System.currentTimeMillis();
             if (td != null && td[1] > agoraT && td[2] != 0) {
@@ -1934,6 +1934,12 @@ public class Partida extends JComponent implements ActionListener {
         }
     }
 
+    // escreve o texto com o centro do desenho das letras (nao da fonte) em cx, cy
+    static void centro(Graphics2D g, String t, double cx, double cy) {
+        Rectangle2D v = g.getFont().createGlyphVector(g.getFontRenderContext(), t).getVisualBounds();
+        g.drawString(t, (float) (cx - v.getX() - v.getWidth() / 2), (float) (cy - v.getY() - v.getHeight() / 2));
+    }
+
     // tecla de teclado desenhada (com a "sombra" de baixo, como uma tecla de verdade)
     static void tecla(Graphics2D g, String t, double x, double cy) {
         g.setFont(Estreia.negrito(10f));
@@ -1947,7 +1953,7 @@ public class Partida extends JComponent implements ActionListener {
         g.setStroke(new BasicStroke(1f));
         g.draw(new RoundRectangle2D.Double(x + 0.5, y + 0.5, w - 1, h - 1, 7, 7));
         g.setColor(OURO);
-        g.drawString(t, (float) (x + w / 2 - fm.stringWidth(t) / 2.0), (float) (y + h / 2 + fm.getAscent() / 2.0 - 1.5));
+        centro(g, t, x + w / 2, y + h / 2);
     }
 
     // gols e cartoes de cada jogador nesta partida
