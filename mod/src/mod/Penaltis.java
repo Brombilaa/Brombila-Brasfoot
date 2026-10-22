@@ -27,7 +27,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.Callable;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.Timer;
@@ -48,8 +47,41 @@ public final class Penaltis extends JComponent {
     static final double GOLEIRO_X = CX - 0.35;
 
     // tempos de uma cobranca (ms desde o inicio)
-    static final long PREPARA = 1100, CORRE = 1050, PASSO_CHUTE = 85;
-    static final long CONTATO = PREPARA + CORRE + 3 * PASSO_CHUTE;
+    static final long PREPARA = 1100, CORRE = 1050, PASSO_CHUTE = 55, PASSO_CORRIDA = 62;
+    static final long CONTATO = PREPARA + CORRE + 5 * PASSO_CHUTE;     // quadro 5 do chute e o contato
+    static final long ESPERA = PREPARA - 250;                           // onde a cena para enquanto voce escolhe
+    static final int NADA = -9;
+
+    // ------------------------------------------------------------------ escolhas (modo interativo)
+
+    // onde o batedor chuta e para onde o goleiro pula; canto e pulo: +1 esquerda da tela,
+    // 0 meio, -1 direita. Quando nenhum dos dois times e humano, interativo fica falso e
+    // o jogo sorteia do jeito original.
+    public static final class Escolha {
+        public boolean interativo;
+        public int canto = NADA, pulo = NADA;
+        public boolean alto;
+    }
+
+    public interface Decide {
+        int resultado(Escolha e);
+    }
+
+    // resultado de uma cobranca com escolhas. chance e a chance de gol do jogo (70 na disputa,
+    // 50 a 90 no penalti da partida); escolhendo ao acaso contra o goleiro do computador, a media
+    // continua a mesma. Acertar o canto do goleiro e o que mais pesa.
+    public static int resolve(int chance, Escolha e, Random r) {
+        double extra = (chance - 70) / 100.0;
+        boolean mesmo = e.canto == e.pulo;
+        double pg;
+        if (e.canto != 0) pg = mesmo ? (e.alto ? 0.5 : 0.35) : (e.alto ? 0.85 : 0.95);
+        else pg = mesmo ? 0.25 : 0.82;
+        pg = Math.max(0.02, Math.min(0.99, pg + extra));
+        if (r.nextDouble() < pg) return GOL;
+        if (mesmo) return DEFESA;
+        if (e.alto) return r.nextDouble() < 0.6 ? FORA : TRAVE;
+        return r.nextBoolean() ? TRAVE : FORA;
+    }
     static final long DECIDE = CONTATO - 160;
 
     final boolean disputa;
@@ -75,14 +107,20 @@ public final class Penaltis extends JComponent {
     Color vencedorCor;
     Runnable aoContinuar;
     RoundRectangle2D.Double botao;
+    // escolha do humano: zonas do gol na tela (6 de chute ou 3 de pulo)
+    Path2D.Double[] zonas;
+    boolean zonasPulo;
+    int zonaSob = -1;
 
     static final class Cobranca {
         int lado;                    // 0 casa bate, 1 fora bate
         Object batedor, goleiro;
         int numero;
         Bonecos.Corpo corpoB, corpoG;
-        Callable<Integer> decide;
+        Decide decide;
         Runnable fim;
+        boolean chuteHumano, defesaHumano;
+        final Escolha e = new Escolha();
         long t0;                     // inicio (relogio da cena)
         int resultado = -1;
         boolean avisouFim;
@@ -114,17 +152,21 @@ public final class Penaltis extends JComponent {
         addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
                 if (botao != null && aoContinuar != null && botao.contains(e.getPoint())) { continua(); return; }
+                if (esperando(c)) { int z = zona(e.getX(), e.getY()); if (z >= 0) escolhe(z); return; }
                 pula();
             }
         });
         addMouseMotionListener(new MouseAdapter() {
             public void mouseMoved(MouseEvent e) {
-                setCursor(botao != null && botao.contains(e.getPoint()) ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
+                zonaSob = esperando(c) ? zona(e.getX(), e.getY()) : -1;
+                boolean mao = zonaSob >= 0 || (botao != null && aoContinuar != null && botao.contains(e.getPoint()));
+                setCursor(mao ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
             }
         });
         addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
                 int k = e.getKeyCode();
+                if (esperando(c)) { int z = teclaZona(k); if (z >= 0) escolhe(z); return; }
                 if ((k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE) && aoContinuar != null) continua();
                 else if (k == KeyEvent.VK_ENTER || k == KeyEvent.VK_SPACE || k == KeyEvent.VK_ESCAPE) pula();
             }
@@ -187,9 +229,13 @@ public final class Penaltis extends JComponent {
 
     // ------------------------------------------------------------------ comandos
 
-    // comeca uma cobranca; decide e chamado um instante antes do chute e devolve GOL, DEFESA, TRAVE ou FORA
-    public void cobra(int lado, Object batedor, Object goleiro, int numero, Callable<Integer> decide, Runnable fim) {
+    // comeca uma cobranca; decide e chamado um instante antes do chute e devolve GOL, DEFESA, TRAVE ou FORA.
+    // Se o time que bate (ou o que defende) e humano, a cena para e pede o canto (ou o pulo).
+    public void cobra(int lado, Object batedor, Object goleiro, int numero, boolean chuteHumano, boolean defesaHumano, Decide decide, Runnable fim) {
         Cobranca k = new Cobranca();
+        k.chuteHumano = chuteHumano;
+        k.defesaHumano = defesaHumano;
+        k.e.interativo = chuteHumano || defesaHumano;
         k.lado = lado;
         k.batedor = batedor;
         k.goleiro = goleiro;
@@ -221,6 +267,7 @@ public final class Penaltis extends JComponent {
         Cobranca k = c;
         if (k == null) return;
         long t = agora() - k.t0;
+        if (esperando(k)) return;
         if (t < DECIDE - 200) k.t0 -= (DECIDE - 200 - t);
         else if (k.chegou >= 0 && t < k.chegou + duracaoFim(k) - 300) k.t0 -= (k.chegou + duracaoFim(k) - 300 - t);
     }
@@ -229,13 +276,73 @@ public final class Penaltis extends JComponent {
 
     // ------------------------------------------------------------------ andamento
 
+    // falta alguma escolha de humano?
+    static boolean esperando(Cobranca k) {
+        return k != null && ((k.chuteHumano && k.e.canto == NADA) || (k.defesaHumano && k.e.pulo == NADA));
+    }
+
+    // de quem e a vez de escolher: o batedor primeiro (quando os dois times sao humanos)
+    static boolean vezDoPulo(Cobranca k) {
+        return !(k.chuteHumano && k.e.canto == NADA);
+    }
+
+    int zona(int x, int y) {
+        Path2D.Double[] z = zonas;
+        if (z == null) return -1;
+        for (int i = 0; i < z.length; i++) if (z[i].contains(x, y)) return i;
+        return -1;
+    }
+
+    // teclado: Q W E (alto) e A S D (baixo) no chute; setas ou A S D no pulo
+    int teclaZona(int k) {
+        Cobranca c0 = c;
+        if (c0 == null) return -1;
+        if (vezDoPulo(c0)) {
+            if (k == KeyEvent.VK_LEFT || k == KeyEvent.VK_A) return 0;
+            if (k == KeyEvent.VK_UP || k == KeyEvent.VK_DOWN || k == KeyEvent.VK_S || k == KeyEvent.VK_W) return 1;
+            if (k == KeyEvent.VK_RIGHT || k == KeyEvent.VK_D) return 2;
+            return -1;
+        }
+        switch (k) {
+            case KeyEvent.VK_Q: return 0;
+            case KeyEvent.VK_W: return 1;
+            case KeyEvent.VK_E: return 2;
+            case KeyEvent.VK_A: case KeyEvent.VK_LEFT: return 3;
+            case KeyEvent.VK_S: case KeyEvent.VK_DOWN: return 4;
+            case KeyEvent.VK_D: case KeyEvent.VK_RIGHT: return 5;
+        }
+        return -1;
+    }
+
+    // zona i: coluna i % 3 (0 = esquerda da tela = canto +1), linha i / 3 (0 = alto)
+    void escolhe(int i) {
+        Cobranca k = c;
+        if (!esperando(k)) return;
+        int col = i % 3;
+        if (vezDoPulo(k)) k.e.pulo = 1 - col;
+        else { k.e.canto = 1 - col; k.e.alto = i < 3; }
+        zonaSob = -1;
+        zonas = null;
+        setCursor(Cursor.getDefaultCursor());
+        repaint();
+    }
+
     void anda() {
         Cobranca k = c;
         if (k == null) return;
         long t = agora() - k.t0;
+        if (esperando(k) && t > ESPERA) {
+            k.t0 = agora() - ESPERA;          // segura a cena ate a escolha
+            t = ESPERA;
+        }
         if (k.resultado < 0 && t >= DECIDE) {
+            if (k.e.interativo) {
+                // o lado do computador escolhe agora: cantos mais que o meio
+                if (k.e.canto == NADA) { k.e.canto = sorteiaLado(); k.e.alto = rnd.nextInt(100) < 45; }
+                if (k.e.pulo == NADA) k.e.pulo = sorteiaLado();
+            }
             int r = DEFESA;
-            try { r = k.decide.call(); } catch (Throwable e) { e.printStackTrace(); }
+            try { r = k.decide.resultado(k.e); } catch (Throwable e) { e.printStackTrace(); }
             k.resultado = r;
             planeja(k);
         }
@@ -252,8 +359,54 @@ public final class Penaltis extends JComponent {
         }
     }
 
+    int sorteiaLado() {
+        int s = rnd.nextInt(100);
+        return s < 40 ? 1 : s < 60 ? 0 : -1;
+    }
+
+    // modo interativo: a bola vai no canto escolhido e o goleiro pula para o lado escolhido
+    void planejaEscolha(Cobranca k) {
+        int canto = k.e.canto, pulo = k.e.pulo;
+        boolean alto = k.e.alto;
+        k.tx = CX + 0.05;
+        k.mergulho = pulo;
+        k.alcance = pulo == 0 ? 0 : 2.4;
+        k.tz = canto != 0 ? CZ / 2 + canto * (2.4 + rnd.nextDouble() * 0.9) : CZ / 2 + (rnd.nextDouble() - 0.5) * 0.8;
+        k.ty = alto ? 1.55 + rnd.nextDouble() * 0.65 : 0.22 + rnd.nextDouble() * 0.45;
+        k.voo = 340 + rnd.nextInt(80);
+        switch (k.resultado) {
+            case GOL:
+                if (pulo == canto && canto != 0) k.alcance = 1.35;            // foi no canto, mas nao chegou
+                if (pulo == 0 && canto == 0) { k.ty = 2.1; k.tz = CZ / 2 + (rnd.nextBoolean() ? 0.7 : -0.7); }
+                break;
+            case DEFESA:
+                k.tx = GOLEIRO_X;
+                if (canto != 0) {
+                    k.alcance = Math.max(1.4, Math.min(2.6, Math.abs(k.tz - CZ / 2) - 0.25));
+                    k.tz = CZ / 2 + canto * (k.alcance + 0.25);
+                    k.ty = Math.min(k.ty, 1.35);
+                    k.rvx = -5.5 - rnd.nextDouble() * 3; k.rvz = canto * (3 + rnd.nextDouble() * 4); k.rvy = 2.5 + rnd.nextDouble() * 2;
+                } else {
+                    k.tz = CZ / 2 + Math.sin((CONTATO - 70) / 520.0) * 0.35;
+                    k.ty = 1.0;
+                    k.rvx = -2.5; k.rvz = (rnd.nextDouble() - 0.5) * 2; k.rvy = 1.2;
+                }
+                break;
+            case TRAVE:
+                if (canto != 0) { k.tz = canto > 0 ? Z1 : Z0; k.ty = alto ? 1.6 + rnd.nextDouble() * 0.7 : 0.4 + rnd.nextDouble() * 0.6; }
+                else k.ty = ALTO;
+                k.rvx = -7 - rnd.nextDouble() * 4; k.rvz = (canto == 0 ? (rnd.nextBoolean() ? 1 : -1) : canto) * (2 + rnd.nextDouble() * 3); k.rvy = k.ty >= ALTO ? 4 : 1.5;
+                break;
+            default:
+                if (canto != 0 && !alto) { k.tz = CZ / 2 + canto * (4.2 + rnd.nextDouble() * 1.2); }
+                else { k.ty = 3.0 + rnd.nextDouble() * 1.4; if (canto != 0) k.tz = CZ / 2 + canto * (2 + rnd.nextDouble() * 2); }
+                k.voo = 420;
+        }
+    }
+
     // onde a bola vai e para onde o goleiro pula, de acordo com o resultado
     void planeja(Cobranca k) {
+        if (k.e.interativo) { planejaEscolha(k); return; }
         int canto = rnd.nextBoolean() ? 1 : -1;              // +1: lado de z maior (esquerda da tela)
         k.tx = CX + 0.05;
         switch (k.resultado) {
@@ -378,6 +531,7 @@ public final class Penaltis extends JComponent {
         // por cima: placar, textos e fim
         placar(g, area);
         textos(g, area, k, t);
+        if (esperando(k)) escolha(g, cam, area, k); else zonas = null;
         if (aoContinuar != null) fim(g, area);
         // borda dourada da janela
         g.setColor(new Color(242, 193, 78, 120));
@@ -465,10 +619,10 @@ public final class Penaltis extends JComponent {
         if (k == null || t < PREPARA) return new double[]{sx, 0, sz, -1, 0};
         if (t < PREPARA + CORRE) {
             double u = (t - PREPARA) / (double) CORRE;
-            return new double[]{sx + (bx - sx) * u, 0, sz + (bz - sz) * u, CORRIDA, ((t - PREPARA) / 70) % 8};
+            return new double[]{sx + (bx - sx) * u, 0, sz + (bz - sz) * u, CORRIDA, ((t - PREPARA) / PASSO_CORRIDA) % 12};
         }
         long dc = t - PREPARA - CORRE;
-        if (k.chegou < 0 || t < k.chegou + 450) return new double[]{bx, 0, bz, CHUTE, Math.min(5, dc / PASSO_CHUTE)};
+        if (k.chegou < 0 || t < k.chegou + 450) return new double[]{bx, 0, bz, CHUTE, Math.min(9, dc / PASSO_CHUTE)};
         long d = t - k.chegou - 450;
         if (k.resultado == GOL) {
             // sai comemorando para o lado da torcida, sem tampar a tela
@@ -526,22 +680,35 @@ public final class Penaltis extends JComponent {
         cam.projeta(b[0], b[1], b[2], o);
         if (o[2] < 1) return;
         double r = Math.max(2.2, cam.pxPorM(o[2]) * 0.115);
-        Ellipse2D.Double e = new Ellipse2D.Double(o[0] - r, o[1] - r, r * 2, r * 2);
-        g.setPaint(new RadialGradientPaint((float) (o[0] - r * 0.35), (float) (o[1] - r * 0.4), (float) (r * 1.7),
-            new float[]{0f, 1f}, new Color[]{Color.WHITE, new Color(0xB9B6AE)}));
-        g.fill(e);
-        if (r > 4) {
-            // gomos escuros
-            g.setColor(new Color(0x2A2A2A));
-            double a = (b[0] + b[2]) * 2.1;
-            for (int i = 0; i < 3; i++) {
-                double aa = a + i * 2.09;
-                g.fill(new Ellipse2D.Double(o[0] + Math.cos(aa) * r * 0.45 - r * 0.2, o[1] + Math.sin(aa) * r * 0.45 - r * 0.2, r * 0.4, r * 0.4));
+        // rastro enquanto a bola voa
+        Cobranca k = c;
+        if (k != null && k.resultado >= 0) {
+            long t = agora() - k.t0, dt = t - CONTATO;
+            if (dt > 0 && dt < k.voo + 60) {
+                // rastro: faixa que afina para tras, feita de segmentos curtos
+                double[] a = new double[3], ant = null;
+                double rAnt = 0;
+                g.setStroke(new BasicStroke(1f));
+                for (int i = 10; i >= 0; i--) {
+                    if (dt - i * 9 < 0) continue;
+                    double[] q = i == 0 ? b : bola(k, t - i * 9);
+                    if (q == null) continue;
+                    cam.projeta(q[0], q[1], q[2], a);
+                    if (a[2] < 1) continue;
+                    double rr = Math.max(1.2, cam.pxPorM(a[2]) * 0.115) * (1 - i / 11.0) * 0.8;
+                    if (ant != null) {
+                        g.setStroke(new BasicStroke((float) (rr + rAnt), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                        g.setColor(new Color(255, 250, 235, (int) (60 * (1 - i / 11.0))));
+                        g.draw(new Line2D.Double(ant[0], ant[1], a[0], a[1]));
+                    }
+                    ant = new double[]{a[0], a[1]};
+                    rAnt = rr;
+                }
             }
         }
-        g.setColor(new Color(0x2A2A2A));
-        g.setStroke(new BasicStroke((float) Math.max(0.8, r * 0.12)));
-        g.draw(e);
+        // giro: o quanto ela ja andou desde a marca
+        double giro = Math.hypot(b[0] - MARCA, b[2] - CZ / 2) / 0.11 + Math.max(0, b[1] - 0.11) * 3;
+        Bola.desenha(g, o[0], o[1], r, giro);
     }
 
     // rede com o estufar quando a bola entra
@@ -618,6 +785,76 @@ public final class Penaltis extends JComponent {
         est.seg(g, cam, CX, 0, Z0, CX, ALTO, Z0, a, b);
         est.seg(g, cam, CX, 0, Z1, CX, ALTO, Z1, a, b);
         est.seg(g, cam, CX, ALTO, Z0, CX, ALTO, Z1, a, b);
+    }
+
+    // ------------------------------------------------------------------ escolha do humano
+
+    // contorno de um retangulo no plano da linha do gol (x = CX)
+    Path2D.Double quadra(Transmissao.Camera cam, double za, double zb, double ya, double yb) {
+        double[][] p = {{za, ya}, {zb, ya}, {zb, yb}, {za, yb}};
+        double[] o = new double[3];
+        Path2D.Double r = new Path2D.Double();
+        for (int i = 0; i < 4; i++) {
+            cam.projeta(CX, p[i][1], p[i][0], o);
+            if (i == 0) r.moveTo(o[0], o[1]); else r.lineTo(o[0], o[1]);
+        }
+        r.closePath();
+        return r;
+    }
+
+    void escolha(Graphics2D g, Transmissao.Camera cam, Rectangle2D.Double area, Cobranca k) {
+        boolean pulo = vezDoPulo(k);
+        double w = (Z1 - Z0) / 3;
+        // coluna 0 = esquerda da tela = z maior
+        Path2D.Double[] z = new Path2D.Double[pulo ? 3 : 6];
+        for (int i = 0; i < z.length; i++) {
+            int col = i % 3;
+            double zb = Z1 - col * w, za = zb - w;
+            double ya = pulo ? 0 : (i < 3 ? ALTO / 2 : 0), yb = pulo ? ALTO : (i < 3 ? ALTO : ALTO / 2);
+            // margem para as zonas nao encostarem nas traves
+            z[i] = quadra(cam, za + 0.08, zb - 0.08, ya + 0.06, yb - 0.06);
+        }
+        zonas = z;
+        zonasPulo = pulo;
+        // escurece o resto e destaca o gol
+        g.setColor(new Color(0, 0, 0, 70));
+        g.fill(area);
+        long pulso = agora() % 1400;
+        float brilho = (float) (0.55 + 0.45 * Math.sin(pulso / 1400.0 * 2 * Math.PI));
+        g.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{5f, 5f}, 0f));
+        for (int i = 0; i < z.length; i++) {
+            boolean sob = i == zonaSob;
+            g.setColor(sob ? new Color(242, 193, 78, 110) : new Color(242, 193, 78, (int) (18 + 14 * brilho)));
+            g.fill(z[i]);
+            g.setColor(new Color(242, 193, 78, sob ? 230 : (int) (110 + 80 * brilho)));
+            g.draw(z[i]);
+        }
+        g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        // marca no meio de cada zona: alvo no chute, seta no pulo
+        for (int i = 0; i < z.length; i++) {
+            Rectangle2D bb = z[i].getBounds2D();
+            double cx = bb.getCenterX(), cy = bb.getCenterY(), s = Math.min(bb.getWidth(), bb.getHeight()) * 0.18;
+            g.setColor(i == zonaSob ? new Color(0x1A1408) : new Color(255, 240, 200, 200));
+            if (!pulo) {
+                g.draw(new Ellipse2D.Double(cx - s, cy - s, s * 2, s * 2));
+                g.fill(new Ellipse2D.Double(cx - s * 0.3, cy - s * 0.3, s * 0.6, s * 0.6));
+            } else {
+                int col = i % 3;
+                Path2D.Double seta = new Path2D.Double();
+                if (col == 1) { seta.moveTo(cx - s, cy - s * 0.4); seta.lineTo(cx, cy + s * 0.6); seta.lineTo(cx + s, cy - s * 0.4); }
+                else { double d = col == 0 ? -1 : 1; seta.moveTo(cx - d * s * 0.5, cy - s); seta.lineTo(cx + d * s * 0.6, cy); seta.lineTo(cx - d * s * 0.5, cy + s); }
+                g.draw(seta);
+            }
+        }
+        // titulo no alto
+        String t = pulo ? "VOCÊ DEFENDE" : "VOCÊ BATE";
+        g.setFont(Estreia.espacada(Estreia.semi(13f), 0.25f));
+        FontMetrics fm = g.getFontMetrics();
+        float y = (float) (area.y + area.height * 0.28);
+        g.setColor(new Color(0, 0, 0, 140));
+        g.drawString(t, (float) (area.getCenterX() - fm.stringWidth(t) / 2.0) + 1, y + 1);
+        g.setColor(Tema.NEON);
+        g.drawString(t, (float) (area.getCenterX() - fm.stringWidth(t) / 2.0), y);
     }
 
     // ------------------------------------------------------------------ placar e textos
@@ -714,7 +951,8 @@ public final class Penaltis extends JComponent {
         String nome = Partida.nome(k.batedor);
         if (k.chegou < 0) {
             if (t > CONTATO) return;
-            linha = nome + (t < PREPARA ? " ajeita a bola" : " corre para a bola");
+            if (esperando(k)) linha = vezDoPulo(k) ? "Sua vez de defender: para onde o goleiro pula? (setas)" : "Sua vez de bater: escolha o canto (Q W E / A S D)";
+            else linha = nome + (t < PREPARA ? " ajeita a bola" : " corre para a bola");
         } else {
             switch (k.resultado) {
                 case GOL: grande = "GOL!"; linha = k.lance == 1 ? "De cavadinha! " + nome + " não perdoa" : nome + " bate e marca"; break;

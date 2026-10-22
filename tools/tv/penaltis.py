@@ -23,10 +23,20 @@ def base(**k):
     p.update(k); return p
 
 # ---------------------------------------------------------------- batedor (chuta de direita: perna 0)
-def corrida(n=8):
+def corrida(n=12):
     return [b.pose(i * 2 * math.pi / n, True) for i in range(n)]
 
-def chute():
+def chute(n=10):
+    """quadros-chave da cobranca, interpolados em n quadros (o contato e o quadro 5)"""
+    k = chave_chute()
+    tempos = [0, 0.6, 1.2, 1.8, 2.4, 3.0, 3.5, 4.0, 4.5, 5.0]
+    out = []
+    for t in tempos[:n]:
+        i = min(int(t), len(k) - 2)
+        out.append(mistura(k[i], k[i + 1], t - i))
+    return out
+
+def chave_chute():
     k = []
     # 0 ultima passada: perna de apoio (1) a frente, direita atras
     k.append(base(quadril=(-0.55, 0.55), joelho=(0.9, 0.25), ombro=(0.6, -0.5), cotovelo=(0.6, 0.6), tronco=0.15, abre=(0.6, 0.5), apoia=True))
@@ -56,14 +66,15 @@ def lamenta():
             base(quadril=(0.15, -0.05), joelho=(0.25, 0.1), ombro=(2.5, 2.5), cotovelo=(2.3, 2.3), tronco=0.45, abre=(1.4, 1.4), apoia=True)]
 
 # ---------------------------------------------------------------- goleiro (de frente para a camera)
-PRONTO = base(quadril=(0.55, 0.55), joelho=(0.95, 0.95), ombro=(0.35, 0.35), cotovelo=(0.55, 0.55), tronco=0.35, abre=(1.15, 1.15), lado=(0.18, 0.18), apoia=True)
+# base aberta, joelhos dobrados e tronco curvado para a frente, bracos abertos na altura da cintura
+PRONTO = base(quadril=(0.95, 0.95), joelho=(1.55, 1.55), ombro=(0.75, 0.75), cotovelo=(0.7, 0.7), tronco=0.55, abre=(1.05, 1.05), lado=(0.36, 0.36), apoia=True)
 
 def pronto():
     k = []
     for i in range(4):
         s = math.sin(i * math.pi / 2)
-        p = dict(PRONTO); p["quadril"] = (0.55 + 0.08 * s, 0.55 + 0.08 * s); p["joelho"] = (0.95 + 0.14 * s, 0.95 + 0.14 * s)
-        p["abre"] = (1.15 + 0.1 * s, 1.15 + 0.1 * s)
+        p = dict(PRONTO); p["quadril"] = (0.95 + 0.07 * s, 0.95 + 0.07 * s); p["joelho"] = (1.55 + 0.12 * s, 1.55 + 0.12 * s)
+        p["abre"] = (1.05 + 0.1 * s, 1.05 + 0.1 * s)
         k.append(p)
     return k
 
@@ -84,14 +95,15 @@ def voo(lado):
 def defende_meio():
     # fica no meio e encaixa a bola no peito
     return [PRONTO,
-            base(quadril=(0.4, 0.4), joelho=(0.7, 0.7), ombro=(1.2, 1.2), cotovelo=(0.9, 0.9), tronco=0.25, abre=(0.5, 0.5), lado=(0.12, 0.12), apoia=True),
-            base(quadril=(0.5, 0.5), joelho=(0.9, 0.9), ombro=(1.0, 1.0), cotovelo=(1.6, 1.6), tronco=0.35, abre=(0.35, 0.35), lado=(0.12, 0.12), apoia=True)]
+            base(quadril=(0.7, 0.7), joelho=(1.1, 1.1), ombro=(1.2, 1.2), cotovelo=(0.9, 0.9), tronco=0.35, abre=(0.5, 0.5), lado=(0.3, 0.3), apoia=True),
+            base(quadril=(0.8, 0.8), joelho=(1.3, 1.3), ombro=(1.0, 1.0), cotovelo=(1.6, 1.6), tronco=0.45, abre=(0.35, 0.35), lado=(0.3, 0.3), apoia=True)]
 
 ANIMS = [
     # nome, poses, giro (0 = de frente para a camera), goleiro?
-    ("corrida", corrida(), math.pi + 0.45, False),
-    ("chute", chute(), math.pi + 0.3, False),
-    ("festa", festa(), 0.25, False),
+    # giros medidos na camera da cena (mod.Penaltis): a corrida vai na diagonal ate a bola
+    ("corrida", corrida(), math.pi - 0.66, False),
+    ("chute", chute(), math.pi - 0.3, False),
+    ("festa", festa(), -0.8, False),
     ("lamenta", lamenta(), math.pi - 0.3, False),
     ("pronto", pronto(), 0.0, True),
     ("voo_dir", voo(+1), 0.0, True),

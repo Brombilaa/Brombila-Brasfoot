@@ -99,7 +99,7 @@ class Jogador:
         self.pernas = []
         for i, sx in ((0, -1), (1, 1)):
             q = self.pelve + T @ np.array([sx * 0.1, -0.03, 0])
-            Rz = rot_z(-sx * (0.03 + lado[i]))
+            Rz = rot_z(-sx * 0.03 + sx * lado[i])          # lado: abre a perna para fora
             Rq = Rz @ rot_x(-p["quadril"][i])
             joelho = q + Rq @ np.array([0, -coxa, 0])
             Rj = Rz @ rot_x(-p["quadril"][i] + p["joelho"][i])

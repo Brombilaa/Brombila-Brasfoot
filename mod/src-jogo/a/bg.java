@@ -14,7 +14,6 @@ import java.awt.Window;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
-import java.util.concurrent.Callable;
 import javax.swing.AbstractAction;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
@@ -93,8 +92,11 @@ extends JPanel {
             // sem goleiro: a cena usa um generico
         }
         final int lado = this.zH - 1;
-        this.cena.cobra(lado, batedor, goleiro, Penaltis.numero(batedor, arrayList), new Callable<Integer>() {
-            public Integer call() { return bg.this.nM(); }
+        // time humano escolhe o canto (batendo) ou o pulo (defendendo)
+        boolean chute = humano(this.zH == 1 ? this.zz.hc() : this.zz.hd());
+        boolean defesa = humano(this.zH == 1 ? this.zz.hd() : this.zz.hc());
+        this.cena.cobra(lado, batedor, goleiro, Penaltis.numero(batedor, arrayList), chute, defesa, new Penaltis.Decide() {
+            public int resultado(Penaltis.Escolha e) { return bg.this.nM(e); }
         }, new Runnable() {
             public void run() { bg.this.nK(); }
         });
@@ -113,13 +115,28 @@ extends JPanel {
         this.nJ();
     }
 
-    // sorteio do original; devolve o que a cena mostra
-    private int nM() {
+    private static boolean humano(ah time) {
+        try {
+            return time != null && time.jZ();
+        } catch (Exception exception) {
+            return false;
+        }
+    }
+
+    // sorteio do original (ou, com time humano, o resultado das escolhas, com a mesma media
+    // de 70%); devolve o que a cena mostra
+    private int nM(Penaltis.Escolha e) {
         int n2 = 0;
         int n3 = 70;
-        int n5 = new Random().nextInt(100) + 1;
-        if (n5 <= n3) {
-            n2 = 1;
+        int escolha = -1;
+        if (e != null && e.interativo) {
+            escolha = Penaltis.resolve(n3, e, new Random());
+            if (escolha == Penaltis.GOL) n2 = 1;
+        } else {
+            int n5 = new Random().nextInt(100) + 1;
+            if (n5 <= n3) {
+                n2 = 1;
+            }
         }
         X x2 = (X)this.zJ.get(this.zJ.size() - 1);
         x2.dN(n2);
@@ -145,6 +162,7 @@ extends JPanel {
                 this.zH = 1;
             }
         }
+        if (escolha >= 0) return escolha;
         if (n2 == 1) return Penaltis.GOL;
         int s = new Random().nextInt(100);
         return s < 55 ? Penaltis.DEFESA : s < 75 ? Penaltis.TRAVE : Penaltis.FORA;
@@ -210,6 +228,6 @@ extends JPanel {
     }
 
     static /* synthetic */ void c(bg bg2) {
-        bg2.nM();
+        bg2.nM(null);
     }
 }

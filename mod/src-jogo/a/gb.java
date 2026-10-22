@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Timer;
-import java.util.concurrent.Callable;
 import javax.swing.AbstractAction;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
@@ -72,8 +71,15 @@ extends JPanel {
         } catch (Exception exception) {
             // sem lista: numero 0 (camisa sem numero)
         }
-        this.cena.cobra(this.JQ - 1, f2, this.JP, Penaltis.numero(f2, escalados), new Callable<Integer>() {
-            public Integer call() { return gb.this.nO(); }
+        // time humano escolhe o canto (batendo) ou o pulo (defendendo)
+        boolean defesa = false;
+        try {
+            defesa = (this.JR == 1 ? v2.tR().hc() : v2.tR().hd()).jZ();
+        } catch (Exception exception) {
+            // sem time: computador
+        }
+        this.cena.cobra(this.JQ - 1, f2, this.JP, Penaltis.numero(f2, escalados), this.JS, defesa, new Penaltis.Decide() {
+            public int resultado(Penaltis.Escolha e) { return gb.this.nO(e); }
         }, new Runnable() {
             public void run() { gb.this.rK(); }
         });
@@ -85,8 +91,9 @@ extends JPanel {
     private void rJ() {
     }
 
-    // sorteio e efeitos do original; devolve o que a cena mostra
-    private int nO() {
+    // sorteio e efeitos do original (com time humano, o gol sai das escolhas, com a mesma
+    // chance media); devolve o que a cena mostra
+    private int nO(Penaltis.Escolha e) {
         int n2 = 70;
         int n3 = 30;
         if (this.ef.getCr1() == 9 || this.ef.getCr2() == 9 || this.ef.gm().booleanValue()) {
@@ -112,9 +119,15 @@ extends JPanel {
             }
         }
         boolean bl2 = false;
-        int n4 = new Random().nextInt(100) + 1;
-        if (n4 <= n2) {
-            bl2 = true;
+        int escolha = -1;
+        if (e != null && e.interativo) {
+            escolha = Penaltis.resolve(n2, e, new Random());
+            bl2 = escolha == Penaltis.GOL;
+        } else {
+            int n4 = new Random().nextInt(100) + 1;
+            if (n4 <= n2) {
+                bl2 = true;
+            }
         }
         if (bl2) {
             this.Db.dJ(this.JQ);
@@ -152,6 +165,9 @@ extends JPanel {
         if (n9 == 0 && this.JP == null) {
             n9 = 3;
         }
+        if (escolha == Penaltis.DEFESA) n9 = 3;
+        else if (escolha == Penaltis.TRAVE) n9 = 1;
+        else if (escolha == Penaltis.FORA) n9 = 2;
         if (n9 == 2 || n9 == 6) {
             int[] nArray3 = this.Db.tR().ia();
             int n10 = this.JQ - 1;
@@ -192,7 +208,7 @@ extends JPanel {
     }
 
     static /* synthetic */ void c(gb gb2) {
-        gb2.nO();
+        gb2.nO(null);
     }
 
     static /* synthetic */ void d(gb gb2) {
