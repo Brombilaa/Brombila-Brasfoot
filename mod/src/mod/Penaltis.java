@@ -846,7 +846,8 @@ public final class Penaltis extends JComponent {
                 g.draw(seta);
             }
         }
-        // titulo no alto
+        // titulo no alto (nas alternadas o aviso do placar ocupa esse lugar)
+        if (alternadas()) return;
         String t = pulo ? "VOCÊ DEFENDE" : "VOCÊ BATE";
         g.setFont(Estreia.espacada(Estreia.semi(13f), 0.25f));
         FontMetrics fm = g.getFontMetrics();
@@ -858,6 +859,44 @@ public final class Penaltis extends JComponent {
     }
 
     // ------------------------------------------------------------------ placar e textos
+
+    // escudo nitido: o jogo so tem o escudo grande (60 px) e o mini de 18 px ampliado ficava
+    // borrado; aqui o grande e reduzido uma vez, com media de area, e guardado com sombra
+    final BufferedImage[] escudos = new BufferedImage[2];
+    final boolean[] semEscudo = new boolean[2];
+    static final int ESCUDO = 38;
+
+    BufferedImage escudo(int lado) {
+        if (escudos[lado] != null || semEscudo[lado]) return escudos[lado];
+        Object time = lado == 0 ? casa : fora;
+        Object ic = Partida.chama(time, "kP");
+        if (!(ic instanceof ImageIcon)) ic = Partida.chama(time, "kU");
+        if (!(ic instanceof ImageIcon) || ((ImageIcon) ic).getIconWidth() <= 0) { semEscudo[lado] = true; return null; }
+        ImageIcon ii = (ImageIcon) ic;
+        int sw = ii.getIconWidth(), sh = ii.getIconHeight();
+        double f = Math.min(ESCUDO / (double) sw, ESCUDO / (double) sh);
+        int dw = Math.max(1, (int) Math.round(sw * f)), dh = Math.max(1, (int) Math.round(sh * f));
+        Image red = f < 1 ? ii.getImage().getScaledInstance(dw, dh, Image.SCALE_AREA_AVERAGING) : ii.getImage();
+        ImageIcon carregado = new ImageIcon(red);          // espera a reducao terminar
+        BufferedImage out = new BufferedImage(ESCUDO + 4, ESCUDO + 4, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = out.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        int ox = (ESCUDO - dw) / 2 + 2, oy = (ESCUDO - dh) / 2 + 1;
+        // sombra: a propria silhueta, escura e deslocada
+        BufferedImage sil = new BufferedImage(dw, dh, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D gs = sil.createGraphics();
+        gs.drawImage(carregado.getImage(), 0, 0, dw, dh, null);
+        gs.setComposite(java.awt.AlphaComposite.SrcIn);
+        gs.setColor(new Color(0, 0, 0, 120));
+        gs.fillRect(0, 0, dw, dh);
+        gs.dispose();
+        g.drawImage(sil, ox + 1, oy + 2, null);
+        g.drawImage(carregado.getImage(), ox, oy, dw, dh, null);
+        g.dispose();
+        escudos[lado] = out;
+        return out;
+    }
 
     void placar(Graphics2D g, Rectangle2D.Double area) {
         double w = Math.min(560, area.width - 40), h = disputa ? 92 : 54;
@@ -896,12 +935,11 @@ public final class Penaltis extends JComponent {
             double cx = lado == 0 ? meio - 62 - fm.stringWidth(n) : meio + 62;
             g.setColor(Tema.TEXTO);
             g.drawString(n, (float) cx, (float) (y + 34));
-            Object ic = Partida.chama(time, "kU");
-            if (ic instanceof ImageIcon) {
-                Image im = ((ImageIcon) ic).getImage();
-                int iw = 30, ih = 30;
-                double ix = lado == 0 ? x + 14 : x + w - 14 - iw;
-                g.drawImage(im, (int) ix, (int) (y + 12), iw, ih, null);
+            BufferedImage esc = escudo(lado);
+            if (esc != null) {
+                int iw = esc.getWidth(), ih = esc.getHeight();
+                double ix = lado == 0 ? x + 16 : x + w - 16 - iw;
+                g.drawImage(esc, (int) ix, (int) (y + 8), null);
             }
             // bolinhas: gol (dourada), perdeu (vermelha com x), a bater (vazia)
             List<Integer> m = marcas[lado];
@@ -934,6 +972,20 @@ public final class Penaltis extends JComponent {
                     g.draw(e);
                 }
             }
+        }
+        if (alternadas()) {
+            g.setFont(Estreia.espacada(Estreia.semi(11f), 0.18f));
+            FontMetrics f2 = g.getFontMetrics();
+            String a = "ALTERNADAS · UMA POR TIME ATÉ DESEMPATAR";
+            double aw = f2.stringWidth(a) + 28, ah = 24;
+            RoundRectangle2D.Double ra = new RoundRectangle2D.Double(meio - aw / 2, y + h + 8, aw, ah, ah, ah);
+            g.setColor(new Color(9, 11, 10, 215));
+            g.fill(ra);
+            g.setColor(new Color(242, 193, 78, 110));
+            g.setStroke(new BasicStroke(1f));
+            g.draw(ra);
+            g.setColor(Tema.NEON);
+            g.drawString(a, (float) (meio - f2.stringWidth(a) / 2.0), (float) (y + h + 8 + ah / 2 + f2.getAscent() / 2.0 - 2));
         }
         // de quem e a vez
         Cobranca k = c;
@@ -987,6 +1039,20 @@ public final class Penaltis extends JComponent {
         g.drawString(linha, (float) (area.getCenterX() - fm.stringWidth(linha) / 2.0), (float) (base - h / 2 + 4 + fm.getAscent() / 2.0 - 2));
     }
 
+    String comoAcabou() {
+        int n0 = marcas[0].size(), n1 = marcas[1].size();
+        String pl = gols[0] + " × " + gols[1];
+        if (n0 > 5) return pl + " · decidido nas cobranças alternadas";
+        if (n0 < 5 || n1 < 5) return pl + " · decidido antes do fim: o adversário não alcançava mais";
+        return pl + " nas cinco cobranças";
+    }
+
+    // empatou nas cinco: segue uma cobranca por time ate um marcar e o outro nao
+    boolean alternadas() {
+        int n0 = marcas[0].size(), n1 = marcas[1].size();
+        return disputa && vencedor == null && n0 >= 5 && n1 >= 5 && (n0 > 5 || gols[0] == gols[1]);
+    }
+
     void fim(Graphics2D g, Rectangle2D.Double area) {
         g.setColor(new Color(0, 0, 0, 120));
         g.fill(area);
@@ -1002,11 +1068,17 @@ public final class Penaltis extends JComponent {
         v = Partida.corta(v, fm, area.width - 60);
         g.setColor(Tema.TEXTO);
         g.drawString(v, (float) (area.getCenterX() - fm.stringWidth(v) / 2.0), (float) (cy));
+        // como foi decidida
+        String como = comoAcabou();
         g.setFont(Estreia.semi(14f));
         fm = g.getFontMetrics();
+        if (!como.isEmpty()) {
+            g.setColor(new Color(0xCBC6BA));
+            g.drawString(como, (float) (area.getCenterX() - fm.stringWidth(como) / 2.0), (float) (cy + 30));
+        }
         String b = "Continuar";
         double w = fm.stringWidth(b) + 56, h = 36;
-        botao = new RoundRectangle2D.Double(area.getCenterX() - w / 2, cy + 26, w, h, h, h);
+        botao = new RoundRectangle2D.Double(area.getCenterX() - w / 2, cy + 50, w, h, h, h);
         g.setPaint(new GradientPaint(0, (float) botao.y, new Color(0xF6CE6A), 0, (float) (botao.y + h), new Color(0xD9A53B)));
         g.fill(botao);
         g.setColor(new Color(0x1A1408));

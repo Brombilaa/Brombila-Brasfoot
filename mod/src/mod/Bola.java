@@ -12,6 +12,9 @@ import java.awt.image.BufferedImage;
 final class Bola {
 
     static final int LADO = 72, GIROS = 32;
+    // faces do icosaedro truncado: os pentagonos ficam mais longe do centro (menores);
+    // raio do arredondamento entre o raio interno (0.287 rad) e o externo (0.350) do pentagono
+    static final double PESO_PENTA = 0.9741, COS_RAIO = Math.cos(0.303);
     private static BufferedImage[] quadros;
 
     private static synchronized BufferedImage[] quadros() {
@@ -30,11 +33,12 @@ final class Bola {
             c[n++] = new double[]{b * f, 0, a};
         }
         for (int a = -1; a <= 1; a += 2) for (int b = -1; b <= 1; b += 2) for (int d = -1; d <= 1; d += 2) c[n++] = new double[]{a, b, d};
+        // os outros 12 vertices do dodecaedro (dual do icosaedro acima)
         double g = 1 / f;
         for (int a = -1; a <= 1; a += 2) for (int b = -1; b <= 1; b += 2) {
-            c[n++] = new double[]{0, a * g, b * f};
-            c[n++] = new double[]{a * g, b * f, 0};
-            c[n++] = new double[]{b * f, 0, a * g};
+            c[n++] = new double[]{0, a * f, b * g};
+            c[n++] = new double[]{a * g, 0, b * f};
+            c[n++] = new double[]{b * f, a * g, 0};
         }
         for (double[] v : c) {
             double l = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
@@ -93,15 +97,27 @@ final class Bola {
                     double bx = R[0][0] * u + R[0][1] * v + R[0][2] * nz;
                     double by = R[1][0] * u + R[1][1] * v + R[1][2] * nz;
                     double bz = R[2][0] * u + R[2][1] * v + R[2][2] * nz;
-                    double m1 = -2, m2 = -2;
-                    int i1 = 0;
+                    // gomo preto: pentagono com os cantos arredondados (pentagono cortado por um
+                    // circulo); gomos brancos: hexagonos. "borda" mede a distancia ate a costura
+                    double dp = -2, h1 = -2, h2 = -2;
                     for (int k = 0; k < c.length; k++) {
-                        // face do icosaedro truncado: os pentagonos ficam mais longe do centro (menores)
-                        double d = (bx * c[k][0] + by * c[k][1] + bz * c[k][2]) * (k < 12 ? 0.9741 : 1);
-                        if (d > m1) { m2 = m1; m1 = d; i1 = k; } else if (d > m2) m2 = d;
+                        double d = bx * c[k][0] + by * c[k][1] + bz * c[k][2];
+                        if (k < 12) { if (d > dp) dp = d; }
+                        else if (d > h1) { h2 = h1; h1 = d; } else if (d > h2) h2 = d;
                     }
-                    double base = i1 < 12 ? 0.11 : 0.95;           // pentagono preto, hexagono branco
-                    if (m1 - m2 < 0.0055) base = i1 < 12 ? 0.3 : 0.7;  // costura
+                    double dw = dp * PESO_PENTA, base, aresta;
+                    boolean preto = dw > h1 && dp > COS_RAIO;
+                    if (preto) {
+                        base = 0.1;
+                        aresta = Math.min(dw - h1, (dp - COS_RAIO) * 1.6);
+                    } else {
+                        base = 0.96;
+                        aresta = Math.min(h1 - h2, Math.max(h1 - dw, (COS_RAIO - dp) * 1.6));
+                    }
+                    // gomo estufado: escurece perto da costura, e a costura e um risco fino
+                    double estufa = 1 - 0.3 * Math.exp(-aresta / 0.03);
+                    if (aresta < 0.005) base *= preto ? 1.6 : 0.5;
+                    base *= estufa;
                     double dif = Math.max(0, u * lx + v * ly + nz * lz);
                     double luz = 0.42 + 0.64 * dif;
                     double borda = 0.75 + 0.25 * nz;               // escurece na borda
