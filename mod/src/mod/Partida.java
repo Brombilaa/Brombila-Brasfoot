@@ -1404,7 +1404,7 @@ public class Partida extends JComponent implements ActionListener {
 
     // ------------------------------------------------------------------ pintura
 
-    static final int COLUNA = 292;
+    static final int COLUNA = 316;
 
     protected void paintComponent(Graphics g0) {
         if (jogo == null) return;
@@ -1705,6 +1705,24 @@ public class Partida extends JComponent implements ActionListener {
         g.drawString(corta(legenda, fm, w - mw - 46), (float) (x + 28 + mw), (float) (y + h / 2 + fm.getAscent() / 2.0 - 2));
     }
 
+    // Nome do jogador inteiro sempre que der: primeiro do tamanho normal, depois com o primeiro
+    // nome abreviado ("G. Benedetti"), depois um pouco menor; so no fim corta com reticencias.
+    // Mede com metricas fracionarias, as mesmas do desenho (deixa a fonte escolhida no g).
+    static String cabe(Graphics2D g, String s, double max) {
+        if (s == null) s = "";
+        String abrev = s;
+        int esp = s.indexOf(' ');
+        if (esp > 0 && esp < s.length() - 1) abrev = s.charAt(0) + ". " + s.substring(esp + 1).trim();
+        for (float t : new float[] {12.5f, 11.5f}) {
+            g.setFont(Estreia.semi(t));
+            for (String v : new String[] {s, abrev})
+                if (g.getFont().getStringBounds(v, g.getFontRenderContext()).getWidth() <= max) return v;
+        }
+        FontMetrics fm = g.getFontMetrics();
+        while (abrev.length() > 1 && fm.getStringBounds(abrev + "…", g).getWidth() > max) abrev = abrev.substring(0, abrev.length() - 1);
+        return abrev + "…";
+    }
+
     static String corta(String s, FontMetrics fm, double max) {
         if (s == null) return "";
         if (fm.stringWidth(s) <= max) return s;
@@ -1889,32 +1907,38 @@ public class Partida extends JComponent implements ActionListener {
             String n = String.valueOf(a.numero);
             g.setColor(brilho(fundo) > 0.55 ? new Color(0x14110A) : Color.WHITE);
             centro(g, n, x + 61, cy);
-            // nome
+            // nome: vai ate a nota; os gols e cartoes ficam numa linha embaixo dele, sem empurrar
             boolean foraPos = Boolean.TRUE.equals(chama(a.f, "gF"));
             int[] ex = extras.get(a.f);
-            double nx = x + 78, fimNome = x + w - 122;
-            g.setFont(Estreia.semi(12.5f));
+            boolean marcas = ex != null && (ex[0] > 0 || ex[1] > 0);
+            boolean embaixo = marcas && rh >= 30;
+            double nx = x + 78, fimNome = x + w - 122 - (foraPos ? 16 : 0);
+            double reserva = marcas && !embaixo ? ex[0] * 13 + (ex[1] > 0 ? 11 : 0) : 0;
+            double ny = embaixo ? cy - 5 : cy;
+            g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+            String nome = cabe(g, nome(a.f), fimNome - nx - reserva);
             fm = g.getFontMetrics();
-            double reserva = (ex != null ? (ex[0] * 13 + (ex[1] > 0 ? 11 : 0)) : 0) + (foraPos ? 16 : 0);
-            String nome = corta(nome(a.f), fm, fimNome - nx - reserva);
             g.setColor(foraPos ? new Color(0xFFB4A8) : Tema.TEXTO);
-            g.drawString(nome, (float) nx, (float) (cy + fm.getAscent() / 2.0 - 2));
-            double ix = nx + fm.stringWidth(nome) + 5;
+            g.drawString(nome, (float) nx, (float) (ny + fm.getAscent() / 2.0 - 2));
+            double ix = nx + fm.getStringBounds(nome, g).getWidth() + 5;
+            g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_OFF);
             if (foraPos) {
-                exclamacao(g, ix + 6, cy, 6);
+                exclamacao(g, ix + 6, ny, 6);
                 ix += 16;
             }
-            if (ex != null) {
+            if (marcas) {
+                double my = embaixo ? cy + 8 : cy, d = embaixo ? 8 : 10;
+                if (embaixo) ix = nx;
                 for (int i = 0; i < ex[0]; i++) {
                     g.setColor(Color.WHITE);
-                    g.fill(new Ellipse2D.Double(ix, cy - 5, 10, 10));
+                    g.fill(new Ellipse2D.Double(ix, my - d / 2, d, d));
                     g.setColor(new Color(0x1A1A1A));
-                    g.draw(new Ellipse2D.Double(ix, cy - 5, 10, 10));
-                    ix += 13;
+                    g.draw(new Ellipse2D.Double(ix, my - d / 2, d, d));
+                    ix += d + 3;
                 }
                 if (ex[1] > 0) {
                     g.setColor(ex[1] == 1 ? new Color(0xF5D547) : new Color(0xE5463B));
-                    g.fill(new RoundRectangle2D.Double(ix, cy - 6, 8, 12, 2, 2));
+                    g.fill(new RoundRectangle2D.Double(ix, my - d * 0.6, d * 0.8, d * 1.2, 2, 2));
                 }
             }
             // nota ao vivo (com seta quando sobe ou cai)
