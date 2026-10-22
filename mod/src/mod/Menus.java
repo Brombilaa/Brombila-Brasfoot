@@ -101,6 +101,10 @@ final class Menus {
             "M14.2 9.8a3 3 0 1 0 0 4.4");
         icone("escanteio", "M3 20h18", "M8 20V4", "M8 4.5l9 3-9 3", "M3 15a5 5 0 0 1 5 5");
         icone("falso9", circ(12, 9, 4.5), "M16.5 9v4.5a5.5 5.5 0 0 1-5.5 5.5H8.5");
+        icone("estadio", new Ellipse2D.Double(3, 5, 18, 9), "M3 9.5V16.5C3 19 7 21 12 21C17 21 21 19 21 16.5V9.5",
+            "M8 13.6v6.8M16 13.6v6.8");
+        icone("torcida", circ(7, 9, 2.5), circ(17, 9, 2.5), circ(12, 7.5, 3), "M2.5 19v-1a4 4 0 0 1 4-4h1",
+            "M21.5 19v-1a4 4 0 0 0-4-4h-1", "M6.5 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h2a4.5 4.5 0 0 1 4.5 4.5V20");
     }
 
     private static final String[][] REGRAS = {
