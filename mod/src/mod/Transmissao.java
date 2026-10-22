@@ -386,17 +386,6 @@ final class Transmissao {
             g.setColor(new Color(0, 0, 0, 95));
             g.fill(elipse(c, bx + 0.05, bz + 0.05, 0.2, 0.2));
         }
-        // rastro do passe
-        if (aoVivo && f.bv && (agora < p.rastroAte || p.receptor != null)) {
-            double rx = p.rastroX0 * CX, rz = (1 - p.rastroY0) * CZ;
-            double[] a0 = new double[3], a1 = new double[3];
-            c.projeta(rx, 0.05, rz, a0); c.projeta(bx, 0.05, bz, a1);
-            float alfa = p.receptor != null ? 0.7f : Math.max(0, (p.rastroAte - agora) / 450f) * 0.7f;
-            float pm = (float) c.pxPorM(c.fundo(bx, 0, bz));
-            g.setStroke(new BasicStroke(Math.max(1.5f, pm * 0.1f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{pm * 0.5f, pm * 0.45f}, 0f));
-            g.setColor(new Color(242, 193, 78, (int) (alfa * 255)));
-            g.draw(new Line2D.Double(a0[0], a0[1], a1[0], a1[1]));
-        }
         // jogadores, bola e gols, do mais longe para o mais perto
         ArrayList<Coisa> l = new ArrayList<Coisa>();
         for (int i = 0; i < f.a.length; i++) {

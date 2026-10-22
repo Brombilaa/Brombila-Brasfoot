@@ -1324,14 +1324,6 @@ public class Partida extends JComponent implements ActionListener {
 
     void pintaJogo(Graphics2D g, long agora) {
         double R = Math.max(7, campo.width * 0.0165);
-        // rastro do passe/chute
-        if (agora < rastroAte || receptor != null || (lance != null && !lance.acabou && dono == null)) {
-            float alfa = receptor != null || dono == null ? 0.75f : Math.max(0, (rastroAte - agora) / 450f) * 0.75f;
-            g.setStroke(new BasicStroke((float) Math.max(1.5, R * 0.16), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f,
-                new float[]{(float) (R * 0.5), (float) (R * 0.45)}, 0f));
-            g.setColor(new Color(242, 193, 78, (int) (alfa * 255)));
-            if (bolaVisivel) g.draw(new Line2D.Double(sx(rastroX0), sy(rastroY0), sx(bolaX), sy(bolaY)));
-        }
         // sombras
         ArrayList<Ator> ordem = new ArrayList<Ator>(atores.values());
         Collections.sort(ordem, new Comparator<Ator>() {
