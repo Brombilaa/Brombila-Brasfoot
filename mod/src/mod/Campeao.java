@@ -60,7 +60,7 @@ final class Campeao {
         Object ic = Dialogos.campo(dj, "uu") instanceof JLabel ? ((JLabel) Dialogos.campo(dj, "uu")).getIcon() : null;
         Object at = Dialogos.campo(dj, "aeJ");
         best.ah clube = procuraTime(time);
-        Festa f = new Festa(time, comp, tec, clube, ic instanceof Icon ? (Icon) ic : null, trofeu(at));
+        Festa f = new Festa(time, comp, tec, clube, ic instanceof Icon ? (Icon) ic : null, trofeu(at, comp));
         dj.removeAll();
         dj.setLayout(new BorderLayout());
         dj.setBorder(null);
@@ -86,11 +86,23 @@ final class Campeao {
         return null;
     }
 
-    // Taca da competicao (pasta trofeus do jogo) em tamanho original.
-    private static Image trofeu(Object at) {
+    // Taca: um dos seis modelos nossos (mod/tacas, tools/tacas/tacas.py) escolhido pelo tipo
+    // da competicao, com o nome gravado na placa. Sem o modelo, usa a taca do jogo.
+    private static Image trofeu(Object at, String comp) {
+        String nome = "";
         try {
-            String[] n = ((best.at) at).mA();
-            ImageIcon i = best.aq.x(n[0]);
+            nome = ((best.at) at).mA()[0];
+        } catch (Throwable t) {
+            // sem nome: modelo de liga
+        }
+        try {
+            java.net.URL u = Campeao.class.getResource("/mod/tacas/" + modelo(nome) + ".png");
+            if (u != null) return grava(javax.imageio.ImageIO.read(u), comp);
+        } catch (Throwable t) {
+            // taca do jogo abaixo
+        }
+        try {
+            ImageIcon i = best.aq.x(nome);
             if (i != null && i.getIconWidth() > 0) return i.getImage();
         } catch (Throwable t) {
             // taca generica abaixo
@@ -100,6 +112,68 @@ final class Campeao {
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    static String modelo(String n) {
+        n = n == null ? "" : n.toLowerCase().replace("tr_", "");
+        String[] selecoes = {"copamundo", "copaamerica", "eurocopa", "copaafrica", "copaasia", "copaouro", "copaofc",
+            "liganacoes", "finalissima", "mundial", "supermundial"};
+        String[] continental = {"libertadores", "sulamericana", "ligacampeoes", "ligaeuropa", "conference", "ligaafc",
+            "ligacaf", "ligaconcacaf", "ligaofc"};
+        String[] estadual = {"estadual", "copanordeste", "copaverde", "riosaopaulo"};
+        for (String s : selecoes) if (n.startsWith(s)) return "selecoes";
+        for (String s : continental) if (n.startsWith(s)) return "continental";
+        for (String s : estadual) if (n.startsWith(s)) return "estadual";
+        if (n.startsWith("supercopa") || n.startsWith("recopa")) return "supercopa";
+        if (n.startsWith("copa")) return "copa";
+        return "liga";
+    }
+
+    // Placa da base (retangulo de tools/tacas/tacas.py, igual nos seis modelos).
+    static final Rectangle PLACA = new Rectangle(132, 504, 176, 49);
+
+    // Escreve o nome na placa, como gravado no metal, e corta as bordas transparentes.
+    static BufferedImage grava(BufferedImage src, String comp) {
+        BufferedImage im = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = im.createGraphics();
+        g.drawImage(src, 0, 0, null);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        String s = comp == null ? "" : comp.trim().toUpperCase();
+        if (s.length() > 0) {
+            Rectangle r = PLACA;
+            float px = 26f;
+            Font f;
+            FontMetrics fm;
+            do {
+                f = Estreia.titulo(px);
+                fm = g.getFontMetrics(f);
+                px -= 0.5f;
+            } while (fm.stringWidth(s) > r.width - 16 && px > 11);
+            float x = r.x + (r.width - fm.stringWidth(s)) / 2f;
+            float y = r.y + (r.height + fm.getAscent() - fm.getDescent()) / 2f;
+            g.setFont(f);
+            g.setColor(new Color(255, 236, 190, 120));
+            g.drawString(s, x, y + 1.2f);
+            g.setColor(new Color(0x3A2A0E));
+            g.drawString(s, x, y);
+        }
+        g.dispose();
+        // corta o transparente em volta
+        int x0 = im.getWidth(), y0 = im.getHeight(), x1 = -1, y1 = -1;
+        for (int y = 0; y < im.getHeight(); y++) {
+            for (int x = 0; x < im.getWidth(); x++) {
+                if ((im.getRGB(x, y) >>> 24) > 8) {
+                    if (x < x0) x0 = x;
+                    if (x > x1) x1 = x;
+                    if (y < y0) y0 = y;
+                    if (y > y1) y1 = y;
+                }
+            }
+        }
+        if (x1 < 0) return im;
+        return im.getSubimage(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
     }
 
     // ------------------------------------------------------------------------------------
@@ -134,7 +208,7 @@ final class Campeao {
             escudo = e;
             cor1 = a;
             cor2 = b;
-            taca = tr == null ? null : escala(tr, 1.45);
+            taca = tr == null ? null : tr instanceof BufferedImage ? reduz((BufferedImage) tr, ALTURA_TACA) : escala(tr, 1.45);
             fundo = carregaFundo();
             setLayout(null);
             setOpaque(true);
@@ -638,6 +712,25 @@ final class Campeao {
     }
 
     // ------------------------------------------------------------------ imagens
+
+    static final int ALTURA_TACA = 248;
+
+    // Reduz em passos de metade ate a altura pedida: a taca grande fica nitida, sem serrilhado.
+    static BufferedImage reduz(BufferedImage im, int alt) {
+        BufferedImage cur = im;
+        while (cur.getHeight() > alt) {
+            int nh = Math.max(alt, cur.getHeight() / 2);
+            int nw = (int) Math.round(cur.getWidth() * (double) nh / cur.getHeight());
+            BufferedImage d = new BufferedImage(nw, nh, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g = d.createGraphics();
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            g.drawImage(cur, 0, 0, nw, nh, null);
+            g.dispose();
+            cur = d;
+        }
+        return cur;
+    }
 
     static BufferedImage escala(Image im, double s) {
         ImageIcon i = new ImageIcon(im);
