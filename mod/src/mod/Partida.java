@@ -1909,19 +1909,45 @@ public class Partida extends JComponent implements ActionListener {
             botaoOrdens.setRect(0, 0, 0, 0);
             oy = y + h;
         }
-        // legenda
-        ly += 8;
-        if (ly + 56 < oy) {
-            g.setFont(Estreia.texto(11f));
-            fm = g.getFontMetrics();
-            exclamacao(g, x + 22, ly + 8, 6);
-            g.setFont(Estreia.texto(11f));
-            g.setColor(Tema.TEXTO_FRACO);
-            g.drawString("fora de posição (rende menos)", (float) (x + 34), (float) (ly + 12));
-            g.drawString("F1 a F5: velocidade", (float) (x + 16), (float) (ly + 32));
-            g.drawString("Espaço: substituições", (float) (x + 16), (float) (ly + 50));
-            if (ly + 76 < oy) g.drawString("V: câmera 3D ou prancheta", (float) (x + 16), (float) (ly + 68));
+        // legenda: teclas desenhadas e o simbolo de fora de posicao
+        ly += 10;
+        String[][] linhas = {{"F1–F5", "Velocidade"}, {"Espaço", "Substituições"}, {"V", "Câmera 3D / prancheta"}, {"O", "Dar ordens"}, {"!", "Fora de posição (rende menos)"}};
+        if (ly + 40 < oy) {
+            g.setColor(Tema.BORDA);
+            g.draw(new Line2D.Double(x + 14, ly, x + w - 14, ly));
+            g.setFont(Estreia.espacada(Estreia.semi(9.5f), 0.14f));
+            g.setColor(OURO);
+            g.drawString("CONTROLES", (float) (x + 16), (float) (ly + 22));
+            ly += 34;
+            for (String[] l : linhas) {
+                if (ly + 24 > oy - 6) break;
+                if (l[1].equals("Dar ordens") && botaoOrdens.width <= 0) continue;
+                double cy = ly + 10;
+                if (l[0].equals("!")) exclamacao(g, x + 16 + 9, cy, 8);
+                else tecla(g, l[0], x + 16, cy);
+                g.setFont(Estreia.texto(12f));
+                g.setColor(l[0].equals("!") ? new Color(0xFFB4A8) : Tema.TEXTO);
+                fm = g.getFontMetrics();
+                g.drawString(l[1], (float) (x + 16 + 58), (float) (cy + fm.getAscent() / 2.0 - 2));
+                ly += 26;
+            }
         }
+    }
+
+    // tecla de teclado desenhada (com a "sombra" de baixo, como uma tecla de verdade)
+    static void tecla(Graphics2D g, String t, double x, double cy) {
+        g.setFont(Estreia.negrito(10f));
+        FontMetrics fm = g.getFontMetrics();
+        double w = Math.max(20, fm.stringWidth(t) + 12), h = 19, y = cy - h / 2;
+        g.setColor(new Color(0x0A0C0B));
+        g.fill(new RoundRectangle2D.Double(x, y + 2, w, h, 7, 7));
+        g.setPaint(new GradientPaint(0, (float) y, new Color(0x2C322E), 0, (float) (y + h), new Color(0x1B201D)));
+        g.fill(new RoundRectangle2D.Double(x, y, w, h, 7, 7));
+        g.setColor(new Color(242, 193, 78, 120));
+        g.setStroke(new BasicStroke(1f));
+        g.draw(new RoundRectangle2D.Double(x + 0.5, y + 0.5, w - 1, h - 1, 7, 7));
+        g.setColor(OURO);
+        g.drawString(t, (float) (x + w / 2 - fm.stringWidth(t) / 2.0), (float) (y + h / 2 + fm.getAscent() / 2.0 - 1.5));
     }
 
     // gols e cartoes de cada jogador nesta partida
