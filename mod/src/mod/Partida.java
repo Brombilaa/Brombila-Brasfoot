@@ -121,6 +121,7 @@ public class Partida extends JComponent implements ActionListener {
     final boolean[] planoVisto = new boolean[2];
 
     // camada pintada
+    final Transmissao transmissao = new Transmissao(this);
     BufferedImage gramado;
     Rectangle2D.Double campo = new Rectangle2D.Double();
 
@@ -129,6 +130,7 @@ public class Partida extends JComponent implements ActionListener {
         int lado, numero, vaga;
         double x, y, vx, vy;
         final double fase = Math.random() * 6.28;
+        double passo = Math.random() * 8;     // passo da corrida do boneco 3D
         long visto;
     }
 
@@ -211,6 +213,13 @@ public class Partida extends JComponent implements ActionListener {
         relogio.setCoalesce(true);
         MouseAdapter m = new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
+                long agora = System.currentTimeMillis();
+                if (ordens == null && transmissao.emReplay(agora)) {
+                    long resta = transmissao.pula(agora);
+                    if (pausado) retomaEm = Math.max(agora, retomaEm - resta);
+                    repaint();
+                    return;
+                }
                 if (ordens != null) {
                     int r = ordens.clique(e.getPoint());
                     if (r == 2) fechaOrdens(true);
@@ -252,6 +261,10 @@ public class Partida extends JComponent implements ActionListener {
             public void actionPerformed(ActionEvent e) {
                 if (ordens != null) fechaOrdens(false); else if (verCampo) abreOrdens();
             }
+        });
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_V, 0), "mod.camera");
+        getActionMap().put("mod.camera", new javax.swing.AbstractAction() {
+            public void actionPerformed(ActionEvent e) { Transmissao.ligado = !Transmissao.ligado; repaint(); }
         });
         getActionMap().put("mod.ordens.sai", new javax.swing.AbstractAction() {
             public void actionPerformed(ActionEvent e) { if (ordens != null) fechaOrdens(false); }
@@ -369,6 +382,20 @@ public class Partida extends JComponent implements ActionListener {
         try { return metodo(o.getClass(), nome).invoke(o); } catch (Throwable t) { return null; }
     }
 
+    static Object chamaInt(Object o, String nome, int arg) {
+        if (o == null) return null;
+        for (Class<?> k = o.getClass(); k != null; k = k.getSuperclass()) {
+            try {
+                Method m = k.getDeclaredMethod(nome, int.class);
+                m.setAccessible(true);
+                return m.invoke(o, arg);
+            } catch (NoSuchMethodException e) {
+                continue;
+            } catch (Throwable t) { return null; }
+        }
+        return null;
+    }
+
     static Object estatico(Class<?> c, String nome) {
         try { return metodo(c, nome).invoke(null); } catch (Throwable t) { return null; }
     }
@@ -430,7 +457,7 @@ public class Partida extends JComponent implements ActionListener {
         ultimoQuadro = agora;
         try {
             le(agora);
-            if (jogo != null) anima(agora, dt);
+            if (jogo != null) { anima(agora, dt); transmissao.grava(agora); }
         } catch (Throwable t) { t.printStackTrace(); }
         if (pausado && agora >= retomaEm && ordens == null) retoma();
         if (jogo != null && isShowing()) repaint();
@@ -483,6 +510,7 @@ public class Partida extends JComponent implements ActionListener {
         fim = false;
         golAte = 0;
         cores();
+        transmissao.novoJogo();
         for (int lado = 0; lado < 2; lado++) {
             List<?> l = lista(chama(j, lado == 0 ? "hp" : "hq"));
             ArrayList<Ator> novos = new ArrayList<Ator>();
@@ -685,7 +713,12 @@ public class Partida extends JComponent implements ActionListener {
                         posse = 1 - ladoGol;
                     }
                 };
-                pausa(agora, l.dur + 2300, d);
+                long extra = 0;
+                if (d >= 200 && isShowing() && verCampo && transmissao.pronto()) {
+                    transmissao.agendaReplay(golDe, golAte, lado);
+                    extra = Transmissao.REPLAY_MS;
+                }
+                pausa(agora, l.dur + 2300 + extra, d);
             } else if (tipo == DEFENDE || tipo == PENALTI_PERDIDO && chama(ev, "ep") != null) {
                 double gy = goleiro != null ? Math.max(0.42, Math.min(0.58, goleiro.y)) : 0.5;
                 l.chave(fimChute, frente(lado, 0.968), gy + (sorte.nextDouble() - 0.5) * 0.04, 0.2, goleiro);
@@ -826,9 +859,10 @@ public class Partida extends JComponent implements ActionListener {
         if (p == null || p.jogo == null) return "sem";
         long agora = System.currentTimeMillis();
         if (p.fim) return "fim";
+        if (p.transmissao.emReplay(agora)) return "replay " + (agora - p.transmissao.replayDe) + " " + Transmissao.ms + "ms";
         if (agora >= p.golDe && agora < p.golAte) return "gol " + (agora - p.golDe);
-        if (p.lance != null) return (p.lance.acabou ? "lance " : "andando ") + p.lance.tipo + " " + p.gt;
-        return "jogo " + p.gt;
+        if (p.lance != null) return (p.lance.acabou ? "lance " : "andando ") + p.lance.tipo + " " + p.gt + " " + Transmissao.ms + "ms";
+        return "jogo " + p.gt + " " + Transmissao.ms + "ms";
     }
 
     // ------------------------------------------------------------------ jogadores
@@ -977,6 +1011,7 @@ public class Partida extends JComponent implements ActionListener {
             a.vy += (qy - a.vy) * k;
             a.x += a.vx * dt;
             a.y += a.vy * dt;
+            a.passo += Math.hypot(a.vx * 105, a.vy * 68) * dt * 3.3;
         }
         afasta();
         for (Iterator<Marca> it = marcas.iterator(); it.hasNext();) if (it.next().ate < agora) it.remove();
@@ -1077,12 +1112,25 @@ public class Partida extends JComponent implements ActionListener {
         fw = Math.max(200, fw);
         double pw = fw * 1.07, ph = fw * 0.648 * 1.1;
         double px = areaX + (areaW - pw) / 2;
-        campo.setRect(px + fw * 0.035, fw * 0.648 * 0.05, fw, fw * 0.648);
-        pintaGramado(g, (int) Math.round(px), 0, (int) Math.round(pw), (int) Math.round(ph));
         Shape clip = g.getClip();
-        g.clip(new RoundRectangle2D.Double(px, 0, pw, ph, 18, 18));
-        pintaJogo(g, agora);
-        g.setClip(clip);
+        if (transmissao.pronto()) {
+            // 3D: estadio com camera isometrica (e replay de TV depois dos gols)
+            campo.setRect(px, 0, pw, ph);
+            g.clip(new RoundRectangle2D.Double(px, 0, pw, ph, 18, 18));
+            transmissao.pinta(g, new Rectangle2D.Double(px, 0, pw, ph), agora);
+            if (agora >= golDe && agora < golAte) pintaGol(g, agora);
+            if (aviso != null && agora < avisoAte) pintaAviso(g, aviso, agora);
+            g.setClip(clip);
+            g.setColor(new Color(242, 193, 78, 60));
+            g.setStroke(new BasicStroke(1.2f));
+            g.draw(new RoundRectangle2D.Double(px + 0.6, 0.6, pw - 1.2, ph - 1.2, 18, 18));
+        } else {
+            campo.setRect(px + fw * 0.035, fw * 0.648 * 0.05, fw, fw * 0.648);
+            pintaGramado(g, (int) Math.round(px), 0, (int) Math.round(pw), (int) Math.round(ph));
+            g.clip(new RoundRectangle2D.Double(px, 0, pw, ph, 18, 18));
+            pintaJogo(g, agora);
+            g.setClip(clip);
+        }
         double y = ph + 8;
         pintaLegenda(g, px, y, pw, legendaH);
         y += legendaH + 8;
@@ -1631,6 +1679,7 @@ public class Partida extends JComponent implements ActionListener {
             g.drawString("fora de posição (rende menos)", (float) (x + 34), (float) (ly + 12));
             g.drawString("F1 a F5: velocidade", (float) (x + 16), (float) (ly + 32));
             g.drawString("Espaço: substituições", (float) (x + 16), (float) (ly + 50));
+            if (ly + 76 < oy) g.drawString("V: câmera 3D ou prancheta", (float) (x + 16), (float) (ly + 68));
         }
     }
 

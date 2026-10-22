@@ -198,9 +198,9 @@ class Jogador:
         casca = tronco - 0.013
         for d in bracos_sup: casca = smin(casca, d - 0.024, 0.03)
         T = self.T
-        bainha = plano(p, self.pelve + T @ [0, -0.045, 0], T @ [0, -1, 0])
+        bainha = plano(p, self.pelve + T @ [0, -0.06, 0], T @ [0, -1, 0])
         gola = elip(p, self.pescoco + T @ [0, 0.035, 0.035], (0.078, 0.07, 0.09), T)
-        cintura = caixa(p, self.pelve + T @ [0, 0.02, 0], (0.184, 0.07, 0.132), 0.06, T)
+        cintura = caixa(p, self.pelve + T @ [0, 0.0, 0], (0.184, 0.085, 0.134), 0.06, T)
         casca = smin(casca, cintura, 0.05)
         casca = smax(casca, bainha, 0.01)
         casca = smax(casca, -gola, 0.01)
@@ -222,7 +222,7 @@ class Jogador:
             perna = cone(p, q + Rq @ [0, 0.03, 0], fim, 0.125, 0.122)
             perna = smax(perna, plano(p, fim, Rq @ [0, -1, 0.15]), 0.008)
             c = smin(c, perna, 0.04)
-        topo = plano(p, self.pelve + T @ [0, 0.0, 0], T @ [0, 1, 0])
+        topo = plano(p, self.pelve + T @ [0, 0.03, 0], T @ [0, 1, 0])
         return smax(c, topo, 0.01)
 
     # ---- sdf completa
@@ -348,8 +348,9 @@ class Uniforme:
 LUZ = np.array([-0.5, 0.8, 0.6]); LUZ /= np.linalg.norm(LUZ)
 CONTRA = np.array([0.6, 0.35, -0.7]); CONTRA /= np.linalg.norm(CONTRA)
 
-def render(j, giro, inclinacao, altura_px, aa=2, sombra=True, contorno=0.0):
-    """retorna RGBA; o pe do jogador fica em (largura/2, 86% da altura)"""
+def ilumina(j, giro, inclinacao, altura_px, aa):
+    """ray marching + luz: devolve a grade da imagem e, para cada pixel acertado, ponto,
+    material, multiplicador de luz (difusa+ceu, com sombra e oclusao) e brilho somado (rim+spec)"""
     M = rot_x(inclinacao) @ rot_y(giro)                    # boneco -> camera
     escala = altura_px * aa / 1.95
     W = int(altura_px * 0.95 * aa); H = int(altura_px * 1.22 * aa)
@@ -359,66 +360,64 @@ def render(j, giro, inclinacao, altura_px, aa=2, sombra=True, contorno=0.0):
     oc = np.stack([X.ravel(), Y.ravel(), np.full(X.size, 3.0)], 1)
     dc = np.array([0, 0, -1.0])
     o = oc @ M; d = dc @ M                                   # camera -> boneco
-    # caixa envolvente
     inv = 1.0 / np.where(np.abs(d) < 1e-9, 1e-9, d)
     t0 = (j.min - o) * inv; t1 = (j.max - o) * inv
     tmin = np.max(np.minimum(t0, t1), 1); tmax = np.min(np.maximum(t0, t1), 1)
     vivo = np.where(tmax > np.maximum(tmin, 0))[0]
     t = np.maximum(tmin[vivo], 0)
-    acerto = np.zeros(len(o), bool); tt = np.zeros(len(o)); dmin = np.full(len(o), 9.0)
+    acerto = np.zeros(len(o), bool); tt = np.zeros(len(o))
     eps = 0.6 / escala
     ativos = vivo.copy()
     for it in range(110):
         if len(ativos) == 0: break
         p = o[ativos] + np.outer(t, d)
         dist = j.sdf(p)
-        dmin[ativos] = np.minimum(dmin[ativos], dist)
         hit = dist < eps
         acerto[ativos[hit]] = True; tt[ativos[hit]] = t[hit]
         t = t + np.maximum(dist * 0.85, eps * 0.5)
         seg = (~hit) & (t < tmax[ativos])
         ativos = ativos[seg]; t = t[seg]
-    img = np.zeros((len(o), 4))
     idx = np.where(acerto)[0]
+    if not len(idx):
+        return W, H, escala, idx, None, None, None, None
+    p = o[idx] + np.outer(tt[idx], d)
+    h = 0.0015
+    n = np.stack([j.sdf(p + [h, 0, 0]) - j.sdf(p - [h, 0, 0]),
+                  j.sdf(p + [0, h, 0]) - j.sdf(p - [0, h, 0]),
+                  j.sdf(p + [0, 0, h]) - j.sdf(p - [0, 0, h])], 1)
+    n /= np.linalg.norm(n, axis=1)[:, None] + 1e-12
+    mat = j.material(p)
+    Lw = rot_y(giro).T @ LUZ; Cw = rot_y(giro).T @ CONTRA
+    dif = np.clip(n @ Lw * 0.85 + 0.15, 0, 1)            # luz "enrolada", mais macia
+    sh = np.ones(len(p)); ts = np.full(len(p), 0.02)
+    for _ in range(28):
+        q = p + n * 0.004 + np.outer(ts, Lw)
+        ds = j.sdf(q)
+        sh = np.minimum(sh, np.clip(10 * ds / ts, 0, 1))
+        ts += np.clip(ds, 0.01, 0.08)
+    sh = np.clip(sh, 0, 1) ** 1.5
+    ao = np.ones(len(p))
+    for k, dk in enumerate((0.015, 0.035, 0.06, 0.1)):
+        ao -= (dk - j.sdf(p + n * dk)) * (1.6 / (k + 1))
+    ao = np.clip(ao, 0.35, 1)
+    ceu = 0.55 + 0.45 * n[:, 1]
+    rim = np.clip(n @ Cw, 0, 1) ** 2.5
+    luz = 0.42 * ceu * ao + 0.95 * dif * sh * (0.6 + 0.4 * ao)
+    hv = Lw + np.array([0, 0, 1.0]) @ M; hv /= np.linalg.norm(hv)
+    spec = np.clip(n @ hv, 0, 1) ** 40
+    brilha = np.isin(mat, [CAMISA, CALCAO, CHUTEIRA]) * 0.18 + (mat == PELE) * 0.06
+    soma = rim * 0.22 + spec * brilha * sh
+    return W, H, escala, idx, p, mat, luz, soma
+
+def render(j, giro, inclinacao, altura_px, aa=2, sombra=True, contorno=0.0):
+    """retorna RGBA; o pe do jogador fica em (largura/2, 86% da altura)"""
+    W, H, escala, idx, p, mat, luz, soma = ilumina(j, giro, inclinacao, altura_px, aa)
+    img = np.zeros((W * H, 4))
     if len(idx):
-        p = o[idx] + np.outer(tt[idx], d)
-        h = 0.0015
-        n = np.stack([j.sdf(p + [h, 0, 0]) - j.sdf(p - [h, 0, 0]),
-                      j.sdf(p + [0, h, 0]) - j.sdf(p - [0, h, 0]),
-                      j.sdf(p + [0, 0, h]) - j.sdf(p - [0, 0, h])], 1)
-        n /= np.linalg.norm(n, axis=1)[:, None] + 1e-12
-        mat = j.material(p)
         base = j.u.cores(j, mat, p)
-        # luz no mundo: gira a luz para o espaco do boneco
-        Lw = rot_y(giro).T @ LUZ; Cw = rot_y(giro).T @ CONTRA
-        dif = np.clip(n @ Lw * 0.85 + 0.15, 0, 1)            # luz "enrolada", mais macia
-        # sombra suave
-        sh = np.ones(len(p)); ts = np.full(len(p), 0.02)
-        for _ in range(28):
-            q = p + n * 0.004 + np.outer(ts, Lw)
-            ds = j.sdf(q)
-            sh = np.minimum(sh, np.clip(10 * ds / ts, 0, 1))
-            ts += np.clip(ds, 0.01, 0.08)
-        sh = np.clip(sh, 0, 1) ** 1.5
-        # oclusao
-        ao = np.ones(len(p))
-        for k, dk in enumerate((0.015, 0.035, 0.06, 0.1)):
-            ao -= (dk - j.sdf(p + n * dk)) * (1.6 / (k + 1))
-        ao = np.clip(ao, 0.35, 1)
-        ceu = 0.55 + 0.45 * n[:, 1]
-        rim = np.clip(n @ Cw, 0, 1) ** 2.5
-        luz = (0.42 * ceu * ao + 0.95 * dif * sh * (0.6 + 0.4 * ao))[:, None]
-        cor = base * luz + rim[:, None] * 0.22 * np.array([1.0, 0.95, 0.85])
-        # brilho leve no tecido sintetico e na chuteira
-        hv = Lw + np.array([0, 0, 1.0]) @ M; hv /= np.linalg.norm(hv)
-        spec = np.clip(n @ hv, 0, 1) ** 40
-        brilha = np.isin(mat, [CAMISA, CALCAO, CHUTEIRA]) * 0.18 + (mat == PELE) * 0.06
-        cor += (spec * brilha)[:, None] * sh[:, None]
+        cor = base * luz[:, None] + soma[:, None] * np.array([1.0, 0.95, 0.85])
         img[idx, :3] = np.clip(cor, 0, 1) ** (1 / 1.1)
         img[idx, 3] = 1
-    # borda suave pelo dmin dos raios que passaram perto
-    borda = (~acerto) & (dmin < eps * 2.5)
-    img[borda, 3] = np.clip(1 - (dmin[borda] - eps) / (eps * 1.5), 0, 1) * 0.0
     img = img.reshape(H, W, 4)
     if contorno > 0:
         a = img[..., 3] > 0
