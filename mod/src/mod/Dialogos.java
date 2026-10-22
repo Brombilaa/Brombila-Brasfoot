@@ -286,6 +286,11 @@ final class Dialogos {
                 boolean temPen = pen != null && pen.length > 1 && pen[0] >= 0 && pen[1] >= 0;
                 placar = j.hu() + " x " + j.hw();
                 penaltis = temPen ? "pên " + pen[0] + "-" + pen[1] : null;
+                if (pro == contra && temPen) {
+                    // decidido nos penaltis: conta quem venceu a disputa
+                    pro = casa ? pen[0] : pen[1];
+                    contra = casa ? pen[1] : pen[0];
+                }
                 if (j.hc() != time && j.hd() != time) {
                     letra = null;
                 } else if (pro > contra) {
