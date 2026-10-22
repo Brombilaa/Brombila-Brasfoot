@@ -53,7 +53,20 @@ final class Dialogos {
         else if (n.equals("a.fB")) opcoes(p);
         else if (n.equals("a.gx")) procura(p);
         else if (n.equals("a.jp")) sobre(p);
+        else if (n.equals("a.C") || n.equals("a.gh")) batedores(p);
         else if (!Outras.aplica(p, n)) Fichas.aplica(p, n);
+    }
+
+    // Penaltis: ordem dos batedores da disputa (a.C) e escolha do batedor na partida (a.gh).
+    // O tema ja cuida das cores; aqui so os titulos em portugues certo.
+    static void batedores(JPanel p) {
+        Object t = campo(p, "vf");
+        if (!(t instanceof javax.swing.JLabel)) return;
+        javax.swing.JLabel l = (javax.swing.JLabel) t;
+        String s = l.getText();
+        if (s == null) return;
+        if (s.startsWith("Disputa penalties")) l.setText("Disputa de pênaltis · ordem dos batedores");
+        else if (s.startsWith("Penalty - escolha")) l.setText("Pênalti · escolha o batedor");
     }
 
     // ------------------------------------------------------------- pecas comuns
