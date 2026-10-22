@@ -1256,9 +1256,11 @@ public class Partida extends JComponent implements ActionListener {
                     vmax = 6.5; ganho = 2.5;
                 }
             } else if (a == dono) {
-                double tras = a.lado == 0 ? -0.012 : 0.012;
+                // conduzindo: corre pelo caminho do lance e a bola vai colada no pe (ver pe());
+                // parado: fica logo atras da bola
+                double tras = conduz ? 0 : (a.lado == 0 ? -0.006 : 0.006);
                 alvo[0] = bolaX + tras; alvo[1] = bolaY;
-                vmax = SPRINT; ganho = 4;
+                vmax = SPRINT; ganho = conduz ? 6 : 4;
             } else if (a == pressiona) {
                 double tras = a.lado == 0 ? -0.03 : 0.03;
                 alvo[0] = bolaX + tras; alvo[1] = bolaY + (a.y < bolaY ? -0.02 : 0.02);
@@ -1289,6 +1291,7 @@ public class Partida extends JComponent implements ActionListener {
             a.solto = solto;
         }
         afasta();
+        pe(agora);
         for (Ator a : atores.values()) {
             if (a.solto) continue;
             if (a.x < 0) { a.x = 0; a.vx = Math.max(0, a.vx); }
@@ -1297,6 +1300,21 @@ public class Partida extends JComponent implements ActionListener {
             if (a.y > 1) { a.y = 1; a.vy = Math.min(0, a.vy); }
         }
         for (Iterator<Marca> it = marcas.iterator(); it.hasNext();) if (it.next().ate < agora) it.remove();
+    }
+
+    // conducao: a bola fica meio metro a frente do pe de quem conduz, na direcao em que ele corre
+    double peX = -1, peY;
+    long peDesde;
+    void pe(long agora) {
+        if (!conduz || dono == null) { peX = -1; return; }
+        if (peX < 0) peDesde = agora;
+        // logo depois de dominar, a bola vai do ponto do passe para o pe em 0,25 s
+        double w = Math.min(1, (agora - peDesde) / 250.0);
+        double vx = dono.vx * Transmissao.CX, vy = dono.vy * Transmissao.CZ, v = Math.hypot(vx, vy);
+        double dx = v > 0.8 ? vx / v : (dono.lado == 0 ? 1 : -1), dy = v > 0.8 ? vy / v : 0;
+        bolaX += (dono.x + dx * 0.55 / Transmissao.CX - bolaX) * w;
+        bolaY += (dono.y + dy * 0.55 / Transmissao.CZ - bolaY) * w;
+        peX = bolaX; peY = bolaY;
     }
 
     // proximo ponto do lance em que este jogador recebe a bola
@@ -1323,6 +1341,9 @@ public class Partida extends JComponent implements ActionListener {
         }
     }
 
+    Lance trechoDe;
+    int trecho;
+
     void posicionaBola(long agora) {
         receptor = null;
         conduz = false;
@@ -1332,6 +1353,7 @@ public class Partida extends JComponent implements ActionListener {
         double u = (agora - lance.inicio) / lance.dur;
         Chave ultima = k.get(k.size() - 1);
         if (k.size() == 1 || u >= ultima.t) {
+            if (!lance.acabou && peX >= 0) { ultima.x = peX; ultima.y = peY; }
             bolaX = ultima.x; bolaY = ultima.y; bolaH = 0;
             if (!lance.acabou) {
                 lance.acabou = true;
@@ -1347,6 +1369,12 @@ public class Partida extends JComponent implements ActionListener {
         }
         int i = 0;
         while (i + 1 < k.size() && k.get(i + 1).t <= u) i++;
+        // a conducao acabou: o proximo trecho sai de onde a bola esta no pe, sem pulo
+        if (lance != trechoDe) { trechoDe = lance; trecho = i; }
+        else if (i != trecho) {
+            if (peX >= 0) { k.get(i).x = peX; k.get(i).y = peY; }
+            trecho = i;
+        }
         Chave a = k.get(i), b = k.get(i + 1);
         double s = Math.max(0, Math.min(1, (u - a.t) / Math.max(1e-6, b.t - a.t)));
         if (b.salto) {
