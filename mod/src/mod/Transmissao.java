@@ -117,7 +117,7 @@ final class Transmissao {
             if (ic instanceof ImageIcon) img = ((ImageIcon) ic).getImage();
             Color c1 = Partida.cor(time, "kB", lado == 0 ? Color.WHITE : Color.BLACK), c2 = Partida.cor(time, "kC", lado == 0 ? Color.BLACK : Color.WHITE);
             kits[lado] = Bonecos.Kit.de(img, c1, c2);
-            if (lado == 1 && Partida.distancia(kits[0].media, kits[1].media) < 75) {
+            if (lado == 1 && parecidos(kits[0], kits[1])) {
                 // camisas parecidas: o visitante usa o outro uniforme (ou as cores que a prancheta usa)
                 Bonecos.Kit melhor = null;
                 for (int u = 1; u <= 3; u++) {
@@ -126,13 +126,18 @@ final class Transmissao {
                     Bonecos.Kit k = Bonecos.Kit.de(((ImageIcon) o).getImage(), c1, c2);
                     if (melhor == null || Partida.distancia(kits[0].media, k.media) > Partida.distancia(kits[0].media, melhor.media)) melhor = k;
                 }
-                if (melhor == null || Partida.distancia(kits[0].media, melhor.media) < 75) melhor = Bonecos.Kit.de(null, p.cor[1], p.aro[1]);
+                if (melhor == null || parecidos(kits[0], melhor)) melhor = Bonecos.Kit.de(null, p.cor[1], p.aro[1]);
                 kits[1] = melhor;
             }
         }
         goleiros[0] = Bonecos.Kit.de(null, new Color(0x2B2E2C), new Color(0xF2C14E));
         goleiros[1] = Bonecos.Kit.de(null, new Color(0xD8B35A), new Color(0x1A1408));
         torcida = null;
+    }
+
+    // de longe so se ve a cor media da camisa: perto na cor ou no claro/escuro confunde
+    static boolean parecidos(Bonecos.Kit a, Bonecos.Kit b) {
+        return Partida.distancia(a.media, b.media) < 110 && Math.abs(Partida.brilho(a.media) - Partida.brilho(b.media)) < 0.3;
     }
 
     Bonecos.Corpo corpo(Partida.Ator a) {
@@ -381,17 +386,6 @@ final class Transmissao {
             g.setColor(new Color(0, 0, 0, 95));
             g.fill(elipse(c, bx + 0.05, bz + 0.05, 0.2, 0.2));
         }
-        // rastro do passe
-        if (aoVivo && f.bv && (agora < p.rastroAte || p.receptor != null)) {
-            double rx = p.rastroX0 * CX, rz = (1 - p.rastroY0) * CZ;
-            double[] a0 = new double[3], a1 = new double[3];
-            c.projeta(rx, 0.05, rz, a0); c.projeta(bx, 0.05, bz, a1);
-            float alfa = p.receptor != null ? 0.7f : Math.max(0, (p.rastroAte - agora) / 450f) * 0.7f;
-            float pm = (float) c.pxPorM(c.fundo(bx, 0, bz));
-            g.setStroke(new BasicStroke(Math.max(1.5f, pm * 0.1f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f, new float[]{pm * 0.5f, pm * 0.45f}, 0f));
-            g.setColor(new Color(242, 193, 78, (int) (alfa * 255)));
-            g.draw(new Line2D.Double(a0[0], a0[1], a1[0], a1[1]));
-        }
         // jogadores, bola e gols, do mais longe para o mais perto
         ArrayList<Coisa> l = new ArrayList<Coisa>();
         for (int i = 0; i < f.a.length; i++) {
@@ -436,10 +430,17 @@ final class Transmissao {
                 p.etiqueta(g, "entrou", o[0], o[1] - R * 0.5, 9, new Color(0x5FCF8E));
             }
         }
+        // fora de posicao: "!" dourado sobre a cabeca
+        for (Partida.Ator a : p.foraAgora.keySet()) {
+            if (!p.atores.containsValue(a)) continue;
+            c.projeta(a.x * CX, 2.35, (1 - a.y) * CZ, o);
+            double R = Math.max(5, c.pxPorM(o[2]) * 0.2);
+            Partida.exclamacao(g, o[0], o[1] - R * 1.4, R);
+        }
         Partida.Ator mostra = p.dono != null ? p.dono : p.receptor;
         if (mostra != null && p.atores.containsValue(mostra)) {
             c.projeta(mostra.x * CX, 0, (1 - mostra.y) * CZ, o);
-            p.etiqueta(g, Partida.curto(Partida.nome(mostra.f)), o[0], o[1] + 14, 9.5, null);
+            p.etiqueta(g, Partida.curto(Partida.nome(mostra.f)) + "  " + Notas.texto(p.nota(mostra)), o[0], o[1] + 14, 9.5, null);
         }
     }
 

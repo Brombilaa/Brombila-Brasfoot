@@ -21,6 +21,7 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
+import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
@@ -93,6 +94,8 @@ public class Partida extends JComponent implements ActionListener {
     // bola e lance atual
     Lance lance;
     double bolaX = 0.5, bolaY = 0.5, bolaH;
+    double refX = 0.5, refY = 0.5;          // bola "suavizada" que o bloco do time acompanha
+    double ritmo = 1, acelera = 1;          // 1 = ritmo de verdade; acelera > 1 nas velocidades rapidas
     boolean bolaVisivel = true;
     Ator dono, receptor;
     boolean conduz;
@@ -120,6 +123,15 @@ public class Partida extends JComponent implements ActionListener {
     final int[] mentalidade = new int[2], pressaoTime = {1, 1};
     final boolean[] planoVisto = new boolean[2];
 
+    // notas ao vivo (Notas) e aviso de fora de posicao
+    final Map<Object, Double> notas = new IdentityHashMap<Object, Double>();
+    final Map<Object, double[]> tendencia = new IdentityHashMap<Object, double[]>();   // {nota de referencia, ate quando mostra a seta, direcao}
+    String chaveNotas = "";
+    final Map<Object, Boolean> foraAvisados = new IdentityHashMap<Object, Boolean>();
+    final Map<Ator, Boolean> foraAgora = new IdentityHashMap<Ator, Boolean>();
+    String alerta, alertaSub;
+    long alertaDe, alertaAte;
+
     // camada pintada
     final Transmissao transmissao = new Transmissao(this);
     BufferedImage gramado;
@@ -132,12 +144,13 @@ public class Partida extends JComponent implements ActionListener {
         final double fase = Math.random() * 6.28;
         double passo = Math.random() * 8;     // passo da corrida do boneco 3D
         long visto;
+        boolean solto;
     }
 
     static final class Chave {
         double t, x, y, h;
         Ator dono;
-        boolean salto;
+        boolean salto, chute;
         Chave(double t, double x, double y, double h, Ator dono, boolean salto) {
             this.t = t; this.x = x; this.y = y; this.h = h; this.dono = dono; this.salto = salto;
         }
@@ -485,6 +498,7 @@ public class Partida extends JComponent implements ActionListener {
         tempo = t;
         if (acabou) { termina(agora); return; }
         if (virou) segundoTempo(agora);
+        confereFora(agora);
         minuto(agora);
     }
 
@@ -505,6 +519,12 @@ public class Partida extends JComponent implements ActionListener {
         mentalidade[0] = mentalidade[1] = 0;
         pressaoTime[0] = pressaoTime[1] = 1;
         ordens = null;
+        notas.clear();
+        tendencia.clear();
+        chaveNotas = "";
+        foraAvisados.clear();
+        foraAgora.clear();
+        alertaAte = 0;
         gt = m;
         tempo = t;
         fim = false;
@@ -531,6 +551,7 @@ public class Partida extends JComponent implements ActionListener {
             }
         }
         bolaX = 0.5; bolaY = 0.5; bolaH = 0;
+        refX = 0.5; refY = 0.5;
         posse = 0;
         for (Ator a : atores.values()) {
             double[] p = base(a, 0);
@@ -543,6 +564,103 @@ public class Partida extends JComponent implements ActionListener {
         abas.setVisible(true);
         mostra(preferirCampo);
         dv.revalidate();
+        confereFora(agora);
+    }
+
+    // nota ao vivo de um jogador (refeita quando muda o minuto, o placar ou sai um evento)
+    double nota(Ator a) {
+        String chave = minutoCorrido() + "/" + lista(chama(jogo, "hE")).size() + "/" + inteiro(chama(jogo, "hu")) + "/" + inteiro(chama(jogo, "hw"));
+        if (!chave.equals(chaveNotas)) {
+            chaveNotas = chave;
+            notas.clear();
+            Map<Object, Notas.Lances> ev = Notas.lances(jogo);
+            long agora = System.currentTimeMillis();
+            for (Ator b : atores.values()) {
+                double n = Notas.nota(b.f, b.vaga, b.lado, jogo, Math.max(0, minutoCorrido()), ev);
+                notas.put(b.f, n);
+                double[] t = tendencia.get(b.f);
+                // seta so quando a nota muda de uma vez (gol, cartao, defesa...), nao no desgaste minuto a minuto
+                if (t == null) tendencia.put(b.f, new double[]{n, 0, 0});
+                else {
+                    if (Math.abs(n - t[0]) >= 0.25 - 1e-9) { t[2] = Math.signum(n - t[0]); t[1] = agora + 5000; }
+                    t[0] = n;
+                }
+            }
+        }
+        Double n = notas.get(a.f);
+        if (n == null) {
+            n = Notas.nota(a.f, a.vaga, a.lado, jogo, Math.max(0, minutoCorrido()), Notas.lances(jogo));
+            notas.put(a.f, n);
+        }
+        return n;
+    }
+
+    // avisa quando um jogador do seu time entra (ou passa a jogar) fora de posicao
+    void confereFora(long agora) {
+        foraAgora.clear();
+        if (!Boolean.TRUE.equals(chama(timeHumano(), "jZ"))) return;
+        ArrayList<Ator> novos = new ArrayList<Ator>();
+        for (Ator a : atores.values()) {
+            if (a.lado != humano || !Boolean.TRUE.equals(chama(a.f, "gF"))) continue;
+            foraAgora.put(a, Boolean.TRUE);
+            if (foraAvisados.put(a.f, Boolean.TRUE) == null) novos.add(a);
+        }
+        if (novos.isEmpty()) return;
+        Collections.sort(novos, new Comparator<Ator>() {
+            public int compare(Ator a, Ator b) { return ordem(a.vaga) - ordem(b.vaga); }
+        });
+        String min = Math.max(0, gt) + "'";
+        for (int i = novos.size() - 1; i >= 0; i--) {
+            Ator a = novos.get(i);
+            lances.add(0, new Linha(min, "Fora de posição: " + nome(a.f) + " é " + Notas.natural(a.f) + " e está jogando de " + Notas.funcao(a.vaga)
+                + ". Rende a metade da força.", 31, humano));
+        }
+        if (novos.size() == 1) {
+            Ator a = novos.get(0);
+            alerta = curto(nome(a.f)) + " fora de posição";
+            alertaSub = Notas.natural(a.f) + " jogando de " + Notas.funcao(a.vaga) + " · rende a metade";
+        } else {
+            alerta = novos.size() + " jogadores fora de posição";
+            alertaSub = "Rendem a metade da força · Espaço: substituições";
+        }
+        alertaDe = agora;
+        alertaAte = agora + 6500;
+    }
+
+    void pintaAlerta(Graphics2D g, long agora) {
+        double u = (agora - alertaDe) / (double) (alertaAte - alertaDe);
+        float alfa = (float) Math.max(0, Math.min(1, Math.min(u / 0.06, (1 - u) / 0.12)));
+        Composite antes = g.getComposite();
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alfa));
+        g.setFont(Estreia.semi(14f));
+        FontMetrics f1 = g.getFontMetrics();
+        Font sub = Estreia.texto(11.5f);
+        FontMetrics f2 = g.getFontMetrics(sub);
+        double w = Math.max(f1.stringWidth(alerta), f2.stringWidth(alertaSub)) + 70, h = 50;
+        double x = campo.getCenterX() - w / 2, y = campo.y + 14 + (1 - Math.min(1, u / 0.06)) * -10;
+        RoundRectangle2D.Double r = new RoundRectangle2D.Double(x, y, w, h, 16, 16);
+        g.setColor(new Color(10, 12, 11, 225));
+        g.fill(r);
+        g.setColor(new Color(242, 193, 78, 170));
+        g.setStroke(new BasicStroke(1.2f));
+        g.draw(r);
+        exclamacao(g, x + 28, y + h / 2, 11);
+        g.setColor(Tema.TEXTO);
+        g.drawString(alerta, (float) (x + 50), (float) (y + 21));
+        g.setFont(sub);
+        g.setColor(new Color(0xFFB4A8));
+        g.drawString(alertaSub, (float) (x + 50), (float) (y + 39));
+        g.setComposite(antes);
+    }
+
+    // bolinha dourada com "!" (fora de posicao)
+    static void exclamacao(Graphics2D g, double cx, double cy, double r) {
+        g.setColor(OURO);
+        g.fill(new Ellipse2D.Double(cx - r, cy - r, 2 * r, 2 * r));
+        g.setColor(new Color(0x14110A));
+        g.setStroke(new BasicStroke((float) Math.max(1.4, r * 0.26), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.draw(new Line2D.Double(cx, cy - r * 0.5, cx, cy + r * 0.1));
+        g.fill(new Ellipse2D.Double(cx - r * 0.15, cy + r * 0.36, r * 0.3, r * 0.3));
     }
 
     // ordem dos numeros das camisas: goleiro, defesa da direita para a esquerda, meio, ataque
@@ -623,6 +741,9 @@ public class Partida extends JComponent implements ActionListener {
         int peso = tipo == GOL ? 3 : (tipo == DEFENDE || tipo == FORA || tipo == PENALTI_PERDIDO) ? 2 : (tipo == NADA ? 0 : 1);
         pressao[i] += (lado == 0 ? 1 : -1) * peso;
         int d = atraso();
+        // 1 no ritmo de verdade (minuto de 300 ms ou mais) ate 0 na velocidade maxima (30 ms)
+        ritmo = Math.max(0, Math.min(1, Math.log(d / 30.0) / Math.log(300 / 30.0)));
+        acelera = 1 + (1 - ritmo) * 1.5;
         if (d < 60) {           // simulacao instantanea: so atualiza o fim
             posse = lado;
             return;
@@ -631,11 +752,15 @@ public class Partida extends JComponent implements ActionListener {
     }
 
     void constroi(int tipo, int lado, Object ev, long agora, int d) {
+        boolean chance = chance(tipo);
+        // o lance anterior ainda esta acontecendo: so as chances de gol interrompem; nas
+        // velocidades rapidas (o relogio nao espera) so o gol interrompe
+        if (lance != null && !lance.acabou && (!chance || (chance(lance.tipo) && tipo != GOL))) return;
         Lance l = new Lance();
         l.tipo = tipo;
         l.lado = lado;
         l.inicio = agora;
-        l.dur = Math.max(140, d * 0.9);
+        l.dur = 1000;
         int adv = 1 - lado;
         int dz = ev == null ? 0 : inteiro(chama(ev, "el"));
         Ator d0 = dono != null && dono.lado == lado ? dono : perto(lado, bolaX, bolaY, -1, null, true);
@@ -651,10 +776,6 @@ public class Partida extends JComponent implements ActionListener {
             if (serve != null && (serve.lado != lado || serve == chuta)) serve = null;
             if (chuta == null) return;
             boolean penalti = dz == 3 || tipo == PENALTI_PERDIDO, falta = dz == 4, olimpico = dz == 5;
-            if (tipo == GOL) {
-                double longe = dist(chuta.x, chuta.y, frente(lado, 0.87), 0.5);
-                l.dur = Math.max(Math.max(l.dur, 1900), longe / 0.55 / 0.72 * 1000);
-            }
             double fimChute;
             if (penalti) {
                 l.chave(0.30, frente(lado, 0.895), 0.5, 0, chuta, true);
@@ -687,11 +808,13 @@ public class Partida extends JComponent implements ActionListener {
             }
             Ator goleiro = goleiro(adv);
             if (tipo == GOL) {
-                l.chave(fimChute, frente(lado, 1.018), 0.5 + (sorte.nextDouble() - 0.5) * 0.085, olimpico ? 0.7 : 0.25, null);
+                l.chave(fimChute, frente(lado, 1.018), 0.5 + (sorte.nextDouble() - 0.5) * 0.085, olimpico ? 0.7 : 0.25, null).chute = true;
+                final Chave rede = l.chaves.get(l.chaves.size() - 1);
+                cronometra(l);
                 final Ator autor = dz == 2 ? atores.get(chama(ev, "eo")) : chuta;
                 final int ladoGol = lado;
                 final String quem = autor == null ? nome(chama(ev, "eo")) : nome(autor.f);
-                golDe = agora + (long) (l.dur * fimChute);
+                golDe = agora + (long) (l.dur * rede.t);
                 golAte = golDe + 2300;
                 golNome = quem;
                 golTime = time(lado);
@@ -709,6 +832,7 @@ public class Partida extends JComponent implements ActionListener {
                 l.depois = new Runnable() {
                     public void run() {
                         bolaX = 0.5; bolaY = 0.5; bolaH = 0;
+        refX = 0.5; refY = 0.5;
                         dono = saida(1 - ladoGol);
                         posse = 1 - ladoGol;
                     }
@@ -719,10 +843,10 @@ public class Partida extends JComponent implements ActionListener {
                     transmissao.agendaReplay(golDe, golAte, lado);
                     extra = Transmissao.REPLAY_MS;
                 }
-                pausa(agora, l.dur + 2300 + extra, d);
+                pausa(agora, (l.dur + 2300) * Math.max(ritmo, 0.5) + extra, d);
             } else if (tipo == DEFENDE || tipo == PENALTI_PERDIDO && chama(ev, "ep") != null) {
                 double gy = goleiro != null ? Math.max(0.42, Math.min(0.58, goleiro.y)) : 0.5;
-                l.chave(fimChute, frente(lado, 0.968), gy + (sorte.nextDouble() - 0.5) * 0.04, 0.2, goleiro);
+                l.chave(fimChute, frente(lado, 0.968), gy + (sorte.nextDouble() - 0.5) * 0.04, 0.2, goleiro).chute = true;
                 String g = goleiro != null ? nome(goleiro.f) : "o goleiro";
                 String texto = tipo == PENALTI_PERDIDO ? g + " defende o pênalti de " + nome(chuta.f) + "!"
                     : escolhe(nome(chuta.f) + " finaliza e " + g + " defende.",
@@ -733,7 +857,7 @@ public class Partida extends JComponent implements ActionListener {
             } else {
                 boolean porCima = sorte.nextBoolean();
                 double fy = porCima ? 0.5 + (sorte.nextDouble() - 0.5) * 0.06 : (sorte.nextBoolean() ? 0.36 - sorte.nextDouble() * 0.08 : 0.64 + sorte.nextDouble() * 0.08);
-                l.chave(fimChute, frente(lado, 1.035), fy, porCima ? 0.9 : 0.3, null);
+                l.chave(fimChute, frente(lado, 1.035), fy, porCima ? 0.9 : 0.3, null).chute = true;
                 l.chave(1.0, frente(lado, 0.955), 0.5 + (sorte.nextDouble() - 0.5) * 0.2, 0, goleiro, true);
                 String texto = tipo == PENALTI_PERDIDO ? nome(chuta.f) + " perde o pênalti: a bola vai para fora!"
                     : porCima ? escolhe(nome(chuta.f) + " arrisca e manda por cima do gol.", nome(chuta.f) + " cabeceia por cima.")
@@ -776,10 +900,64 @@ public class Partida extends JComponent implements ActionListener {
             legenda = escolhe(time(lado) + " troca passes.", time(lado) + " tem a bola.", time(lado) + " gira a bola no campo.");
         }
         legendaMin = gt;
+        if (tipo != GOL) {
+            cronometra(l);
+            // chance de gol: o relogio do jogo espera o lance terminar, no ritmo de verdade
+            if (chance) pausa(agora, (l.dur + 700) * ritmo, d);
+        }
         Chave ultima = l.chaves.get(l.chaves.size() - 1);
         if (ultima.dono != null) posse = ultima.dono.lado;
         lance = l;
     }
+
+    // ritmo de verdade, em metros por segundo
+    static final double TROTE = 4.2, CORRIDA = 6.3, CONDUZ = 5.6, SPRINT = 8.2, ACELERA = 7.5;
+    static final double PASSE_CURTO = 17, PASSE_LONGO = 24, CHUTE = 28;
+
+    static String ultimoCrono = "";
+    public static String crono() { return ultimoCrono; }
+
+    static double metros(double ax, double ay, double bx, double by) {
+        return Math.hypot((ax - bx) * Transmissao.CX, (ay - by) * Transmissao.CZ);
+    }
+
+    // da a cada ponto do lance o tempo que ele levaria de verdade: a bola anda na velocidade
+    // de um passe, de uma conducao ou de um chute, e quem recebe precisa ter tempo de chegar
+    void cronometra(Lance l) {
+        ArrayList<Chave> k = l.chaves;
+        double[] tt = new double[k.size()];
+        StringBuilder dbg = new StringBuilder(l.tipo + ":");
+        for (int i = 1; i < k.size(); i++) {
+            Chave a = k.get(i - 1), b = k.get(i);
+            double dm = metros(a.x, a.y, b.x, b.y), seg;
+            if (b.salto) seg = 1.5 + dm / 30;                               // bola parada: arruma e cobra
+            else if (b.chute) seg = 0.35 + dm / CHUTE;                      // ajeita e chuta
+            else if (a.dono != null && a.dono == b.dono) seg = dm / CONDUZ; // conduz
+            else seg = 0.3 + dm / (dm > 28 ? PASSE_LONGO : PASSE_CURTO);    // domina e passa
+            double t = tt[i - 1] + seg;
+            if (b.dono != null && !b.chute && !b.salto && atores.containsValue(b.dono)) {
+                // quem recebe esta longe: o passe vai um pouco mais na direcao dele (ate 40%)
+                double chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT;
+                if (chega > t + 0.6) {
+                    double m = Math.min(0.4, 1 - (t + 0.6) / chega);
+                    b.x += (b.dono.x - b.x) * m;
+                    b.y += (b.dono.y - b.y) * m;
+                    dm = metros(a.x, a.y, b.x, b.y);
+                    t = tt[i - 1] + (a.dono != null && a.dono == b.dono ? dm / CONDUZ : 0.3 + dm / (dm > 28 ? PASSE_LONGO : PASSE_CURTO));
+                    chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT;
+                }
+                t = Math.max(t, chega);
+            }
+            tt[i] = t;
+            dbg.append(String.format(" %s%.1fm/%.2fs", b.chute ? "C" : b.salto ? "S" : a.dono == b.dono ? "c" : "p", dm, t - tt[i - 1]));
+        }
+        ultimoCrono = dbg.toString();
+        double total = Math.max(0.6, tt[k.size() - 1]);
+        l.dur = total * 1000 / acelera;
+        for (int i = 0; i < k.size(); i++) k.get(i).t = tt[i] / total;
+    }
+
+    static boolean chance(int tipo) { return tipo == GOL || tipo == DEFENDE || tipo == FORA || tipo == PENALTI_PERDIDO; }
 
     String escolhe(String... op) { return op[sorte.nextInt(op.length)]; }
 
@@ -809,6 +987,7 @@ public class Partida extends JComponent implements ActionListener {
     void segundoTempo(long agora) {
         lances.add(0, new Linha("Int.", "Começa o segundo tempo.", 20, 0));
         bolaX = 0.5; bolaY = 0.5; bolaH = 0;
+        refX = 0.5; refY = 0.5;
         lance = null;
         posse = 1;
         dono = saida(1);
@@ -829,7 +1008,7 @@ public class Partida extends JComponent implements ActionListener {
     void pausa(long agora, double ms, int d) {
         try {
             Timer go = (Timer) campo(dv.getClass(), dv, "GO");
-            if (go == null || !isShowing() || d < 200) return;
+            if (go == null || !isShowing() || ms <= d) return;
             go.stop();
             pausado = true;
             retomaEm = agora + (long) Math.max(0, ms - d);
@@ -854,6 +1033,15 @@ public class Partida extends JComponent implements ActionListener {
         return "casa " + PainelOrdens.resumo(mt.plano(0)) + " | fora " + PainelOrdens.resumo(mt.plano(1)) + " | humano " + p.humano + " visto " + p.mentalidade[0] + "/" + p.mentalidade[1];
     }
 
+    // para os testes: quantos jogadores estao fora das linhas sem estar comemorando ou entrando
+    public static String fora() {
+        Partida p = atual;
+        if (p == null) return "sem";
+        int n = 0;
+        for (Ator a : p.atores.values()) if (!a.solto && (a.x < -0.001 || a.x > 1.001 || a.y < -0.001 || a.y > 1.001)) n++;
+        return n + " ritmo " + String.format("%.2f", p.ritmo) + " acelera " + String.format("%.2f", p.acelera);
+    }
+
     // para os testes: em que momento a partida esta
     public static String estado() {
         Partida p = atual;
@@ -862,7 +1050,7 @@ public class Partida extends JComponent implements ActionListener {
         if (p.fim) return "fim";
         if (p.transmissao.emReplay(agora)) return "replay " + (agora - p.transmissao.replayDe) + " " + Transmissao.ms + "ms";
         if (agora >= p.golDe && agora < p.golAte) return "gol " + (agora - p.golDe);
-        if (p.lance != null) return (p.lance.acabou ? "lance " : "andando ") + p.lance.tipo + " " + p.gt + " " + Transmissao.ms + "ms";
+        if (p.lance != null) return (p.lance.acabou ? "lance " : "andando ") + p.lance.tipo + " " + p.gt + " " + Transmissao.ms + "ms dur " + (int) p.lance.dur + " u " + String.format("%.2f", (agora - p.lance.inicio) / p.lance.dur) + (p.pausado ? " pausado" : "");
         return "jogo " + p.gt + " " + Transmissao.ms + "ms";
     }
 
@@ -938,35 +1126,45 @@ public class Partida extends JComponent implements ActionListener {
         }
     }
 
-    // onde o jogador estaria pela formacao, com o time subindo e descendo atras da bola
+    // onde o jogador estaria pela formacao: o time anda em bloco atras da bola, com as linhas
+    // de defesa, meio e ataque do Escalar; estica e abre com a bola, encurta e fecha sem ela
     double[] base(Ator a, double t) {
         int vaga = a.vaga < 1 || a.vaga > 25 ? 12 : a.vaga;
         double prof = (565 - VAGA[vaga][1]) / 535.0;
         double lat = (VAGA[vaga][0] - 35) / 310.0;
-        double perto = progresso(a.lado, bolaX);
+        double perto = progresso(a.lado, refX);
+        double by = a.lado == 0 ? refY : 1 - refY;          // bola no lado do time
         boolean comBola = posse == a.lado;
         double x, y;
         if (vaga == 1) {
             x = 0.025 + Math.max(0, Math.min(0.04, (perto - 0.5) * 0.08));
-            y = 0.5 + ((a.lado == 0 ? bolaY : 1 - bolaY) - 0.5) * 0.22;
+            y = 0.5 + (by - 0.5) * 0.22;
         } else {
-            double sobe = Math.max(-0.06, Math.min(0.36, (perto - 0.35) * 0.55 + (comBola ? 0.05 : -0.03)));
             // mentalidade: o time inteiro sobe ou recua; pressao alta adianta a marcacao sem a bola
-            sobe += mentalidade[a.lado] * 0.028 + (comBola ? 0 : (pressaoTime[a.lado] - 1) * 0.03);
-            x = 0.06 + prof * 0.4 + sobe;
+            double linha = 0.10 + (perto - 0.3) * 0.62 + (comBola ? 0.04 : -0.02)
+                + mentalidade[a.lado] * 0.028 + (comBola ? 0 : (pressaoTime[a.lado] - 1) * 0.03);
+            linha = Math.max(0.07, Math.min(0.52, linha));
+            x = linha + prof * (comBola ? 0.42 : 0.33);
             double d = Math.abs(lat - 0.5), f = d < 0.3 ? d * 0.62 : 0.186 + (d - 0.3) * 1.27;
-            y = 0.5 + (lat < 0.5 ? -f : f);
+            f *= comBola ? 0.95 : 0.72;
+            y = 0.5 + (lat < 0.5 ? -f : f) + (by - 0.5) * (comBola ? 0.2 : 0.3);
         }
+        x += 0.003 * Math.sin(t * 0.9 + a.fase);
+        y += 0.004 * Math.sin(t * 0.7 + a.fase * 1.3);
+        x = Math.max(0.02, Math.min(0.97, x));
+        y = Math.max(0.04, Math.min(0.96, y));
         if (a.lado == 1) { x = 1 - x; y = 1 - y; }
-        if (vaga != 1) y += (bolaY - y) * 0.16;
-        x += 0.006 * Math.sin(t * 0.9 + a.fase);
-        y += 0.009 * Math.sin(t * 0.7 + a.fase * 1.3);
         return new double[]{x, y};
     }
 
     void anima(long agora, double dt) {
         double t = agora / 1000.0;
         posicionaBola(agora);
+        // nas velocidades rapidas a cena anda acelerada (como um avancar), sem mudar o jeito
+        dt *= acelera;
+        double kr = 1 - Math.exp(-dt / 0.7);
+        refX += (bolaX - refX) * kr;
+        refY += (bolaY - refY) * kr;
         // quem marca: o mais perto da bola do time que nao esta com ela
         Ator pressiona = null;
         int semBola = dono != null ? 1 - dono.lado : (receptor != null ? 1 - receptor.lado : -1);
@@ -974,47 +1172,67 @@ public class Partida extends JComponent implements ActionListener {
         double u = lance == null ? 1 : (agora - lance.inicio) / lance.dur;
         for (Ator a : atores.values()) {
             double[] alvo = base(a, t);
-            double vmax = 0.22;
+            double vmax = TROTE, ganho = 1.4;                  // m/s e 1/s
+            boolean solto = false;                             // comemorando ou entrando: pode sair das linhas
             Chave c = a == dono && conduz ? null : proxima(a, u);
             if (c != null) {
                 // vai para onde vai receber a bola, chegando na hora certa
                 alvo[0] = c.x; alvo[1] = c.y;
-                double resta = Math.max(0.12, (c.t - u) * lance.dur / 1000.0);
-                vmax = Math.max(0.3, Math.min(0.8, dist(a.x, a.y, c.x, c.y) / resta * 1.15));
+                double resta = Math.max(0.15, (c.t - u) * lance.dur / 1000.0 * acelera);
+                vmax = Math.max(2.5, Math.min(SPRINT, metros(a.x, a.y, c.x, c.y) / resta * 1.1));
+                ganho = 3;
             } else if (agora > golDe && agora < golAte && lance != null && lance.acabou && a.lado == golLado && golAutor != null
                        && atores.containsValue(golAutor)) {
                 // comemoracao: o autor corre para a bandeirinha e os companheiros vao atras
                 double cy = golAutor.y < 0.5 ? 0.05 : 0.95;
-                if (a == golAutor) { alvo[0] = frente(golLado, 0.95); alvo[1] = cy; vmax = 0.3; }
+                solto = true;
+                if (a == golAutor) { alvo[0] = frente(golLado, 0.95); alvo[1] = cy; vmax = 7; ganho = 3; }
                 else if (a.vaga != 1 && dist(a.x, a.y, golAutor.x, golAutor.y) < 0.45) {
                     alvo[0] = golAutor.x - (golLado == 0 ? 0.03 : -0.03) * (1 + a.numero % 3);
                     alvo[1] = golAutor.y + ((a.numero % 5) - 2) * 0.025;
-                    vmax = 0.26;
+                    vmax = 6.5; ganho = 2.5;
                 }
             } else if (a == dono) {
                 double tras = a.lado == 0 ? -0.012 : 0.012;
                 alvo[0] = bolaX + tras; alvo[1] = bolaY;
-                vmax = 0.42;
+                vmax = SPRINT; ganho = 4;
             } else if (a == pressiona) {
                 double tras = a.lado == 0 ? -0.03 : 0.03;
                 alvo[0] = bolaX + tras; alvo[1] = bolaY + (a.y < bolaY ? -0.02 : 0.02);
-                vmax = 0.26;
+                vmax = CORRIDA; ganho = 2;
             }
-            if (a.y > 0.98 || a.y < 0.02) vmax = Math.max(vmax, 0.4);   // entrando em campo
-            if (dist(a.x, a.y, alvo[0], alvo[1]) > 0.25) vmax = Math.max(vmax, 0.36);   // voltando para a posicao
-            double dx = alvo[0] - a.x, dy = alvo[1] - a.y;
-            double ganho = c != null ? 8 : 3.2;
-            double qx = dx * ganho, qy = dy * ganho;
+            if (a.y > 1.0 || a.y < 0.0) { vmax = Math.max(vmax, CORRIDA); solto = true; }   // entrando em campo
+            if (!solto) {
+                // dentro das linhas (a cobranca de lateral fica em cima da linha)
+                alvo[0] = Math.max(0.004, Math.min(0.996, alvo[0]));
+                alvo[1] = Math.max(c != null ? 0.0 : 0.012, Math.min(c != null ? 1.0 : 0.988, alvo[1]));
+            }
+            if (dist(a.x, a.y, alvo[0], alvo[1]) > 0.2) vmax = Math.max(vmax, CORRIDA);   // voltando para a posicao
+            // velocidade desejada em metros, com limite e aceleracao de gente
+            double qx = (alvo[0] - a.x) * Transmissao.CX * ganho, qy = (alvo[1] - a.y) * Transmissao.CZ * ganho;
             double v = Math.hypot(qx, qy);
             if (v > vmax) { qx *= vmax / v; qy *= vmax / v; }
-            double k = Math.min(1, dt * 7);
-            a.vx += (qx - a.vx) * k;
-            a.vy += (qy - a.vy) * k;
+            double ux = a.vx * Transmissao.CX, uy = a.vy * Transmissao.CZ;
+            double ax = qx - ux, ay = qy - uy, am = Math.hypot(ax, ay), lim = ACELERA * dt;
+            if (am > lim) { ax *= lim / am; ay *= lim / am; }
+            ux += ax; uy += ay;
+            a.vx = ux / Transmissao.CX;
+            a.vy = uy / Transmissao.CZ;
             a.x += a.vx * dt;
             a.y += a.vy * dt;
-            a.passo += Math.hypot(a.vx * 105, a.vy * 68) * dt * 3.3;
+            // passada: mais curta e rapida no trote, mais longa no pique
+            double vm = Math.hypot(ux, uy);
+            a.passo += vm * dt * Math.max(1.9, 3.4 - 0.17 * vm);
+            a.solto = solto;
         }
         afasta();
+        for (Ator a : atores.values()) {
+            if (a.solto) continue;
+            if (a.x < 0) { a.x = 0; a.vx = Math.max(0, a.vx); }
+            if (a.x > 1) { a.x = 1; a.vx = Math.min(0, a.vx); }
+            if (a.y < 0) { a.y = 0; a.vy = Math.max(0, a.vy); }
+            if (a.y > 1) { a.y = 1; a.vy = Math.min(0, a.vy); }
+        }
         for (Iterator<Marca> it = marcas.iterator(); it.hasNext();) if (it.next().ate < agora) it.remove();
     }
 
@@ -1095,7 +1313,7 @@ public class Partida extends JComponent implements ActionListener {
 
     // ------------------------------------------------------------------ pintura
 
-    static final int COLUNA = 244;
+    static final int COLUNA = 292;
 
     protected void paintComponent(Graphics g0) {
         if (jogo == null) return;
@@ -1121,6 +1339,7 @@ public class Partida extends JComponent implements ActionListener {
             transmissao.pinta(g, new Rectangle2D.Double(px, 0, pw, ph), agora);
             if (agora >= golDe && agora < golAte) pintaGol(g, agora);
             if (aviso != null && agora < avisoAte) pintaAviso(g, aviso, agora);
+            if (agora < alertaAte) pintaAlerta(g, agora);
             g.setClip(clip);
             g.setColor(new Color(242, 193, 78, 60));
             g.setStroke(new BasicStroke(1.2f));
@@ -1220,14 +1439,6 @@ public class Partida extends JComponent implements ActionListener {
 
     void pintaJogo(Graphics2D g, long agora) {
         double R = Math.max(7, campo.width * 0.0165);
-        // rastro do passe/chute
-        if (agora < rastroAte || receptor != null || (lance != null && !lance.acabou && dono == null)) {
-            float alfa = receptor != null || dono == null ? 0.75f : Math.max(0, (rastroAte - agora) / 450f) * 0.75f;
-            g.setStroke(new BasicStroke((float) Math.max(1.5, R * 0.16), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1f,
-                new float[]{(float) (R * 0.5), (float) (R * 0.45)}, 0f));
-            g.setColor(new Color(242, 193, 78, (int) (alfa * 255)));
-            if (bolaVisivel) g.draw(new Line2D.Double(sx(rastroX0), sy(rastroY0), sx(bolaX), sy(bolaY)));
-        }
         // sombras
         ArrayList<Ator> ordem = new ArrayList<Ator>(atores.values());
         Collections.sort(ordem, new Comparator<Ator>() {
@@ -1257,7 +1468,7 @@ public class Partida extends JComponent implements ActionListener {
             FontMetrics fm = g.getFontMetrics();
             String n = String.valueOf(a.numero);
             g.setColor(brilho(fundo) > 0.55 ? new Color(0x14110A) : Color.WHITE);
-            g.drawString(n, (float) (cx - fm.stringWidth(n) / 2.0), (float) (cy + fm.getAscent() * 0.36));
+            centro(g, n, cx, cy);
         }
         // marcas (cartao, contusao, substituicao)
         for (Marca m : marcas) {
@@ -1294,15 +1505,20 @@ public class Partida extends JComponent implements ActionListener {
             g.setStroke(new BasicStroke((float) Math.max(1, br * 0.18)));
             g.draw(bola);
         }
-        // nome de quem esta com a bola
+        for (Ator a : foraAgora.keySet()) {
+            if (!atores.containsValue(a)) continue;
+            exclamacao(g, sx(a.x) - R * 1.05, sy(a.y) - R * 1.05, Math.max(5, R * 0.48));
+        }
+        // nome de quem esta com a bola (e a nota dele)
         Ator mostra = dono != null ? dono : receptor;
         if (mostra != null) {
-            String n = curto(nome(mostra.f));
+            String n = curto(nome(mostra.f)) + "  " + Notas.texto(nota(mostra));
             etiqueta(g, n, sx(mostra.x), sy(mostra.y) + R * 2.15, R, null);
         }
         // gol!
         if (agora >= golDe && agora < golAte) pintaGol(g, agora);
         if (aviso != null && agora < avisoAte) pintaAviso(g, aviso, agora);
+        if (agora < alertaAte) pintaAlerta(g, agora);
     }
 
     static Color clareia(Color c, float k) {
@@ -1506,6 +1722,8 @@ public class Partida extends JComponent implements ActionListener {
             g.setColor(new Color(0xFF8A7A));
             g.draw(new Line2D.Double(x + 10, y, x + 10, y + s - 2));
             g.draw(new Line2D.Double(x + 10, y + s - 2, x + 13, y + s - 5));
+        } else if (l.tipo == 31) {
+            exclamacao(g, x + s / 2, y + s / 2, s / 2);
         } else if (l.tipo == 30) {
             // prancheta: mudanca de ordens
             g.setColor(l.lado == humano ? OURO : Tema.TEXTO_FRACO);
@@ -1534,8 +1752,10 @@ public class Partida extends JComponent implements ActionListener {
         g.setFont(Estreia.espacada(Estreia.semi(9.5f), 0.14f));
         fm = g.getFontMetrics();
         g.setColor(OURO);
-        String cab = "FOR · ENERGIA";
-        g.drawString(cab, (float) (x + w - 14 - fm.stringWidth(cab)), (float) (y + 29));
+        // cabecalho das colunas: nota, forca e energia
+        g.drawString("NOTA", (float) (x + w - 95 - fm.stringWidth("NOTA") / 2.0), (float) (y + 29));
+        g.drawString("FOR", (float) (x + w - 50 - fm.stringWidth("FOR")), (float) (y + 29));
+        g.drawString("EN", (float) (x + w - 29 - fm.stringWidth("EN") / 2.0), (float) (y + 29));
         g.setFont(Estreia.texto(11.5f));
         g.setColor(Tema.TEXTO_FRACO);
         g.drawString(curto(time(humano)), (float) (x + 16), (float) (y + 48));
@@ -1565,7 +1785,7 @@ public class Partida extends JComponent implements ActionListener {
             g.setColor(cc);
             g.fill(ch);
             g.setColor(new Color(0x14110A));
-            g.drawString(chip, (float) (x + 30 - fm.stringWidth(chip) / 2.0), (float) (cy + fm.getAscent() / 2.0 - 1));
+            centro(g, chip, x + 30, cy);
             // numero
             Color fundo = a.vaga == 1 ? (a.lado == 0 ? new Color(0x2B2E2C) : new Color(0xD8B35A)) : cor[a.lado];
             Ellipse2D.Double bol = new Ellipse2D.Double(x + 52, cy - 9, 18, 18);
@@ -1577,11 +1797,11 @@ public class Partida extends JComponent implements ActionListener {
             fm = g.getFontMetrics();
             String n = String.valueOf(a.numero);
             g.setColor(brilho(fundo) > 0.55 ? new Color(0x14110A) : Color.WHITE);
-            g.drawString(n, (float) (x + 61 - fm.stringWidth(n) / 2.0), (float) (cy + fm.getAscent() / 2.0 - 1));
+            centro(g, n, x + 61, cy);
             // nome
             boolean foraPos = Boolean.TRUE.equals(chama(a.f, "gF"));
             int[] ex = extras.get(a.f);
-            double nx = x + 78, fimNome = x + w - 78;
+            double nx = x + 78, fimNome = x + w - 122;
             g.setFont(Estreia.semi(12.5f));
             fm = g.getFontMetrics();
             double reserva = (ex != null ? (ex[0] * 13 + (ex[1] > 0 ? 11 : 0)) : 0) + (foraPos ? 16 : 0);
@@ -1590,11 +1810,7 @@ public class Partida extends JComponent implements ActionListener {
             g.drawString(nome, (float) nx, (float) (cy + fm.getAscent() / 2.0 - 2));
             double ix = nx + fm.stringWidth(nome) + 5;
             if (foraPos) {
-                g.setColor(OURO);
-                g.fill(new Ellipse2D.Double(ix, cy - 6, 12, 12));
-                g.setColor(new Color(0x14110A));
-                g.setFont(Estreia.negrito(9f));
-                g.drawString("!", (float) (ix + 4.4), (float) (cy + 3.5));
+                exclamacao(g, ix + 6, cy, 6);
                 ix += 16;
             }
             if (ex != null) {
@@ -1610,15 +1826,43 @@ public class Partida extends JComponent implements ActionListener {
                     g.fill(new RoundRectangle2D.Double(ix, cy - 6, 8, 12, 2, 2));
                 }
             }
+            // nota ao vivo (com seta quando sobe ou cai)
+            double nt = nota(a);
+            Color ncor = Notas.cor(nt);
+            RoundRectangle2D.Double nc = new RoundRectangle2D.Double(x + w - 112, cy - 9, 34, 18, 9, 9);
+            g.setColor(new Color(ncor.getRed(), ncor.getGreen(), ncor.getBlue(), 38));
+            g.fill(nc);
+            g.setColor(new Color(ncor.getRed(), ncor.getGreen(), ncor.getBlue(), 150));
+            g.draw(nc);
+            g.setFont(Estreia.negrito(11f));
+            fm = g.getFontMetrics();
+            String ns = Notas.texto(nt);
+            g.setColor(ncor);
+            centro(g, ns, nc.getCenterX(), cy);
+            double[] td = tendencia.get(a.f);
+            long agoraT = System.currentTimeMillis();
+            if (td != null && td[1] > agoraT && td[2] != 0) {
+                float al = (float) Math.min(1, (td[1] - agoraT) / 1200.0);
+                Composite antes = g.getComposite();
+                g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, al));
+                double ax = x + w - 118, s3 = 4;
+                Path2D.Double seta = new Path2D.Double();
+                if (td[2] > 0) { seta.moveTo(ax - s3, cy + s3 * 0.6); seta.lineTo(ax + s3, cy + s3 * 0.6); seta.lineTo(ax, cy - s3 * 0.9); }
+                else { seta.moveTo(ax - s3, cy - s3 * 0.6); seta.lineTo(ax + s3, cy - s3 * 0.6); seta.lineTo(ax, cy + s3 * 0.9); }
+                seta.closePath();
+                g.setColor(td[2] > 0 ? new Color(0x3FD47E) : new Color(0xFF6B5E));
+                g.fill(seta);
+                g.setComposite(antes);
+            }
             // forca e energia
             int forca = inteiro(chama(a.f, "fi"));
             int energia = Math.max(0, Math.min(100, inteiro(chama(a.f, "fp"))));
             g.setFont(Estreia.titulo(15f));
             fm = g.getFontMetrics();
             String fs = String.valueOf(forca);
-            g.setColor(Tema.TEXTO);
-            g.drawString(fs, (float) (x + w - 54 - fm.stringWidth(fs)), (float) (cy + fm.getAscent() / 2.0 - 2));
-            double bx = x + w - 46, bw = 32;
+            g.setColor(foraPos ? new Color(0xFFB4A8) : Tema.TEXTO);
+            g.drawString(fs, (float) (x + w - 50 - fm.stringWidth(fs)), (float) (cy + fm.getAscent() / 2.0 - 2));
+            double bx = x + w - 42, bw = 28;
             g.setColor(new Color(255, 255, 255, 28));
             g.fill(new RoundRectangle2D.Double(bx, cy - 2, bw, 4, 4, 4));
             g.setColor(energia >= 70 ? Tema.BOM : energia >= 45 ? new Color(0xF2C14E) : new Color(0xFF6B5E));
@@ -1665,23 +1909,51 @@ public class Partida extends JComponent implements ActionListener {
             botaoOrdens.setRect(0, 0, 0, 0);
             oy = y + h;
         }
-        // legenda
-        ly += 8;
-        if (ly + 56 < oy) {
-            g.setFont(Estreia.texto(11f));
-            fm = g.getFontMetrics();
+        // legenda: teclas desenhadas e o simbolo de fora de posicao
+        ly += 10;
+        String[][] linhas = {{"F1–F5", "Velocidade"}, {"Espaço", "Substituições"}, {"V", "Câmera 3D / prancheta"}, {"O", "Dar ordens"}, {"!", "Fora de posição (rende menos)"}};
+        if (ly + 40 < oy) {
+            g.setColor(Tema.BORDA);
+            g.draw(new Line2D.Double(x + 14, ly, x + w - 14, ly));
+            g.setFont(Estreia.espacada(Estreia.semi(9.5f), 0.14f));
             g.setColor(OURO);
-            g.fill(new Ellipse2D.Double(x + 16, ly + 2, 12, 12));
-            g.setColor(new Color(0x14110A));
-            g.setFont(Estreia.negrito(9f));
-            g.drawString("!", (float) (x + 20.4), (float) (ly + 11.5));
-            g.setFont(Estreia.texto(11f));
-            g.setColor(Tema.TEXTO_FRACO);
-            g.drawString("fora de posição (rende menos)", (float) (x + 34), (float) (ly + 12));
-            g.drawString("F1 a F5: velocidade", (float) (x + 16), (float) (ly + 32));
-            g.drawString("Espaço: substituições", (float) (x + 16), (float) (ly + 50));
-            if (ly + 76 < oy) g.drawString("V: câmera 3D ou prancheta", (float) (x + 16), (float) (ly + 68));
+            g.drawString("CONTROLES", (float) (x + 16), (float) (ly + 22));
+            ly += 34;
+            for (String[] l : linhas) {
+                if (ly + 24 > oy - 6) break;
+                if (l[1].equals("Dar ordens") && botaoOrdens.width <= 0) continue;
+                double cy = ly + 10;
+                if (l[0].equals("!")) exclamacao(g, x + 16 + 9, cy, 8);
+                else tecla(g, l[0], x + 16, cy);
+                g.setFont(Estreia.texto(12f));
+                g.setColor(l[0].equals("!") ? new Color(0xFFB4A8) : Tema.TEXTO);
+                fm = g.getFontMetrics();
+                g.drawString(l[1], (float) (x + 16 + 58), (float) (cy + fm.getAscent() / 2.0 - 2));
+                ly += 26;
+            }
         }
+    }
+
+    // escreve o texto com o centro do desenho das letras (nao da fonte) em cx, cy
+    static void centro(Graphics2D g, String t, double cx, double cy) {
+        Rectangle2D v = g.getFont().createGlyphVector(g.getFontRenderContext(), t).getVisualBounds();
+        g.drawString(t, (float) (cx - v.getX() - v.getWidth() / 2), (float) (cy - v.getY() - v.getHeight() / 2));
+    }
+
+    // tecla de teclado desenhada (com a "sombra" de baixo, como uma tecla de verdade)
+    static void tecla(Graphics2D g, String t, double x, double cy) {
+        g.setFont(Estreia.negrito(10f));
+        FontMetrics fm = g.getFontMetrics();
+        double w = Math.max(20, fm.stringWidth(t) + 12), h = 19, y = cy - h / 2;
+        g.setColor(new Color(0x0A0C0B));
+        g.fill(new RoundRectangle2D.Double(x, y + 2, w, h, 7, 7));
+        g.setPaint(new GradientPaint(0, (float) y, new Color(0x2C322E), 0, (float) (y + h), new Color(0x1B201D)));
+        g.fill(new RoundRectangle2D.Double(x, y, w, h, 7, 7));
+        g.setColor(new Color(242, 193, 78, 120));
+        g.setStroke(new BasicStroke(1f));
+        g.draw(new RoundRectangle2D.Double(x + 0.5, y + 0.5, w - 1, h - 1, 7, 7));
+        g.setColor(OURO);
+        centro(g, t, x + w / 2, y + h / 2);
     }
 
     // gols e cartoes de cada jogador nesta partida

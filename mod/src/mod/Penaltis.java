@@ -198,7 +198,7 @@ public final class Penaltis extends JComponent {
             if (ic instanceof ImageIcon) img = ((ImageIcon) ic).getImage();
             Color c1 = Partida.cor(time, "kB", lado == 0 ? Color.WHITE : Color.BLACK), c2 = Partida.cor(time, "kC", lado == 0 ? Color.BLACK : Color.WHITE);
             kits[lado] = Bonecos.Kit.de(img, c1, c2);
-            if (lado == 1 && Partida.distancia(kits[0].media, kits[1].media) < 75) {
+            if (lado == 1 && Transmissao.parecidos(kits[0], kits[1])) {
                 Bonecos.Kit melhor = null;
                 for (int u = 1; u <= 3; u++) {
                     Object o = Partida.chamaInt(time, "bU", u);
@@ -206,7 +206,7 @@ public final class Penaltis extends JComponent {
                     Bonecos.Kit k = Bonecos.Kit.de(((ImageIcon) o).getImage(), c1, c2);
                     if (melhor == null || Partida.distancia(kits[0].media, k.media) > Partida.distancia(kits[0].media, melhor.media)) melhor = k;
                 }
-                if (melhor == null || Partida.distancia(kits[0].media, melhor.media) < 75) melhor = Bonecos.Kit.de(null, c2, c1);
+                if (melhor == null || Transmissao.parecidos(kits[0], melhor)) melhor = Bonecos.Kit.de(null, c2, c1);
                 kits[1] = melhor;
             }
         }

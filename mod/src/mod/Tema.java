@@ -471,6 +471,7 @@ public final class Tema {
         }
         if (c.getClass().getName().equals("a.dV") && c instanceof javax.swing.JPanel) {
             try { Partida.instala((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
+            try { Placar.instala((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
         }
         if (c.getClass().getName().equals("a.ds") && c instanceof javax.swing.JPanel) {
             try { Janelas.juniores((javax.swing.JPanel) c); } catch (Throwable t) { t.printStackTrace(); }
