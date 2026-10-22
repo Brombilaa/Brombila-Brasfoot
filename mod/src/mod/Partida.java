@@ -104,6 +104,7 @@ public class Partida extends JComponent implements ActionListener {
     long rastroAte;
     String legenda = "";
     int legendaMin;
+    final ArrayList<Anuncio> anuncios = new ArrayList<Anuncio>();
 
     // momentos especiais
     long golDe, golAte;
@@ -151,6 +152,7 @@ public class Partida extends JComponent implements ActionListener {
         double t, x, y, h;
         Ator dono;
         boolean salto, chute;
+        boolean disputa;    // quem chega toma a bola de quem esta conduzindo (nao e passe)
         Chave(double t, double x, double y, double h, Ator dono, boolean salto) {
             this.t = t; this.x = x; this.y = y; this.h = h; this.dono = dono; this.salto = salto;
         }
@@ -163,6 +165,9 @@ public class Partida extends JComponent implements ActionListener {
         final ArrayList<Chave> chaves = new ArrayList<Chave>();
         Runnable depois;
         boolean acabou;
+        Linha linha;        // linha dos lances e legenda: aparecem quando a cena chega no marco
+        String texto;
+        Chave marco;
         Chave chave(double t, double x, double y, double h, Ator d) { return chave(t, x, y, h, d, false); }
         Chave chave(double t, double x, double y, double h, Ator d, boolean salto) {
             Chave c = new Chave(t, x, y, h, d, salto);
@@ -175,6 +180,14 @@ public class Partida extends JComponent implements ActionListener {
         String minuto, texto;
         int tipo, lado;
         Linha(String minuto, String texto, int tipo, int lado) { this.minuto = minuto; this.texto = texto; this.tipo = tipo; this.lado = lado; }
+    }
+
+    // linha e legenda guardadas ate a hora em que o lance acontece na cena
+    static final class Anuncio {
+        long em;
+        Linha linha;
+        String texto;
+        int min;
     }
 
     static final class Marca {
@@ -470,7 +483,7 @@ public class Partida extends JComponent implements ActionListener {
         ultimoQuadro = agora;
         try {
             le(agora);
-            if (jogo != null) { anima(agora, dt); transmissao.grava(agora); }
+            if (jogo != null) { anuncia(agora); anima(agora, dt); transmissao.grava(agora); }
         } catch (Throwable t) { t.printStackTrace(); }
         if (pausado && agora >= retomaEm && ordens == null) retoma();
         if (jogo != null && isShowing()) repaint();
@@ -509,6 +522,7 @@ public class Partida extends JComponent implements ActionListener {
         humano = Boolean.TRUE.equals(chama(fora, "jZ")) && !Boolean.TRUE.equals(chama(casa, "jZ")) ? 1 : 0;
         atores.clear();
         lances.clear();
+        anuncios.clear();
         marcas.clear();
         java.util.Arrays.fill(pressao, 0);
         proximoNumero[0] = proximoNumero[1] = 12;
@@ -756,6 +770,7 @@ public class Partida extends JComponent implements ActionListener {
         // o lance anterior ainda esta acontecendo: so as chances de gol interrompem; nas
         // velocidades rapidas (o relogio nao espera) so o gol interrompe
         if (lance != null && !lance.acabou && (!chance || (chance(lance.tipo) && tipo != GOL))) return;
+        anuncia(Long.MAX_VALUE);     // o lance interrompido conta o que ja tinha para contar
         Lance l = new Lance();
         l.tipo = tipo;
         l.lado = lado;
@@ -765,7 +780,19 @@ public class Partida extends JComponent implements ActionListener {
         int dz = ev == null ? 0 : inteiro(chama(ev, "el"));
         Ator d0 = dono != null && dono.lado == lado ? dono : perto(lado, bolaX, bolaY, -1, null, true);
         if (d0 == null) return;
-        l.chave(0, bolaX, bolaY, 0, d0);
+        Ator ant = dono != null && dono.lado != lado && atores.containsValue(dono)
+            && dist(dono.x, dono.y, bolaX, bolaY) < 0.05 ? dono : null;
+        if (ant != null) {
+            // a bola estava com o outro time: alguem chega e toma dele (nada de passe para o rival)
+            l.chave(0, bolaX, bolaY, 0, ant);
+            l.chave(0, bolaX + (ant.lado == 0 ? 0.03 : -0.03), bolaY, 0, d0).disputa = true;
+        } else if (dist(d0.x, d0.y, bolaX, bolaY) > 0.03) {
+            // bola solta: espera quem vai ficar com ela chegar, sem a bola andar sozinha
+            l.chave(0, bolaX, bolaY, 0, null);
+            l.chave(0, bolaX, bolaY, 0, d0);
+        } else l.chave(0, bolaX, bolaY, 0, d0);
+        // a partir daqui o lance continua de onde a bola fica depois da chegada/disputa
+        final double bx = l.chaves.get(l.chaves.size() - 1).x, by = l.chaves.get(l.chaves.size() - 1).y;
         String min = gt + "'";
         if (tipo == GOL || tipo == DEFENDE || tipo == FORA || tipo == PENALTI_PERDIDO) {
             Ator chuta = null, serve = null;
@@ -787,7 +814,7 @@ public class Partida extends JComponent implements ActionListener {
                 l.chave(0.30, frente(lado, 1.0), sorte.nextBoolean() ? 0.0 : 1.0, 0, chuta, true);
                 fimChute = 0.82;
             } else {
-                double p0 = progresso(lado, bolaX);
+                double p0 = progresso(lado, bx);
                 Ator meia = null;
                 if (p0 < 0.5) {
                     meia = perto(lado, frente(lado, 0.55), 0.3 + sorte.nextDouble() * 0.4, MEIO, chuta, false);
@@ -827,8 +854,9 @@ public class Partida extends JComponent implements ActionListener {
                 else if (dz == 5) texto = "Gol olímpico de " + quem + "!";
                 else if (serve != null) texto = nome(serve.f) + " serve e " + quem + " marca para o " + time(lado) + ".";
                 else texto = quem + " marca para o " + time(lado) + ".";
-                lances.add(0, new Linha(min, "GOL! " + texto, GOL, lado));
-                legenda = texto;
+                l.linha = new Linha(min, "GOL! " + texto, GOL, lado);
+                l.texto = texto;
+                l.marco = rede;
                 l.depois = new Runnable() {
                     public void run() {
                         bolaX = 0.5; bolaY = 0.5; bolaH = 0;
@@ -846,64 +874,77 @@ public class Partida extends JComponent implements ActionListener {
                 pausa(agora, (l.dur + 2300) * Math.max(ritmo, 0.5) + extra, d);
             } else if (tipo == DEFENDE || tipo == PENALTI_PERDIDO && chama(ev, "ep") != null) {
                 double gy = goleiro != null ? Math.max(0.42, Math.min(0.58, goleiro.y)) : 0.5;
-                l.chave(fimChute, frente(lado, 0.968), gy + (sorte.nextDouble() - 0.5) * 0.04, 0.2, goleiro).chute = true;
+                l.marco = l.chave(fimChute, frente(lado, 0.968), gy + (sorte.nextDouble() - 0.5) * 0.04, 0.2, goleiro);
+                l.marco.chute = true;
                 String g = goleiro != null ? nome(goleiro.f) : "o goleiro";
                 String texto = tipo == PENALTI_PERDIDO ? g + " defende o pênalti de " + nome(chuta.f) + "!"
                     : escolhe(nome(chuta.f) + " finaliza e " + g + " defende.",
                               nome(chuta.f) + " chuta forte, " + g + " espalma.",
                               "Boa chance para " + nome(chuta.f) + ", mas " + g + " segura.");
-                lances.add(0, new Linha(min, texto, DEFENDE, lado));
-                legenda = texto;
+                l.linha = new Linha(min, texto, DEFENDE, lado);
+                l.texto = texto;
             } else {
                 boolean porCima = sorte.nextBoolean();
                 double fy = porCima ? 0.5 + (sorte.nextDouble() - 0.5) * 0.06 : (sorte.nextBoolean() ? 0.36 - sorte.nextDouble() * 0.08 : 0.64 + sorte.nextDouble() * 0.08);
-                l.chave(fimChute, frente(lado, 1.035), fy, porCima ? 0.9 : 0.3, null).chute = true;
+                l.marco = l.chave(fimChute, frente(lado, 1.035), fy, porCima ? 0.9 : 0.3, null);
+                l.marco.chute = true;
                 l.chave(1.0, frente(lado, 0.955), 0.5 + (sorte.nextDouble() - 0.5) * 0.2, 0, goleiro, true);
                 String texto = tipo == PENALTI_PERDIDO ? nome(chuta.f) + " perde o pênalti: a bola vai para fora!"
                     : porCima ? escolhe(nome(chuta.f) + " arrisca e manda por cima do gol.", nome(chuta.f) + " cabeceia por cima.")
                               : escolhe(nome(chuta.f) + " finaliza para fora.", nome(chuta.f) + " bate cruzado e a bola sai rente à trave.");
-                lances.add(0, new Linha(min, texto, FORA, lado));
-                legenda = texto;
+                l.linha = new Linha(min, texto, FORA, lado);
+                l.texto = texto;
             }
         } else if (tipo == DESARME) {
-            double p0 = progresso(lado, bolaX);
+            double p0 = progresso(lado, bx);
             double alvo = Math.max(0.3, Math.min(0.8, p0 + 0.1 + sorte.nextDouble() * 0.14));
-            double ay = Math.max(0.1, Math.min(0.9, bolaY + (sorte.nextDouble() - 0.5) * 0.4));
+            double ay = Math.max(0.1, Math.min(0.9, by + (sorte.nextDouble() - 0.5) * 0.4));
             Ator recebe = perto(lado, frente(lado, alvo + 0.04), ay, -1, d0, false);
             if (recebe == null) recebe = d0;
             l.chave(0.42, frente(lado, alvo), ay, 0.04, recebe);
             Ator ladrao = perto(adv, frente(lado, alvo), ay, -1, null, false);
-            l.chave(0.74, frente(lado, alvo - 0.025), ay + (sorte.nextDouble() - 0.5) * 0.04, 0, ladrao);
-            legenda = escolhe(nome(ladrao.f) + " desarma " + nome(recebe.f) + ".",
+            l.marco = l.chave(0.74, frente(lado, alvo + 0.03), ay + (sorte.nextDouble() - 0.5) * 0.04, 0, ladrao);
+            l.marco.disputa = true;
+            l.texto = escolhe(nome(ladrao.f) + " desarma " + nome(recebe.f) + ".",
                               "Boa roubada de " + nome(ladrao.f) + ".",
                               nome(ladrao.f) + " chega firme e fica com a bola.");
         } else if (tipo == ERRO) {
-            double p0 = progresso(lado, bolaX);
+            double p0 = progresso(lado, bx);
             if (sorte.nextInt(10) < 3) {
-                double sy = bolaY < 0.5 ? -0.03 : 1.03;
+                double sy = by < 0.5 ? -0.03 : 1.03;
                 double sx = frente(lado, Math.min(0.92, p0 + 0.12 + sorte.nextDouble() * 0.1));
-                l.chave(0.6, sx, sy, 0.15, null);
+                l.marco = l.chave(0.6, sx, sy, 0.15, null);
                 Ator cobra = perto(adv, sx, sy, -1, null, false);
                 l.chave(1.0, sx, sy < 0 ? 0.0 : 1.0, 0, cobra, true);
-                legenda = escolhe("Passe longo demais do " + time(lado) + ": lateral para o adversário.", nome(d0.f) + " erra o passe e a bola sai pela lateral.");
+                l.texto = escolhe("Passe longo demais do " + time(lado) + ": lateral para o adversário.", nome(d0.f) + " erra o passe e a bola sai pela lateral.");
             } else {
                 double alvo = Math.min(0.85, p0 + 0.15 + sorte.nextDouble() * 0.12);
-                double ay = Math.max(0.08, Math.min(0.92, bolaY + (sorte.nextDouble() - 0.5) * 0.5));
-                double mx = frente(lado, (p0 + alvo) / 2 + 0.03), my = (bolaY + ay) / 2;
+                double ay = Math.max(0.08, Math.min(0.92, by + (sorte.nextDouble() - 0.5) * 0.5));
+                // o passe vai na direcao de um companheiro e o adversario corta no meio do caminho
+                Ator mira = perto(lado, frente(lado, alvo), ay, -1, d0, false);
+                double tx = mira != null ? mira.x : frente(lado, alvo), ty = mira != null ? mira.y : ay;
+                double mx = bx + (tx - bx) * 0.55, my = by + (ty - by) * 0.55;
                 Ator corta = perto(adv, mx, my, -1, null, false);
-                l.chave(0.55, mx, my, 0.06, corta);
-                legenda = escolhe(nome(d0.f) + " erra o passe, " + nome(corta.f) + " intercepta.", "Passe errado do " + time(lado) + ".");
+                l.marco = l.chave(0.55, mx, my, 0.06, corta);
+                l.texto = escolhe(nome(d0.f) + " erra o passe, " + nome(corta.f) + " intercepta.", "Passe errado do " + time(lado) + ".");
             }
         } else {
-            Ator para = perto(lado, bolaX + (lado == 0 ? -0.04 : 0.04), bolaY + (sorte.nextDouble() - 0.5) * 0.3, -1, d0, false);
-            if (para != null && dist(para.x, para.y, bolaX, bolaY) < 0.35) l.chave(0.6, para.x, para.y, 0.02, para);
-            legenda = escolhe(time(lado) + " troca passes.", time(lado) + " tem a bola.", time(lado) + " gira a bola no campo.");
+            Ator para = perto(lado, bx + (lado == 0 ? -0.04 : 0.04), by + (sorte.nextDouble() - 0.5) * 0.3, -1, d0, false);
+            if (para != null && dist(para.x, para.y, bx, by) < 0.35) l.chave(0.6, para.x, para.y, 0.02, para);
+            l.texto = escolhe(time(lado) + " troca passes.", time(lado) + " tem a bola.", time(lado) + " gira a bola no campo.");
         }
-        legendaMin = gt;
         if (tipo != GOL) {
             cronometra(l);
             // chance de gol: o relogio do jogo espera o lance terminar, no ritmo de verdade
             if (chance) pausa(agora, (l.dur + 700) * ritmo, d);
+        }
+        if (l.texto != null) {
+            Anuncio an = new Anuncio();
+            an.em = l.marco == null ? agora : agora + (long) (l.dur * l.marco.t);
+            an.linha = l.linha;
+            an.texto = l.texto;
+            an.min = gt;
+            anuncios.add(an);
         }
         Chave ultima = l.chaves.get(l.chaves.size() - 1);
         if (ultima.dono != null) posse = ultima.dono.lado;
@@ -932,19 +973,19 @@ public class Partida extends JComponent implements ActionListener {
             double dm = metros(a.x, a.y, b.x, b.y), seg;
             if (b.salto) seg = 1.5 + dm / 30;                               // bola parada: arruma e cobra
             else if (b.chute) seg = 0.35 + dm / CHUTE;                      // ajeita e chuta
-            else if (a.dono != null && a.dono == b.dono) seg = dm / CONDUZ; // conduz
+            else if (b.disputa || a.dono != null && a.dono == b.dono) seg = dm / CONDUZ; // conduz
             else seg = 0.3 + dm / (dm > 28 ? PASSE_LONGO : PASSE_CURTO);    // domina e passa
             double t = tt[i - 1] + seg;
             if (b.dono != null && !b.chute && !b.salto && atores.containsValue(b.dono)) {
                 // quem recebe esta longe: o passe vai um pouco mais na direcao dele (ate 40%)
-                double chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT;
+                double chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT + 0.7;   // + arrancada
                 if (chega > t + 0.6) {
                     double m = Math.min(0.4, 1 - (t + 0.6) / chega);
                     b.x += (b.dono.x - b.x) * m;
                     b.y += (b.dono.y - b.y) * m;
                     dm = metros(a.x, a.y, b.x, b.y);
-                    t = tt[i - 1] + (a.dono != null && a.dono == b.dono ? dm / CONDUZ : 0.3 + dm / (dm > 28 ? PASSE_LONGO : PASSE_CURTO));
-                    chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT;
+                    t = tt[i - 1] + (b.disputa || a.dono != null && a.dono == b.dono ? dm / CONDUZ : 0.3 + dm / (dm > 28 ? PASSE_LONGO : PASSE_CURTO));
+                    chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT + 0.7;
                 }
                 t = Math.max(t, chega);
             }
@@ -955,6 +996,26 @@ public class Partida extends JComponent implements ActionListener {
         double total = Math.max(0.6, tt[k.size() - 1]);
         l.dur = total * 1000 / acelera;
         for (int i = 0; i < k.size(); i++) k.get(i).t = tt[i] / total;
+    }
+
+    // mostra a linha e a legenda dos lances que ja aconteceram na cena
+    void anuncia(long agora) {
+        for (Iterator<Anuncio> it = anuncios.iterator(); it.hasNext();) {
+            Anuncio an = it.next();
+            if (an.em > agora) continue;
+            it.remove();
+            if (an.linha != null) lances.add(0, an.linha);
+            if (an.linha != null && an.linha.tipo == GOL) dv.repaint();   // o placar de cima conta o gol agora
+            legenda = an.texto;
+            legendaMin = an.min;
+        }
+    }
+
+    // o placar de cima espera a bola entrar na cena para contar o gol deste lado
+    public static boolean segura(int lado) {
+        Partida p = atual;
+        return p != null && p.jogo != null && p.lance != null && p.lance.tipo == GOL && p.golLado == lado
+            && System.currentTimeMillis() < p.golDe;
     }
 
     static boolean chance(int tipo) { return tipo == GOL || tipo == DEFENDE || tipo == FORA || tipo == PENALTI_PERDIDO; }
@@ -985,6 +1046,7 @@ public class Partida extends JComponent implements ActionListener {
     }
 
     void segundoTempo(long agora) {
+        anuncia(Long.MAX_VALUE);
         lances.add(0, new Linha("Int.", "Começa o segundo tempo.", 20, 0));
         bolaX = 0.5; bolaY = 0.5; bolaH = 0;
         refX = 0.5; refY = 0.5;
@@ -996,6 +1058,7 @@ public class Partida extends JComponent implements ActionListener {
     }
 
     void termina(long agora) {
+        anuncia(Long.MAX_VALUE);
         fim = true;
         Object g0 = chama(jogo, "hu"), g1 = chama(jogo, "hw");
         lances.add(0, new Linha("Fim", "Fim de jogo: " + time(0) + " " + inteiro(g0) + " x " + inteiro(g1) + " " + time(1) + ".", 20, 0));
@@ -1193,9 +1256,11 @@ public class Partida extends JComponent implements ActionListener {
                     vmax = 6.5; ganho = 2.5;
                 }
             } else if (a == dono) {
-                double tras = a.lado == 0 ? -0.012 : 0.012;
+                // conduzindo: corre pelo caminho do lance e a bola vai colada no pe (ver pe());
+                // parado: fica logo atras da bola
+                double tras = conduz ? 0 : (a.lado == 0 ? -0.006 : 0.006);
                 alvo[0] = bolaX + tras; alvo[1] = bolaY;
-                vmax = SPRINT; ganho = 4;
+                vmax = SPRINT; ganho = conduz ? 6 : 4;
             } else if (a == pressiona) {
                 double tras = a.lado == 0 ? -0.03 : 0.03;
                 alvo[0] = bolaX + tras; alvo[1] = bolaY + (a.y < bolaY ? -0.02 : 0.02);
@@ -1226,6 +1291,7 @@ public class Partida extends JComponent implements ActionListener {
             a.solto = solto;
         }
         afasta();
+        pe(agora);
         for (Ator a : atores.values()) {
             if (a.solto) continue;
             if (a.x < 0) { a.x = 0; a.vx = Math.max(0, a.vx); }
@@ -1234,6 +1300,21 @@ public class Partida extends JComponent implements ActionListener {
             if (a.y > 1) { a.y = 1; a.vy = Math.min(0, a.vy); }
         }
         for (Iterator<Marca> it = marcas.iterator(); it.hasNext();) if (it.next().ate < agora) it.remove();
+    }
+
+    // conducao: a bola fica meio metro a frente do pe de quem conduz, na direcao em que ele corre
+    double peX = -1, peY;
+    long peDesde;
+    void pe(long agora) {
+        if (!conduz || dono == null) { peX = -1; return; }
+        if (peX < 0) peDesde = agora;
+        // logo depois de dominar, a bola vai do ponto do passe para o pe em 0,25 s
+        double w = Math.min(1, (agora - peDesde) / 250.0);
+        double vx = dono.vx * Transmissao.CX, vy = dono.vy * Transmissao.CZ, v = Math.hypot(vx, vy);
+        double dx = v > 0.8 ? vx / v : (dono.lado == 0 ? 1 : -1), dy = v > 0.8 ? vy / v : 0;
+        bolaX += (dono.x + dx * 0.55 / Transmissao.CX - bolaX) * w;
+        bolaY += (dono.y + dy * 0.55 / Transmissao.CZ - bolaY) * w;
+        peX = bolaX; peY = bolaY;
     }
 
     // proximo ponto do lance em que este jogador recebe a bola
@@ -1260,6 +1341,9 @@ public class Partida extends JComponent implements ActionListener {
         }
     }
 
+    Lance trechoDe;
+    int trecho;
+
     void posicionaBola(long agora) {
         receptor = null;
         conduz = false;
@@ -1269,6 +1353,7 @@ public class Partida extends JComponent implements ActionListener {
         double u = (agora - lance.inicio) / lance.dur;
         Chave ultima = k.get(k.size() - 1);
         if (k.size() == 1 || u >= ultima.t) {
+            if (!lance.acabou && peX >= 0) { ultima.x = peX; ultima.y = peY; }
             bolaX = ultima.x; bolaY = ultima.y; bolaH = 0;
             if (!lance.acabou) {
                 lance.acabou = true;
@@ -1284,6 +1369,12 @@ public class Partida extends JComponent implements ActionListener {
         }
         int i = 0;
         while (i + 1 < k.size() && k.get(i + 1).t <= u) i++;
+        // a conducao acabou: o proximo trecho sai de onde a bola esta no pe, sem pulo
+        if (lance != trechoDe) { trechoDe = lance; trecho = i; }
+        else if (i != trecho) {
+            if (peX >= 0) { k.get(i).x = peX; k.get(i).y = peY; }
+            trecho = i;
+        }
         Chave a = k.get(i), b = k.get(i + 1);
         double s = Math.max(0, Math.min(1, (u - a.t) / Math.max(1e-6, b.t - a.t)));
         if (b.salto) {
@@ -1295,7 +1386,7 @@ public class Partida extends JComponent implements ActionListener {
             if (s > 0.55) receptor = null; else receptor = b.dono;
             return;
         }
-        boolean passe = a.dono != b.dono || b.dono == null;
+        boolean passe = !b.disputa && (a.dono != b.dono || b.dono == null);
         double e = passe ? 1 - (1 - s) * (1 - s) : s;
         bolaX = a.x + (b.x - a.x) * e;
         bolaY = a.y + (b.y - a.y) * e;

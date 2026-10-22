@@ -64,6 +64,18 @@ final class Placar {
         dv.revalidate();
     }
 
+    // ultimo gol de cada lado como estava antes do lance que a partida ao vivo ainda vai mostrar
+    static final String[] golVisto = {"", ""};
+
+    static String seguraGol(int lado, String v) {
+        if (!Partida.segura(lado)) return v;
+        try {
+            return String.valueOf(Math.max(0, Integer.parseInt(v) - 1));
+        } catch (NumberFormatException e) {
+            return v;
+        }
+    }
+
     static String texto(Object o) {
         if (!(o instanceof JLabel)) return "";
         String s = ((JLabel) o).getText();
@@ -198,6 +210,9 @@ final class Placar {
             // placar
             String[] gols = texto(c("Hn")).split("\\s*x\\s*");
             String a = gols.length > 0 ? gols[0].trim() : "0", b = gols.length > 1 ? gols[1].trim() : "0";
+            // o jogo ja contou o gol, mas a bola ainda nao entrou na partida ao vivo: espera
+            a = seguraGol(0, a);
+            b = seguraGol(1, b);
             int pw = 130, px = cx - pw / 2, py = 30, ph = 58;
             RoundRectangle2D caixa = new RoundRectangle2D.Float(px, py, pw, ph, 14, 14);
             g.setPaint(new GradientPaint(0, py, new Color(0x0A0C0B), 0, py + ph, new Color(0x15130D)));
@@ -279,6 +294,8 @@ final class Placar {
             g.draw(new RoundRectangle2D.Float(sx + 22 - 0.5f, 69.5f, 13, 4, 3, 3));
             // ultimo gol
             String gol = texto(c(casa ? "Hj" : "Hk"));
+            if (Partida.segura(casa ? 0 : 1)) gol = golVisto[casa ? 0 : 1];
+            else golVisto[casa ? 0 : 1] = gol;
             if (gol.length() > 0) {
                 g.setFont(Estreia.texto(12f));
                 FontMetrics gm = g.getFontMetrics();
