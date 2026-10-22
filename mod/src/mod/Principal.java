@@ -50,17 +50,22 @@ final class Principal {
         if (!Dialogos.absoluto(wf)) return;
         pos(campo(eg, "Fq"), 14, 14, 60, 60);
         Object nome = campo(eg, "ug");
-        Dialogos.fonte(nome, Estreia.titulo(30f), Estreia.BRANCO);
+        Editor.cor(nome, Estreia.titulo(30f), Estreia.BRANCO);
         pos(nome, 84, 16, 200, 34);
         Object tecnico = campo(eg, "a_");
         rotulo(tecnico);
         pos(tecnico, 84, 52, 200, 16);
+        // o jogo pinta caixa e mensagens com a cor do time (vermelho no Athletico, por exemplo)
+        Editor.cor(campo(eg, "Iw"), Estreia.semi(13f), Estreia.BRANCO);
+        Editor.cor(campo(eg, "ze"), Estreia.semi(13f), Estreia.OURO);
+        Object elenco = campo(eg, "Ef");
+        if (elenco instanceof JComponent) Editor.cor(elenco, ((JComponent) elenco).getFont(), Estreia.BRANCO);
         pos(campo(eg, "Iw"), 14, 88, 225, 21);
         pos(campo(eg, "ze"), 243, 86, 40, 23);
         Object divisao = campo(eg, "uh");
-        Dialogos.fonte(divisao, Estreia.semi(12f), Estreia.FRACO);
+        Editor.cor(divisao, Estreia.semi(12f), Estreia.FRACO);
         pos(divisao, 14, 113, 264, 17);
-        for (String s : new String[] {"ur", "us"}) Dialogos.fonte(campo(eg, s), Estreia.semi(11.5f), Estreia.FRACO);
+        for (String s : new String[] {"ur", "us"}) Editor.cor(campo(eg, s), Estreia.semi(11.5f), Estreia.FRACO);
         pos(campo(eg, "ur"), 14, 142, 125, 16);
         pos(campo(eg, "us"), 151, 142, 125, 16);
         pos(campo(eg, "Hf"), 14, 162, 125, 23);
@@ -71,10 +76,10 @@ final class Principal {
         pos(proximo, 14, 204, 264, 18);
         pos(campo(eg, "yt"), 14, 230, 60, 60);
         Object rival = campo(eg, "vw");
-        Dialogos.fonte(rival, Estreia.titulo(22f), Estreia.BRANCO);
+        Editor.cor(rival, Estreia.titulo(22f), Estreia.BRANCO);
         pos(rival, 84, 240, 160, 26);
         Object comp = campo(eg, "Bj");
-        Dialogos.fonte(comp, Estreia.semi(11.5f), Estreia.FRACO);
+        Editor.cor(comp, Estreia.semi(11.5f), Estreia.FRACO);
         pos(comp, 84, 268, 200, 17);
         pos(campo(eg, "zb"), 247, 230, 30, 39);
         wf.revalidate();
@@ -118,6 +123,29 @@ final class Principal {
         for (String s : new String[] {"OZ", "OK", "OL"}) Dialogos.fonte(campo(m, s), Estreia.semi(10.5f), Estreia.OURO);
         for (String s : new String[] {"Pa", "Ec", "yE", "OA", "Oz", "OU"}) Dialogos.fonte(campo(m, s), Estreia.semi(11.5f), Estreia.FRACO);
         for (String s : new String[] {"Pb", "OY"}) Dialogos.fonte(campo(m, s), Estreia.negrito(12f), Estreia.BRANCO);
+        for (String s : new String[] {"OQ", "OS", "OR", "ON", "OP", "OO", "OH", "OI", "OJ", "OX", "OV", "OW"})
+            Dialogos.fonte(campo(m, s), Estreia.semi(11.5f), Estreia.BRANCO);
+        // A cada jogador e a cada troca de time (m.oJ) o jogo repinta tudo com a cor do time:
+        // cada texto volta para a cor nossa e a faixa do nome continua transparente.
+        for (Component c : m.getComponents()) {
+            if (c instanceof JLabel && c != forca) Editor.cor(c, c.getFont(), c.getForeground());
+        }
+        Object nome = campo(m, "uF");
+        if (nome instanceof JLabel) {
+            final JLabel l = (JLabel) nome;
+            l.setOpaque(false);
+            l.addPropertyChangeListener("opaque", new java.beans.PropertyChangeListener() {
+                public void propertyChange(java.beans.PropertyChangeEvent e) { if (l.isOpaque()) l.setOpaque(false); }
+            });
+        }
+        if (forca instanceof JLabel) {
+            final JLabel l = (JLabel) forca;
+            l.setOpaque(false);
+            l.addPropertyChangeListener("opaque", new java.beans.PropertyChangeListener() {
+                public void propertyChange(java.beans.PropertyChangeEvent e) { if (l.isOpaque()) l.setOpaque(false); }
+            });
+            Editor.cor(l, l.getFont(), Estreia.OURO);
+        }
     }
 
     // ------------------------------------------------------------- lista do elenco

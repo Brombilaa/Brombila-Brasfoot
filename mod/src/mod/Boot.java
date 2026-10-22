@@ -7,6 +7,10 @@ public class Boot {
         // Texto com antialiasing (fica bem mais suave no Windows).
         System.setProperty("awt.useSystemAAFontSettings", "lcd");
         System.setProperty("swing.aatext", "true");
+        // Datas no formato brasileiro (08/08/2022) mesmo num Windows em outro idioma. No Java 9+
+        // o formato padrao do pt-BR virou "8 de ago. de 2022"; COMPAT volta o do Java 8.
+        if (System.getProperty("java.locale.providers") == null) System.setProperty("java.locale.providers", "COMPAT,CLDR");
+        java.util.Locale.setDefault(java.util.Locale.Category.FORMAT, new java.util.Locale("pt", "BR"));
         atualizaFundos();
         try {
             Tema.instalar();

@@ -117,6 +117,20 @@ public final class Escalacao {
         return rotulo(nome, posicao, improvisado, forca, energia, lado, extra, pilula, ROTULO_L - 6);
     }
 
+    // Nome que nao cabe: "Wellington Reis" vira "W. Reis" antes de recorrer as reticencias.
+    static String curto(String nome, FontMetrics fm, int largura) {
+        if (nome == null) return "";
+        nome = nome.trim();
+        if (fm.stringWidth(nome) <= largura) return nome;
+        String[] p = nome.split("\\s+");
+        if (p.length >= 2) {
+            String ab = p[0].charAt(0) + ". " + p[p.length - 1];
+            if (fm.stringWidth(ab) <= largura) return ab;
+            return p[p.length - 1].length() > 3 && fm.stringWidth(p[p.length - 1]) <= largura ? p[p.length - 1] : ab;
+        }
+        return nome;
+    }
+
     // pilula = fundo escuro atras do rotulo (no campo, onde rotulos vizinhos podem se encostar).
     public static Image rotulo(String nome, String posicao, boolean improvisado, int forca, int energia,
                                String lado, String extra, boolean pilula, int largura) {
@@ -127,12 +141,12 @@ public final class Escalacao {
         Font fn = Estreia.semi(11.5f);
         g.setFont(fn);
         FontMetrics fm = g.getFontMetrics();
-        while (fm.stringWidth(nome) > largura && fn.getSize2D() > 9.5f) {
+        while (fm.stringWidth(nome) > largura && fn.getSize2D() > 10.5f) {
             fn = fn.deriveFont(fn.getSize2D() - 0.5f);
             g.setFont(fn);
             fm = g.getFontMetrics();
         }
-        String n = nome;
+        String n = curto(nome, fm, largura);
         while (fm.stringWidth(n) > largura && n.length() > 3) n = n.substring(0, n.length() - 2) + "…";
         int nx = (ROTULO_L - fm.stringWidth(n)) / 2;
         int ny = fm.getAscent() + 1;

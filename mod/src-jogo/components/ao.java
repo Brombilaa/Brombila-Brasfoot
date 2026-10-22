@@ -18,6 +18,10 @@ import java.util.ArrayList;
 import java.util.StringTokenizer;
 import javax.swing.ImageIcon;
 
+// Mod: no intervalo (a.cD) o banco usa uma grade de duas colunas alinhadas (RK 26-36, antes em
+// zigue-zague e com nomes cortados na borda) e o goleiro do intervalo subiu (RJ no modo 2, RK[1] no clique) para o rotulo caber.
+// No Escalar, o banco (RJ 26-36) ganhou colunas de 94 px a partir de 482 e a segunda linha desceu
+// para 112, com camisas de 42 px e nomes que cabem na coluna, sem encostar no titulo.
 public class ao {
     private F U = null;
     private ImageIcon RC = null;
@@ -31,8 +35,8 @@ public class ao {
     private static int RG = 410;
     private static ArrayList RH = new ArrayList();
     private static ArrayList RI = new ArrayList();
-    private static int[][] RJ = new int[][]{{-1, -1}, {190, 565}, {35, 425}, {100, 485}, {190, 485}, {285, 485}, {100, 405}, {190, 405}, {285, 405}, {345, 425}, {35, 265}, {100, 315}, {190, 315}, {285, 315}, {100, 205}, {190, 205}, {285, 205}, {345, 265}, {35, 55}, {100, 115}, {190, 115}, {285, 115}, {100, 35}, {190, 30}, {285, 35}, {345, 55}, {470, 30}, {558, 30}, {655, 30}, {755, 30}, {855, 30}, {950, 30}, {470, 105}, {558, 105}, {655, 105}, {755, 105}, {855, 105}};
-    private static int[][] RK = new int[][]{{-1, -1}, {190, 565}, {35, 425}, {100, 485}, {190, 485}, {285, 485}, {100, 405}, {190, 405}, {285, 405}, {345, 425}, {35, 270}, {100, 315}, {190, 315}, {285, 315}, {100, 205}, {190, 205}, {285, 205}, {345, 270}, {35, 55}, {100, 115}, {190, 115}, {285, 115}, {100, 35}, {190, 30}, {285, 35}, {345, 55}, {20, 25}, {115, 35}, {20, 125}, {115, 135}, {20, 210}, {115, 220}, {20, 305}, {115, 315}, {20, 400}, {115, 410}, {20, 495}};
+    private static int[][] RJ = new int[][]{{-1, -1}, {190, 565}, {35, 425}, {100, 485}, {190, 485}, {285, 485}, {100, 405}, {190, 405}, {285, 405}, {345, 425}, {35, 265}, {100, 315}, {190, 315}, {285, 315}, {100, 205}, {190, 205}, {285, 205}, {345, 265}, {35, 55}, {100, 115}, {190, 115}, {285, 115}, {100, 35}, {190, 30}, {285, 35}, {345, 55}, {482, 30}, {576, 30}, {670, 30}, {764, 30}, {858, 30}, {952, 30}, {482, 112}, {576, 112}, {670, 112}, {764, 112}, {858, 112}};
+    private static int[][] RK = new int[][]{{-1, -1}, {190, 536}, {35, 425}, {100, 485}, {190, 485}, {285, 485}, {100, 405}, {190, 405}, {285, 405}, {345, 425}, {35, 270}, {100, 315}, {190, 315}, {285, 315}, {100, 205}, {190, 205}, {285, 205}, {345, 270}, {35, 55}, {100, 115}, {190, 115}, {285, 115}, {100, 35}, {190, 30}, {285, 35}, {345, 55}, {25, 28}, {120, 28}, {25, 128}, {120, 128}, {25, 228}, {120, 228}, {25, 328}, {120, 328}, {25, 428}, {120, 428}, {25, 528}};
     private static int[][] RL = new int[][]{{-1, -1}, {200, 489}, {76, 376}, {135, 422}, {202, 421}, {273, 421}, {131, 356}, {202, 356}, {277, 356}, {328, 377}, {76, 243}, {131, 276}, {199, 276}, {275, 276}, {128, 188}, {201, 188}, {276, 188}, {323, 247}, {68, 62}, {129, 107}, {203, 107}, {276, 107}, {127, 37}, {200, 37}, {280, 37}, {331, 64}, {10, 480}, {10, 400}, {10, 320}, {10, 240}, {10, 160}, {10, 84}, {10, 1}};
     private static int[][] RM;
 
@@ -165,6 +169,8 @@ public class ao {
                 if (n4 == 2) {
                     n10 = RJ[n9][0];
                     n11 = RJ[n9][1];
+                    // campo do intervalo (so ele usa o modo 2): o quadro mostra 650 px, o goleiro sobe
+                    if (n9 == 1) n11 -= 24;
                 }
                 if (n4 == 3) {
                     n10 = RK[n9][0];
@@ -174,12 +180,25 @@ public class ao {
                     n10 = RK[n9][0];
                     n11 = RK[n9][1];
                 }
+                if (n4 == 1) {
+                    // banco do Escalar: camisa menor e rotulo estreito, 4 px abaixo do titulo
+                    mod.Escalacao.camisa(graphics2D, image, n10 + 4, n11 + 4, 42, 42);
+                    if (((ao)arrayList.get(n9)).x() != null) {
+                        graphics2D.drawImage(ao.a(((ao)arrayList.get(n9)).x(), 4, n9, ""), n10 + 25 - 75, n11 + 43, null);
+                        if (((ao)arrayList.get(n9)).x().fP()) {
+                            graphics2D.drawImage(image3, n10 - 8, n11 + 26, null);
+                        }
+                        mod.Escalacao.numero(graphics2D, image, ((ao)arrayList.get(n9)).x().fn(), n10 + 4, n11 + 4, 42, 42);
+                    }
+                    ++n9;
+                    continue;
+                }
                 mod.Escalacao.camisa(graphics2D, image, n10, n11, 0, 0);
                 if (((ao)arrayList.get(n9)).x() != null) {
                     int n12;
                     graphics2D.setFont(new Font("Arial", 1, 11));
                     graphics2D.setFont(graphics2D.getFont().deriveFont(11.0f));
-                    graphics2D.drawImage(ao.a(((ao)arrayList.get(n9)).x(), 1, n9, ""), n10 - 52, n11 + 47, null);
+                    graphics2D.drawImage(ao.a(((ao)arrayList.get(n9)).x(), n4 == 3 && n9 > 25 ? 4 : 1, n9, ""), n10 - 52, n11 + 47, null);
                     if (((ao)arrayList.get(n9)).x().fP()) {
                         graphics2D.drawImage(image3, n10 - 15, n11 + 30, null);
                     }
@@ -286,9 +305,13 @@ public class ao {
             }
             return mod.Escalacao.rotulo(f2.getNome(), pos, improvisado, forca, f2.fp(), null, null, true);
         }
+        if (n2 == 4) {
+            // banco do intervalo: duas colunas de ~95 px, o nome tem que caber na coluna
+            return mod.Escalacao.rotulo(f2.getNome(), aq.rI[f2.getPosicao()], false, forca, f2.fp(), null, null, true, 86);
+        }
         if (n2 == 2) {
             // na lista de disponiveis o nome cabe no cartao (86 px), para nao invadir o vizinho
-            return mod.Escalacao.rotulo(f2.getNome(), aq.rI[f2.getPosicao()], false, forca, f2.fp(), aq.rK[f2.getLado()], null, false, 92);
+            return mod.Escalacao.rotulo(f2.getNome(), aq.rI[f2.getPosicao()], false, forca, f2.fp(), aq.rK[f2.getLado()], null, false, 80);
         }
         String pos = "";
         if (n3 >= 1 && n3 <= 25) {
