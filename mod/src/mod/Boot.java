@@ -14,6 +14,11 @@ public class Boot {
             // Se o tema falhar por qualquer motivo, o jogo abre normal.
             t.printStackTrace();
         }
+        try {
+            Tempo.liga();       // avisa as novidades do mod quando passa um dia/semana/temporada
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
         ClassLoader loader = Thread.currentThread().getContextClassLoader();
         Class.forName("best.h2", true, loader)
             .getMethod("main", String[].class)

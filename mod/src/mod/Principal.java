@@ -31,6 +31,7 @@ final class Principal {
     static void aplica(JPanel eg) {
         if (eg.getClientProperty(Janelas.FEITO) != null) return;
         eg.putClientProperty(Janelas.FEITO, Boolean.TRUE);
+        Tempo.principal = new java.lang.ref.WeakReference<JPanel>(eg);
         painelDoTime(Dialogos.campo(eg, "wf"), eg);
         jogador(Dialogos.campo(eg, "If"));
         Object t = Dialogos.campo(eg, "Iy");
