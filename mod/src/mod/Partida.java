@@ -137,7 +137,7 @@ public class Partida extends JComponent implements ActionListener {
     static final class Chave {
         double t, x, y, h;
         Ator dono;
-        boolean salto;
+        boolean salto, chute;
         Chave(double t, double x, double y, double h, Ator dono, boolean salto) {
             this.t = t; this.x = x; this.y = y; this.h = h; this.dono = dono; this.salto = salto;
         }
@@ -631,11 +631,15 @@ public class Partida extends JComponent implements ActionListener {
     }
 
     void constroi(int tipo, int lado, Object ev, long agora, int d) {
+        boolean chance = tipo == GOL || tipo == DEFENDE || tipo == FORA || tipo == PENALTI_PERDIDO;
+        // o lance anterior ainda esta acontecendo: so as chances de gol interrompem; nas
+        // velocidades rapidas (o relogio nao espera) so o gol interrompe
+        if (lance != null && !lance.acabou && (!chance || (d < 200 && tipo != GOL))) return;
         Lance l = new Lance();
         l.tipo = tipo;
         l.lado = lado;
         l.inicio = agora;
-        l.dur = Math.max(140, d * 0.9);
+        l.dur = 1000;
         int adv = 1 - lado;
         int dz = ev == null ? 0 : inteiro(chama(ev, "el"));
         Ator d0 = dono != null && dono.lado == lado ? dono : perto(lado, bolaX, bolaY, -1, null, true);
@@ -651,10 +655,6 @@ public class Partida extends JComponent implements ActionListener {
             if (serve != null && (serve.lado != lado || serve == chuta)) serve = null;
             if (chuta == null) return;
             boolean penalti = dz == 3 || tipo == PENALTI_PERDIDO, falta = dz == 4, olimpico = dz == 5;
-            if (tipo == GOL) {
-                double longe = dist(chuta.x, chuta.y, frente(lado, 0.87), 0.5);
-                l.dur = Math.max(Math.max(l.dur, 1900), longe / 0.55 / 0.72 * 1000);
-            }
             double fimChute;
             if (penalti) {
                 l.chave(0.30, frente(lado, 0.895), 0.5, 0, chuta, true);
@@ -687,11 +687,13 @@ public class Partida extends JComponent implements ActionListener {
             }
             Ator goleiro = goleiro(adv);
             if (tipo == GOL) {
-                l.chave(fimChute, frente(lado, 1.018), 0.5 + (sorte.nextDouble() - 0.5) * 0.085, olimpico ? 0.7 : 0.25, null);
+                l.chave(fimChute, frente(lado, 1.018), 0.5 + (sorte.nextDouble() - 0.5) * 0.085, olimpico ? 0.7 : 0.25, null).chute = true;
+                final Chave rede = l.chaves.get(l.chaves.size() - 1);
+                cronometra(l);
                 final Ator autor = dz == 2 ? atores.get(chama(ev, "eo")) : chuta;
                 final int ladoGol = lado;
                 final String quem = autor == null ? nome(chama(ev, "eo")) : nome(autor.f);
-                golDe = agora + (long) (l.dur * fimChute);
+                golDe = agora + (long) (l.dur * rede.t);
                 golAte = golDe + 2300;
                 golNome = quem;
                 golTime = time(lado);
@@ -722,7 +724,7 @@ public class Partida extends JComponent implements ActionListener {
                 pausa(agora, l.dur + 2300 + extra, d);
             } else if (tipo == DEFENDE || tipo == PENALTI_PERDIDO && chama(ev, "ep") != null) {
                 double gy = goleiro != null ? Math.max(0.42, Math.min(0.58, goleiro.y)) : 0.5;
-                l.chave(fimChute, frente(lado, 0.968), gy + (sorte.nextDouble() - 0.5) * 0.04, 0.2, goleiro);
+                l.chave(fimChute, frente(lado, 0.968), gy + (sorte.nextDouble() - 0.5) * 0.04, 0.2, goleiro).chute = true;
                 String g = goleiro != null ? nome(goleiro.f) : "o goleiro";
                 String texto = tipo == PENALTI_PERDIDO ? g + " defende o pênalti de " + nome(chuta.f) + "!"
                     : escolhe(nome(chuta.f) + " finaliza e " + g + " defende.",
@@ -733,7 +735,7 @@ public class Partida extends JComponent implements ActionListener {
             } else {
                 boolean porCima = sorte.nextBoolean();
                 double fy = porCima ? 0.5 + (sorte.nextDouble() - 0.5) * 0.06 : (sorte.nextBoolean() ? 0.36 - sorte.nextDouble() * 0.08 : 0.64 + sorte.nextDouble() * 0.08);
-                l.chave(fimChute, frente(lado, 1.035), fy, porCima ? 0.9 : 0.3, null);
+                l.chave(fimChute, frente(lado, 1.035), fy, porCima ? 0.9 : 0.3, null).chute = true;
                 l.chave(1.0, frente(lado, 0.955), 0.5 + (sorte.nextDouble() - 0.5) * 0.2, 0, goleiro, true);
                 String texto = tipo == PENALTI_PERDIDO ? nome(chuta.f) + " perde o pênalti: a bola vai para fora!"
                     : porCima ? escolhe(nome(chuta.f) + " arrisca e manda por cima do gol.", nome(chuta.f) + " cabeceia por cima.")
@@ -776,9 +778,61 @@ public class Partida extends JComponent implements ActionListener {
             legenda = escolhe(time(lado) + " troca passes.", time(lado) + " tem a bola.", time(lado) + " gira a bola no campo.");
         }
         legendaMin = gt;
+        if (tipo != GOL) {
+            cronometra(l);
+            // chance de gol: o relogio do jogo espera o lance terminar, no ritmo de verdade
+            if (chance) pausa(agora, l.dur + 700, d);
+        }
         Chave ultima = l.chaves.get(l.chaves.size() - 1);
         if (ultima.dono != null) posse = ultima.dono.lado;
         lance = l;
+    }
+
+    // ritmo de verdade, em metros por segundo
+    static final double TROTE = 4.2, CORRIDA = 6.3, CONDUZ = 5.6, SPRINT = 8.2, ACELERA = 7.5;
+    static final double PASSE_CURTO = 17, PASSE_LONGO = 24, CHUTE = 28;
+
+    static String ultimoCrono = "";
+    public static String crono() { return ultimoCrono; }
+
+    static double metros(double ax, double ay, double bx, double by) {
+        return Math.hypot((ax - bx) * Transmissao.CX, (ay - by) * Transmissao.CZ);
+    }
+
+    // da a cada ponto do lance o tempo que ele levaria de verdade: a bola anda na velocidade
+    // de um passe, de uma conducao ou de um chute, e quem recebe precisa ter tempo de chegar
+    void cronometra(Lance l) {
+        ArrayList<Chave> k = l.chaves;
+        double[] tt = new double[k.size()];
+        StringBuilder dbg = new StringBuilder(l.tipo + ":");
+        for (int i = 1; i < k.size(); i++) {
+            Chave a = k.get(i - 1), b = k.get(i);
+            double dm = metros(a.x, a.y, b.x, b.y), seg;
+            if (b.salto) seg = 1.5 + dm / 30;                               // bola parada: arruma e cobra
+            else if (b.chute) seg = 0.35 + dm / CHUTE;                      // ajeita e chuta
+            else if (a.dono != null && a.dono == b.dono) seg = dm / CONDUZ; // conduz
+            else seg = 0.3 + dm / (dm > 28 ? PASSE_LONGO : PASSE_CURTO);    // domina e passa
+            double t = tt[i - 1] + seg;
+            if (b.dono != null && !b.chute && !b.salto && atores.containsValue(b.dono)) {
+                // quem recebe esta longe: o passe vai um pouco mais na direcao dele (ate 40%)
+                double chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT;
+                if (chega > t + 0.6) {
+                    double m = Math.min(0.4, 1 - (t + 0.6) / chega);
+                    b.x += (b.dono.x - b.x) * m;
+                    b.y += (b.dono.y - b.y) * m;
+                    dm = metros(a.x, a.y, b.x, b.y);
+                    t = tt[i - 1] + (a.dono != null && a.dono == b.dono ? dm / CONDUZ : 0.3 + dm / (dm > 28 ? PASSE_LONGO : PASSE_CURTO));
+                    chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT;
+                }
+                t = Math.max(t, chega);
+            }
+            tt[i] = t;
+            dbg.append(String.format(" %s%.1fm/%.2fs", b.chute ? "C" : b.salto ? "S" : a.dono == b.dono ? "c" : "p", dm, t - tt[i - 1]));
+        }
+        ultimoCrono = dbg.toString();
+        double total = Math.max(0.6, tt[k.size() - 1]);
+        l.dur = total * 1000;
+        for (int i = 0; i < k.size(); i++) k.get(i).t = tt[i] / total;
     }
 
     String escolhe(String... op) { return op[sorte.nextInt(op.length)]; }
@@ -862,7 +916,7 @@ public class Partida extends JComponent implements ActionListener {
         if (p.fim) return "fim";
         if (p.transmissao.emReplay(agora)) return "replay " + (agora - p.transmissao.replayDe) + " " + Transmissao.ms + "ms";
         if (agora >= p.golDe && agora < p.golAte) return "gol " + (agora - p.golDe);
-        if (p.lance != null) return (p.lance.acabou ? "lance " : "andando ") + p.lance.tipo + " " + p.gt + " " + Transmissao.ms + "ms";
+        if (p.lance != null) return (p.lance.acabou ? "lance " : "andando ") + p.lance.tipo + " " + p.gt + " " + Transmissao.ms + "ms dur " + (int) p.lance.dur + " u " + String.format("%.2f", (agora - p.lance.inicio) / p.lance.dur) + (p.pausado ? " pausado" : "");
         return "jogo " + p.gt + " " + Transmissao.ms + "ms";
     }
 
@@ -974,45 +1028,50 @@ public class Partida extends JComponent implements ActionListener {
         double u = lance == null ? 1 : (agora - lance.inicio) / lance.dur;
         for (Ator a : atores.values()) {
             double[] alvo = base(a, t);
-            double vmax = 0.22;
+            double vmax = TROTE, ganho = 1.4;                  // m/s e 1/s
             Chave c = a == dono && conduz ? null : proxima(a, u);
             if (c != null) {
                 // vai para onde vai receber a bola, chegando na hora certa
                 alvo[0] = c.x; alvo[1] = c.y;
-                double resta = Math.max(0.12, (c.t - u) * lance.dur / 1000.0);
-                vmax = Math.max(0.3, Math.min(0.8, dist(a.x, a.y, c.x, c.y) / resta * 1.15));
+                double resta = Math.max(0.15, (c.t - u) * lance.dur / 1000.0);
+                vmax = Math.max(2.5, Math.min(SPRINT, metros(a.x, a.y, c.x, c.y) / resta * 1.1));
+                ganho = 3;
             } else if (agora > golDe && agora < golAte && lance != null && lance.acabou && a.lado == golLado && golAutor != null
                        && atores.containsValue(golAutor)) {
                 // comemoracao: o autor corre para a bandeirinha e os companheiros vao atras
                 double cy = golAutor.y < 0.5 ? 0.05 : 0.95;
-                if (a == golAutor) { alvo[0] = frente(golLado, 0.95); alvo[1] = cy; vmax = 0.3; }
+                if (a == golAutor) { alvo[0] = frente(golLado, 0.95); alvo[1] = cy; vmax = 7; ganho = 3; }
                 else if (a.vaga != 1 && dist(a.x, a.y, golAutor.x, golAutor.y) < 0.45) {
                     alvo[0] = golAutor.x - (golLado == 0 ? 0.03 : -0.03) * (1 + a.numero % 3);
                     alvo[1] = golAutor.y + ((a.numero % 5) - 2) * 0.025;
-                    vmax = 0.26;
+                    vmax = 6.5; ganho = 2.5;
                 }
             } else if (a == dono) {
                 double tras = a.lado == 0 ? -0.012 : 0.012;
                 alvo[0] = bolaX + tras; alvo[1] = bolaY;
-                vmax = 0.42;
+                vmax = SPRINT; ganho = 4;
             } else if (a == pressiona) {
                 double tras = a.lado == 0 ? -0.03 : 0.03;
                 alvo[0] = bolaX + tras; alvo[1] = bolaY + (a.y < bolaY ? -0.02 : 0.02);
-                vmax = 0.26;
+                vmax = CORRIDA; ganho = 2;
             }
-            if (a.y > 0.98 || a.y < 0.02) vmax = Math.max(vmax, 0.4);   // entrando em campo
-            if (dist(a.x, a.y, alvo[0], alvo[1]) > 0.25) vmax = Math.max(vmax, 0.36);   // voltando para a posicao
-            double dx = alvo[0] - a.x, dy = alvo[1] - a.y;
-            double ganho = c != null ? 8 : 3.2;
-            double qx = dx * ganho, qy = dy * ganho;
+            if (a.y > 0.98 || a.y < 0.02) vmax = Math.max(vmax, CORRIDA);   // entrando em campo
+            if (dist(a.x, a.y, alvo[0], alvo[1]) > 0.2) vmax = Math.max(vmax, CORRIDA);   // voltando para a posicao
+            // velocidade desejada em metros, com limite e aceleracao de gente
+            double qx = (alvo[0] - a.x) * Transmissao.CX * ganho, qy = (alvo[1] - a.y) * Transmissao.CZ * ganho;
             double v = Math.hypot(qx, qy);
             if (v > vmax) { qx *= vmax / v; qy *= vmax / v; }
-            double k = Math.min(1, dt * 7);
-            a.vx += (qx - a.vx) * k;
-            a.vy += (qy - a.vy) * k;
+            double ux = a.vx * Transmissao.CX, uy = a.vy * Transmissao.CZ;
+            double ax = qx - ux, ay = qy - uy, am = Math.hypot(ax, ay), lim = ACELERA * dt;
+            if (am > lim) { ax *= lim / am; ay *= lim / am; }
+            ux += ax; uy += ay;
+            a.vx = ux / Transmissao.CX;
+            a.vy = uy / Transmissao.CZ;
             a.x += a.vx * dt;
             a.y += a.vy * dt;
-            a.passo += Math.hypot(a.vx * 105, a.vy * 68) * dt * 3.3;
+            // passada: mais curta e rapida no trote, mais longa no pique
+            double vm = Math.hypot(ux, uy);
+            a.passo += vm * dt * Math.max(1.9, 3.4 - 0.17 * vm);
         }
         afasta();
         for (Iterator<Marca> it = marcas.iterator(); it.hasNext();) if (it.next().ate < agora) it.remove();

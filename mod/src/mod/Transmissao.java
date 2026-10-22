@@ -117,7 +117,7 @@ final class Transmissao {
             if (ic instanceof ImageIcon) img = ((ImageIcon) ic).getImage();
             Color c1 = Partida.cor(time, "kB", lado == 0 ? Color.WHITE : Color.BLACK), c2 = Partida.cor(time, "kC", lado == 0 ? Color.BLACK : Color.WHITE);
             kits[lado] = Bonecos.Kit.de(img, c1, c2);
-            if (lado == 1 && Partida.distancia(kits[0].media, kits[1].media) < 75) {
+            if (lado == 1 && parecidos(kits[0], kits[1])) {
                 // camisas parecidas: o visitante usa o outro uniforme (ou as cores que a prancheta usa)
                 Bonecos.Kit melhor = null;
                 for (int u = 1; u <= 3; u++) {
@@ -126,13 +126,18 @@ final class Transmissao {
                     Bonecos.Kit k = Bonecos.Kit.de(((ImageIcon) o).getImage(), c1, c2);
                     if (melhor == null || Partida.distancia(kits[0].media, k.media) > Partida.distancia(kits[0].media, melhor.media)) melhor = k;
                 }
-                if (melhor == null || Partida.distancia(kits[0].media, melhor.media) < 75) melhor = Bonecos.Kit.de(null, p.cor[1], p.aro[1]);
+                if (melhor == null || parecidos(kits[0], melhor)) melhor = Bonecos.Kit.de(null, p.cor[1], p.aro[1]);
                 kits[1] = melhor;
             }
         }
         goleiros[0] = Bonecos.Kit.de(null, new Color(0x2B2E2C), new Color(0xF2C14E));
         goleiros[1] = Bonecos.Kit.de(null, new Color(0xD8B35A), new Color(0x1A1408));
         torcida = null;
+    }
+
+    // de longe so se ve a cor media da camisa: perto na cor ou no claro/escuro confunde
+    static boolean parecidos(Bonecos.Kit a, Bonecos.Kit b) {
+        return Partida.distancia(a.media, b.media) < 110 && Math.abs(Partida.brilho(a.media) - Partida.brilho(b.media)) < 0.3;
     }
 
     Bonecos.Corpo corpo(Partida.Ator a) {
