@@ -20,7 +20,7 @@ import java.util.zip.InflaterInputStream;
 // do jogador, entao qualquer time do jogo aparece com a propria camisa.
 final class Bonecos {
 
-    static final int PELE = 0, CABELO = 1, CAMISA = 2, CALCAO = 3, MEIA = 4, CHUTEIRA = 5, SOLA = 6, OLHO = 7, BOCA = 8, FAIXA = 9;
+    static final int PELE = 0, CABELO = 1, CAMISA = 2, CALCAO = 3, MEIA = 4, CHUTEIRA = 5, SOLA = 6, OLHO = 7, BOCA = 8, FAIXA = 9, LUVA = 10;
     static final int COSTAS = 16, VAZIO = 255, TEX = 50;
 
     final int cortes, dirs, poses, largura, altura;
@@ -73,7 +73,7 @@ final class Bonecos {
 
     static final class Kit {
         final int[] camisa = new int[TEX * TEX];
-        int calcao, meia, faixa;
+        int calcao, meia, faixa, luva = 0xEFEAD9;
         boolean clara;                // camisa clara: numero escuro
         Color media = Color.GRAY;      // cor media do peito
         final Map<Integer, byte[]> numeros = new HashMap<Integer, byte[]>();
@@ -212,6 +212,7 @@ final class Bonecos {
                 case CALCAO: base = k.calcao; break;
                 case MEIA: base = k.meia; break;
                 case FAIXA: base = k.faixa; break;
+                case LUVA: base = k.luva; break;
                 case CHUTEIRA: base = 0x171717; break;
                 case SOLA: base = 0x2A2A2A; break;
                 case OLHO: base = 0x0F0C0C; break;

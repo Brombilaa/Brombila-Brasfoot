@@ -86,6 +86,14 @@ final class Transmissao {
         t.start();
     }
 
+    // so o estadio, sem partida (cena dos penaltis): cores da torcida dos dois times
+    Color[] coresTorcida;
+
+    Transmissao(Color torcida0, Color torcida1) {
+        this.p = null;
+        coresTorcida = new Color[]{torcida0, torcida1};
+    }
+
     boolean pronto() { return ligado && carregou && iso != null; }
 
     void novoJogo() {
@@ -716,7 +724,8 @@ final class Transmissao {
             g.setColor(new Color(cinza, cinza + 3, cinza + 2));
             g.fillRect(0, y0, W, y1 - y0);
         }
-        Color c0 = Partida.visivel(p.cor[0]), c1 = Partida.visivel(p.cor[1]);
+        Color[] cs = p != null ? p.cor : coresTorcida;
+        Color c0 = Partida.visivel(cs[0]), c1 = Partida.visivel(cs[1]);
         Color[] neutras = {new Color(0xE6E6DC), new Color(0x2A2A30), new Color(0xF2F2F2), new Color(0x151515), new Color(0xC9B27A)};
         Random r = new Random(7);
         for (int k = 0; k < degraus; k++) {

@@ -714,7 +714,8 @@ public class Partida extends JComponent implements ActionListener {
                     }
                 };
                 long extra = 0;
-                if (d >= 200 && isShowing() && verCampo && transmissao.pronto()) {
+                // penalti ja foi mostrado na cena 3D da cobranca (mod.Penaltis): sem replay
+                if (d >= 200 && dz != 3 && isShowing() && verCampo && transmissao.pronto()) {
                     transmissao.agendaReplay(golDe, golAte, lado);
                     extra = Transmissao.REPLAY_MS;
                 }

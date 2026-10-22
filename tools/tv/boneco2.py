@@ -88,31 +88,56 @@ class Jogador:
         p = p or pose()
         coxa, canela = 0.43, 0.43
         self.yq = yq = 0.075 + coxa + canela + p["pulo"]
-        T = self.T = rot_x(-p["tronco"])
+        abre = p["abre"] if isinstance(p["abre"], (tuple, list)) else (p["abre"], p["abre"])
+        lado = p.get("lado", (0.0, 0.0))
+        T = self.T = rot_y(p.get("torce", 0.0)) @ rot_x(-p["tronco"])
         self.pelve = np.array([0, yq, 0])
         self.peito = self.pelve + T @ np.array([0, 0.40, 0.0])
         self.pescoco = self.pelve + T @ np.array([0, 0.58, 0.0])
         self.ch = 1.13
         self.cabeca = self.pescoco + np.array([0, 0.16 * self.ch, 0.025])
         self.pernas = []
-        for lado, sx in ((0, -1), (1, 1)):
+        for i, sx in ((0, -1), (1, 1)):
             q = self.pelve + T @ np.array([sx * 0.1, -0.03, 0])
-            Rq = rot_z(-sx * 0.03) @ rot_x(-p["quadril"][lado])
+            Rz = rot_z(-sx * (0.03 + lado[i]))
+            Rq = Rz @ rot_x(-p["quadril"][i])
             joelho = q + Rq @ np.array([0, -coxa, 0])
-            Rj = rot_x(-p["quadril"][lado] + p["joelho"][lado])
+            Rj = Rz @ rot_x(-p["quadril"][i] + p["joelho"][i])
             tornozelo = joelho + Rj @ np.array([0, -canela, 0])
-            Rp = rot_x(-p["quadril"][lado] + p["joelho"][lado] * 0.7)
+            Rp = Rz @ rot_x(-p["quadril"][i] + p["joelho"][i] * 0.7 + p.get("pe", (0.0, 0.0))[i])
             self.pernas.append((q, joelho, tornozelo, Rq, Rj, Rp))
         self.bracos = []
         for lado, sx in ((0, -1), (1, 1)):
             o = self.peito + T @ np.array([sx * 0.235, 0.05, -0.01])
-            Ro = rot_z(sx * p["abre"] * 0.6) @ rot_x(-p["ombro"][lado])
+            Ro = T @ rot_z(sx * abre[lado] * 0.6) @ rot_x(-p["ombro"][lado])
             cot = o + Ro @ np.array([0, -0.29, 0])
-            Rc = rot_z(sx * p["abre"] * 0.25) @ rot_x(-p["ombro"][lado] - p["cotovelo"][lado])
+            Rc = T @ rot_z(sx * p.get("abre2", (abre[0] * 0.42, abre[1] * 0.42))[lado] * 0.6) @ rot_x(-p["ombro"][lado] - p["cotovelo"][lado])
             pulso = cot + Rc @ np.array([0, -0.255, 0])
             self.bracos.append((o, cot, pulso, Ro, Rc, sx))
+        # apoio: desce o corpo ate a sola mais baixa encostar no chao (poses agachadas)
+        if p.get("apoia"):
+            baixo = min(t[2][1] for t in self.pernas) - 0.075
+            self._desloca(np.array([0, -baixo, 0]))
+        # rolo: o corpo todo gira em volta da pelve (goleiro no voo)
+        self.G = rot_z(p.get("rolo", 0.0)) if p.get("rolo") else None
         # caixa envolvente
-        self.min = np.array([-0.62, -0.02, -0.6]); self.max = np.array([0.62, yq + 0.95, 0.6])
+        if self.G is None:
+            self.min = np.array([-0.62, -0.02, -0.6]); self.max = np.array([0.62, self.yq + 0.95, 0.6])
+            if abs(abre[0]) > 1.5 or abs(abre[1]) > 1.5 or p.get("lado"):
+                self.min[0] = -1.1; self.max[0] = 1.1; self.max[1] = self.yq + 1.3
+        else:
+            self.min = self.pelve - 1.45; self.max = self.pelve + 1.45; self.min[2] = -0.8; self.max[2] = 0.8
+
+    def _desloca(self, d):
+        self.yq += d[1]
+        self.pelve = self.pelve + d; self.peito = self.peito + d; self.pescoco = self.pescoco + d; self.cabeca = self.cabeca + d
+        self.pernas = [(q + d, j + d, t + d, Rq, Rj, Rp) for q, j, t, Rq, Rj, Rp in self.pernas]
+        self.bracos = [(o + d, c + d, pu + d, Ro, Rc, sx) for o, c, pu, Ro, Rc, sx in self.bracos]
+
+    def local(self, p):
+        """mundo -> boneco (desfaz o rolo)"""
+        if self.G is None: return p
+        return (p - self.pelve) @ self.G + self.pelve
 
     # ---- partes
     def tronco(self, p):
@@ -230,6 +255,7 @@ class Jogador:
         tr = self.tronco(p)
         self._sup = [None, None]
         b0, m0 = self.braco(p, 0); b1, m1 = self.braco(p, 1)
+        self._maos = np.minimum(m0, m1)
         a0, c0 = self.perna(p, 0); a1, c1 = self.perna(p, 1)
         bo0, s0 = self.bota(p, 0); bo1, s1 = self.bota(p, 1)
         ch = self.ch; pc = self.cabeca + (p - self.cabeca) / ch
@@ -250,10 +276,11 @@ class Jogador:
                     meia=np.minimum(c0, c1), sob=sob)
 
     def sdf(self, p):
-        d = self.partes(p)
+        d = self.partes(self.local(p))
         return np.minimum.reduce([d["corpo"], d["cam"], d["cal"], d["cab"], d["botas"], d["sob"]])
 
     def material(self, p):
+        p = self.local(p)
         d = self.partes(p)
         m = np.full(len(p), PELE)
         # ordem: quem estiver mais perto da superficie ganha (roupa por cima do corpo)
@@ -348,12 +375,12 @@ class Uniforme:
 LUZ = np.array([-0.5, 0.8, 0.6]); LUZ /= np.linalg.norm(LUZ)
 CONTRA = np.array([0.6, 0.35, -0.7]); CONTRA /= np.linalg.norm(CONTRA)
 
-def ilumina(j, giro, inclinacao, altura_px, aa):
+def ilumina(j, giro, inclinacao, altura_px, aa, largura=0.95):
     """ray marching + luz: devolve a grade da imagem e, para cada pixel acertado, ponto,
     material, multiplicador de luz (difusa+ceu, com sombra e oclusao) e brilho somado (rim+spec)"""
     M = rot_x(inclinacao) @ rot_y(giro)                    # boneco -> camera
     escala = altura_px * aa / 1.95
-    W = int(altura_px * 0.95 * aa); H = int(altura_px * 1.22 * aa)
+    W = int(altura_px * largura * aa); H = int(altura_px * 1.22 * aa)
     xs = (np.arange(W) + 0.5 - W / 2) / escala
     ys = (H * 0.86 - (np.arange(H) + 0.5)) / escala
     X, Y = np.meshgrid(xs, ys)
@@ -407,11 +434,11 @@ def ilumina(j, giro, inclinacao, altura_px, aa):
     spec = np.clip(n @ hv, 0, 1) ** 40
     brilha = np.isin(mat, [CAMISA, CALCAO, CHUTEIRA]) * 0.18 + (mat == PELE) * 0.06
     soma = rim * 0.22 + spec * brilha * sh
-    return W, H, escala, idx, p, mat, luz, soma
+    return W, H, escala, idx, j.local(p), mat, luz, soma
 
-def render(j, giro, inclinacao, altura_px, aa=2, sombra=True, contorno=0.0):
+def render(j, giro, inclinacao, altura_px, aa=2, sombra=True, contorno=0.0, largura=0.95):
     """retorna RGBA; o pe do jogador fica em (largura/2, 86% da altura)"""
-    W, H, escala, idx, p, mat, luz, soma = ilumina(j, giro, inclinacao, altura_px, aa)
+    W, H, escala, idx, p, mat, luz, soma = ilumina(j, giro, inclinacao, altura_px, aa, largura)
     img = np.zeros((W * H, 4))
     if len(idx):
         base = j.u.cores(j, mat, p)
