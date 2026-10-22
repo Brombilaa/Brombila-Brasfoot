@@ -261,13 +261,19 @@ final class Dialogos {
             javax.swing.table.TableCellRenderer r = t.getDefaultRenderer(best.I.class);
             if (r == null || r instanceof Placar) return;
             t.setDefaultRenderer(best.I.class, new Placar(r, time));
-            int[] larg = {84, 135, 104, 135, 160, 70, 76};
+            int[] larg = {84, 130, 96, 130, 178, 68, 74};
             for (int i = 0; i < larg.length && i < t.getColumnCount(); i++) t.getColumnModel().getColumn(i).setPreferredWidth(larg[i]);
         }
 
         public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int row, int col) {
             Component c = orig.getTableCellRendererComponent(t, v, sel, foc, row, col);
-            if (t.convertColumnIndexToModel(col) != 2 || !(v instanceof best.I)) return c;
+            int m = t.convertColumnIndexToModel(col);
+            if (m == 4 && c instanceof JLabel) {
+                // competicoes alinhadas a esquerda, uma embaixo da outra
+                ((JLabel) c).setHorizontalAlignment(SwingConstants.LEFT);
+                ((JLabel) c).setBorder(new EmptyBorder(0, 14, 0, 4));
+            }
+            if (m != 2 || !(v instanceof best.I)) return c;
             best.I j = (best.I) v;
             if (!j.e()) {
                 letra = null;
@@ -310,9 +316,8 @@ final class Dialogos {
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             java.awt.Font fp = Estreia.negrito(13f), fl = Estreia.negrito(11f), fs = Estreia.semi(9.5f);
             FontMetrics mp = g.getFontMetrics(fp), ml = g.getFontMetrics(fl), ms = g.getFontMetrics(fs);
-            int chip = letra == null ? 0 : 20, vao = letra == null ? 0 : 8;
-            int larg = chip + vao + mp.stringWidth(placar);
-            int x = (w - larg) / 2;
+            // chip sempre na mesma coluna; o placar centralizado no espaco depois dele
+            int x = 10, xp0 = x + 20 + 6, area = w - xp0 - 6;
             int yPlacar = penaltis == null ? (h - mp.getHeight()) / 2 + mp.getAscent() : h / 2 + 1;
             if (letra != null) {
                 RoundRectangle2D r = new RoundRectangle2D.Float(x + 0.5f, (h - 20) / 2f, 20, 20, 8, 8);
@@ -326,7 +331,7 @@ final class Dialogos {
             }
             g.setFont(fp);
             g.setColor(letra == null ? Estreia.FRACO : Estreia.BRANCO);
-            int xp = x + chip + vao;
+            int xp = xp0 + (area - mp.stringWidth(placar)) / 2;
             g.drawString(placar, xp, yPlacar);
             if (penaltis != null) {
                 g.setFont(fs);
