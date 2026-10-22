@@ -279,6 +279,27 @@ public class Partida extends JComponent implements ActionListener {
                     getActionMap().put(nome, acoes.get(nome));
                 }
             }
+            // velocidade mais facil: 1 a 5 (em cima das letras ou no teclado numerico) fazem o mesmo que
+            // F1 a F5, e + / - sobem ou descem uma velocidade. Usam as mesmas acoes do jogo, entao
+            // valem as mesmas velocidades que o F1..F5 libera.
+            for (int i = 0; i < 5; i++) {
+                Object nome = de.get(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F1 + i, 0));
+                velocidades[i] = nome == null || acoes.get(nome) == null ? null : nome.toString();
+                if (velocidades[i] == null) continue;
+                para.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_1 + i, 0), velocidades[i]);
+                para.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_NUMPAD1 + i, 0), velocidades[i]);
+            }
+            int[] mais = {java.awt.event.KeyEvent.VK_ADD, java.awt.event.KeyEvent.VK_PLUS, java.awt.event.KeyEvent.VK_EQUALS};
+            int[] menos = {java.awt.event.KeyEvent.VK_SUBTRACT, java.awt.event.KeyEvent.VK_MINUS};
+            for (int k : mais) para.put(KeyStroke.getKeyStroke(k, 0), "mod.vel+");
+            para.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.SHIFT_DOWN_MASK), "mod.vel+");
+            for (int k : menos) para.put(KeyStroke.getKeyStroke(k, 0), "mod.vel-");
+            getActionMap().put("mod.vel+", new javax.swing.AbstractAction() {
+                public void actionPerformed(ActionEvent e) { passo(1); }
+            });
+            getActionMap().put("mod.vel-", new javax.swing.AbstractAction() {
+                public void actionPerformed(ActionEvent e) { passo(-1); }
+            });
         } catch (Throwable t) { t.printStackTrace(); }
         // O abre e fecha as ordens; Esc fecha sem aplicar
         getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0), "mod.ordens");
@@ -295,6 +316,29 @@ public class Partida extends JComponent implements ActionListener {
         getActionMap().put("mod.ordens.sai", new javax.swing.AbstractAction() {
             public void actionPerformed(ActionEvent e) { if (ordens != null) fechaOrdens(false); }
         });
+    }
+
+    final String[] velocidades = new String[5];   // acao do jogo em cada uma das teclas F1..F5
+
+    // + e -: acha qual das 5 velocidades esta valendo (o "d" do jogo e aq.rz[n], com n tirado do
+    // nome da acao, "f1" = 0) e dispara a acao da vizinha
+    void passo(int dir) {
+        int d = atraso(), atual = -1, perto = Integer.MAX_VALUE;
+        for (int i = 0; i < 5; i++) {
+            if (velocidades[i] == null) continue;
+            try {
+                int n = Integer.parseInt(velocidades[i].substring(1)) - 1;
+                int dist = Math.abs(best.aq.rz[n] - d);
+                if (dist < perto) { perto = dist; atual = i; }
+            } catch (Throwable t) { /* nome fora do padrao */ }
+        }
+        if (atual < 0) return;
+        for (int i = atual + dir; i >= 0 && i < 5; i += dir) {
+            if (velocidades[i] == null) continue;
+            javax.swing.Action a = getActionMap().get(velocidades[i]);
+            if (a != null) a.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, velocidades[i]));
+            return;
+        }
     }
 
     // ------------------------------------------------------------------ ordens ao vivo
@@ -2026,7 +2070,7 @@ public class Partida extends JComponent implements ActionListener {
         }
         // legenda: teclas desenhadas e o simbolo de fora de posicao
         ly += 10;
-        String[][] linhas = {{"F1–F5", "Velocidade"}, {"Espaço", "Substituições"}, {"V", "Câmera 3D / prancheta"}, {"O", "Dar ordens"}, {"!", "Fora de posição (rende menos)"}};
+        String[][] linhas = {{"1–5 + −", "Velocidade"}, {"Espaço", "Substituições"}, {"V", "Câmera 3D / prancheta"}, {"O", "Dar ordens"}, {"!", "Fora de posição (rende menos)"}};
         if (ly + 40 < oy) {
             g.setColor(Tema.BORDA);
             g.draw(new Line2D.Double(x + 14, ly, x + w - 14, ly));
@@ -2038,12 +2082,17 @@ public class Partida extends JComponent implements ActionListener {
                 if (ly + 24 > oy - 6) break;
                 if (l[1].equals("Dar ordens") && botaoOrdens.width <= 0) continue;
                 double cy = ly + 10;
+                double tx = x + 16 + 58;
                 if (l[0].equals("!")) exclamacao(g, x + 16 + 9, cy, 8);
-                else tecla(g, l[0], x + 16, cy);
+                else {
+                    double kx = x + 16;
+                    for (String k : l[0].split(" ")) kx += tecla(g, k, kx, cy) + 4;
+                    tx = Math.max(tx, kx + 8);
+                }
                 g.setFont(Estreia.texto(12f));
                 g.setColor(l[0].equals("!") ? new Color(0xFFB4A8) : Tema.TEXTO);
                 fm = g.getFontMetrics();
-                g.drawString(l[1], (float) (x + 16 + 58), (float) (cy + fm.getAscent() / 2.0 - 2));
+                g.drawString(l[1], (float) tx, (float) (cy + fm.getAscent() / 2.0 - 2));
                 ly += 26;
             }
         }
@@ -2056,7 +2105,7 @@ public class Partida extends JComponent implements ActionListener {
     }
 
     // tecla de teclado desenhada (com a "sombra" de baixo, como uma tecla de verdade)
-    static void tecla(Graphics2D g, String t, double x, double cy) {
+    static double tecla(Graphics2D g, String t, double x, double cy) {
         g.setFont(Estreia.negrito(10f));
         FontMetrics fm = g.getFontMetrics();
         double w = Math.max(20, fm.stringWidth(t) + 12), h = 19, y = cy - h / 2;
@@ -2069,6 +2118,7 @@ public class Partida extends JComponent implements ActionListener {
         g.draw(new RoundRectangle2D.Double(x + 0.5, y + 0.5, w - 1, h - 1, 7, 7));
         g.setColor(OURO);
         centro(g, t, x + w / 2, y + h / 2);
+        return w;
     }
 
     // gols e cartoes de cada jogador nesta partida
