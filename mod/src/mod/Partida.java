@@ -681,7 +681,7 @@ public class Partida extends JComponent implements ActionListener {
         long agora = System.currentTimeMillis();
         if (p.fim) return "fim";
         if (agora >= p.golDe && agora < p.golAte) return "gol " + (agora - p.golDe);
-        if (p.lance != null) return "lance " + p.lance.tipo + " " + p.gt;
+        if (p.lance != null) return (p.lance.acabou ? "lance " : "andando ") + p.lance.tipo + " " + p.gt;
         return "jogo " + p.gt;
     }
 
@@ -818,6 +818,7 @@ public class Partida extends JComponent implements ActionListener {
                 vmax = 0.26;
             }
             if (a.y > 0.98 || a.y < 0.02) vmax = Math.max(vmax, 0.4);   // entrando em campo
+            if (dist(a.x, a.y, alvo[0], alvo[1]) > 0.25) vmax = Math.max(vmax, 0.36);   // voltando para a posicao
             double dx = alvo[0] - a.x, dy = alvo[1] - a.y;
             double ganho = c != null ? 8 : 3.2;
             double qx = dx * ganho, qy = dy * ganho;
