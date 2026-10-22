@@ -54,7 +54,7 @@ final class Dialogos {
         else if (n.equals("a.gx")) procura(p);
         else if (n.equals("a.jp")) sobre(p);
         else if (n.equals("a.C") || n.equals("a.gh")) batedores(p);
-        else if (!Outras.aplica(p, n)) Fichas.aplica(p, n);
+        else if (!Outras.aplica(p, n) && !Temporada.aplica(p, n)) Fichas.aplica(p, n);
     }
 
     // Penaltis: ordem dos batedores da disputa (a.C) e escolha do batedor na partida (a.gh).
