@@ -114,6 +114,17 @@ final class Campeao {
         }
     }
 
+    // Taca pequena (Tabelas, "Maior vencedor"): o modelo sem nome na placa, reduzido com suavizacao.
+    static ImageIcon miniatura(String nome, int alt) {
+        try {
+            java.net.URL u = Campeao.class.getResource("/mod/tacas/" + modelo(nome) + ".png");
+            if (u == null) return null;
+            return new ImageIcon(reduz(grava(javax.imageio.ImageIO.read(u), ""), alt));
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
     static String modelo(String n) {
         n = n == null ? "" : n.toLowerCase().replace("tr_", "");
         String[] selecoes = {"copamundo", "copaamerica", "eurocopa", "copaafrica", "copaasia", "copaouro", "copaofc",

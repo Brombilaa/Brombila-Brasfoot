@@ -111,8 +111,59 @@ final class Telas {
         final Object estat = campo(ay, "ye"), rodadas = campo(ay, "yg");
         aba(campo(ay, "xI"), estat);
         aba(campo(ay, "xH"), rodadas);
+        posicoes(campo(ay, "xb"));
+        taca(ay);
         ay.revalidate();
         ay.repaint();
+    }
+
+    // Times empatados: o jogo deixa a posicao em branco; aqui cada linha mostra o numero dela
+    // dentro do grupo (a contagem recomeca a cada titulo de grupo).
+    private static void posicoes(Object o) {
+        if (!(o instanceof JPanel)) return;
+        final JPanel xb = (JPanel) o;
+        final Runnable numera = new Runnable() {
+            public void run() {
+                int n = 0;
+                for (Component c : xb.getComponents()) {
+                    if (!(c instanceof components.au)) { n = 0; continue; }
+                    n++;
+                    Object sg = campo(c, "Sg");
+                    if (sg instanceof JLabel && ((JLabel) sg).getText() != null && ((JLabel) sg).getText().trim().isEmpty())
+                        ((JLabel) sg).setText(Integer.toString(n));
+                }
+            }
+        };
+        numera.run();
+        xb.addContainerListener(new java.awt.event.ContainerAdapter() {
+            public void componentAdded(java.awt.event.ContainerEvent e) { numera.run(); }
+        });
+    }
+
+    // Taca do "Maior vencedor": a do jogo e reduzida sem suavizacao (fica borrada); aqui entra a
+    // nossa, do mesmo tipo da competicao.
+    private static void taca(final JPanel ay) {
+        Object o = campo(ay, "xJ");
+        if (!(o instanceof JLabel)) return;
+        final JLabel l = (JLabel) o;
+        final Runnable troca = new Runnable() {
+            public void run() {
+                if (l.getIcon() == null || l.getClientProperty("brombila.taca") == l.getIcon()) return;
+                String nome = "";
+                try {
+                    Object at = campo(ay, "wU");
+                    nome = ((String[]) at.getClass().getMethod("mA").invoke(at))[0];
+                } catch (Throwable t) { /* modelo de liga */ }
+                Icon i = Campeao.miniatura(nome, 55);
+                if (i == null) return;
+                l.putClientProperty("brombila.taca", i);
+                l.setIcon(i);
+            }
+        };
+        troca.run();
+        l.addPropertyChangeListener("icon", new java.beans.PropertyChangeListener() {
+            public void propertyChange(java.beans.PropertyChangeEvent e) { troca.run(); }
+        });
     }
 
     private static void titulo(Object o, String texto) {

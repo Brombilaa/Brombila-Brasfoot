@@ -53,6 +53,7 @@ final class Temporada {
         else if (n.equals("a.il")) taticas(p);
         else if (n.equals("a.cz")) proposta(p);
         else if (n.equals("a.iX")) leilao(p);
+        else if (n.equals("a.dz")) leiloes(p);
         else if (n.equals("a.jm")) emprestimo(p);
         else if (n.equals("a.ji")) aposentar(p);
         else if (n.equals("a.ce")) numeracao(p);
@@ -571,11 +572,12 @@ final class Temporada {
     }
 
     static class Jogador extends JComponent {
-        final best.F f;
+        best.F f;
         Jogador(best.F f) { this.f = f; setOpaque(false); }
 
         @Override
         protected void paintComponent(Graphics g0) {
+            if (f == null) return;
             Graphics2D g = (Graphics2D) g0.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -767,6 +769,237 @@ final class Temporada {
             }
         });
         ix.revalidate();
+    }
+
+    // ------------------------------------------------------------- Leilao entre tecnicos (a.dz)
+    // Varios tecnicos humanos dao lances, um depois do outro. Os botoes do jogo sao JLabels com
+    // mouse listener; aqui viram pilulas. A ficha do jogador e a mesma da Venda em leilao.
+
+    static final int LW = 640, LH = 496;
+
+    static void leiloes(final JPanel dz) {
+        if (!Dialogos.base(dz) || !Dialogos.absoluto(dz)) return;
+        Object o = campo(dz, "we");
+        if (!(o instanceof JPanel)) return;
+        final JPanel we = (JPanel) o;
+        we.setOpaque(false);
+        we.setBorder(null);
+        pos(we, 0, 0, LW, LH);
+        if (!Dialogos.absoluto(we)) return;
+        Object t = campo(dz, "ug");
+        if (t instanceof JLabel) {
+            ((JLabel) t).setText("Venda em leilão");
+            ((JLabel) t).setOpaque(false);
+        }
+        Dialogos.titulo(t, 30f);
+        if (t instanceof Component) {
+            dz.remove((Component) t);
+            Dialogos.adiciona(we, (Component) t, 28, 16, 400, 42);
+        }
+        // tudo que estava no quadro de baixo (wf) passa para o painel principal
+        Object wfo = campo(dz, "wf");
+        if (wfo instanceof JPanel) {
+            JPanel wf = (JPanel) wfo;
+            for (Component c : wf.getComponents()) {
+                wf.remove(c);
+                Dialogos.adiciona(we, c, 0, 0, 10, 10);
+            }
+            wf.setVisible(false);
+        }
+        for (String n : new String[] {"vd", "Gh", "Gj", "Gm", "Fq", "ur"}) {
+            Object h = campo(dz, n);
+            if (h instanceof Component) ((Component) h).setVisible(false);
+        }
+        botaoRotulo(campo(dz, "Gb"), "Continuar", true);
+        pos(campo(dz, "Gb"), 488, 20, 124, 36);
+
+        // ficha do jogador
+        final Jogador ficha = new Jogador(null);
+        JPanel cf = cartao(we, 28, 70, 380, 236);
+        cf.setLayout(new java.awt.BorderLayout());
+        cf.add(ficha, java.awt.BorderLayout.CENTER);
+
+        // vendedor, lance minimo e proximo leilao
+        cartao(we, 424, 70, 188, 236);
+        rotulo(we, "Vendedor", 440, 86, 160);
+        final Object vendedor = campo(dz, "Gk");
+        Dialogos.fonte(vendedor, Estreia.semi(14f), Estreia.BRANCO);
+        esquerda(vendedor);
+        if (vendedor instanceof JLabel) ((JLabel) vendedor).setIconTextGap(8);
+        pos(vendedor, 440, 104, 164, 32);
+        rotulo(we, "Lance mínimo", 440, 150, 160);
+        final Object minimo = campo(dz, "Gi");
+        Dialogos.fonte(minimo, Estreia.titulo(26f), Estreia.OURO);
+        esquerda(minimo);
+        pos(minimo, 440, 168, 164, 34);
+        final JLabel proxRot = rotulo(we, "Próximo leilão", 440, 228, 160);
+        final Object proximo = campo(dz, "uh");
+        Dialogos.fonte(proximo, Estreia.semi(12.5f), Estreia.BRANCO);
+        esquerda(proximo);
+        pos(proximo, 440, 246, 164, 40);
+
+        // lance do tecnico da vez
+        cartao(we, 28, 322, 584, 150);
+        rotulo(we, "Seu lance", 44, 338, 300);
+        Object quem = campo(dz, "Gg");
+        Dialogos.fonte(quem, Estreia.semi(14f), Estreia.BRANCO);
+        esquerda(quem);
+        if (quem instanceof JLabel) {
+            ((JLabel) quem).setIconTextGap(8);
+            reescreve((JLabel) quem, new Troca() {
+                public String troca(String s) {
+                    java.util.regex.Matcher m = java.util.regex.Pattern
+                        .compile("^(.*?) \\((.*)\\) dinheiro em caixa: (.*)$").matcher(s);
+                    if (!m.find()) return s;
+                    return "<html><font color='#F4F1EA'><b>" + m.group(1) + "</b></font> <font color='#F4F1EA9E'>· " + m.group(2)
+                        + " · em caixa</font> <font color='#F2C14E'><b>" + m.group(3) + "</b></font></html>";
+                }
+            });
+        }
+        pos(quem, 44, 358, 552, 28);
+        final Object campoLance = campo(dz, "Gf");
+        campoTexto(campoLance);
+        pos(campoLance, 44, 400, 170, 38);
+        final JLabel dica = new JLabel("em milhares de $");
+        Dialogos.fonte(dica, Estreia.texto(11.5f), Estreia.APAGADO);
+        Dialogos.adiciona(we, dica, 44, 442, 170, 16);
+        final Object eco = campo(dz, "Gl");
+        Dialogos.fonte(eco, Estreia.negrito(13f), Estreia.OURO);
+        esquerda(eco);
+        pos(eco, 228, 442, 368, 18);
+        botaoRotulo(campo(dz, "Gc"), "Ofertar", true);
+        botaoRotulo(campo(dz, "Ge"), "Não ofertar", false);
+        botaoRotulo(campo(dz, "Gd"), "Ver próximo leilão", true);
+        pos(campo(dz, "Gc"), 228, 400, 130, 38);
+        pos(campo(dz, "Ge"), 366, 400, 130, 38);
+        pos(campo(dz, "Gd"), 412, 418, 184, 38);
+        final Object res = campo(dz, "yA");
+        Dialogos.fonte(res, Estreia.titulo(24f), Estreia.OURO);
+        esquerda(res);
+        pos(res, 44, 420, 360, 36);
+        // depois do lance o jogo esconde o campo: o resultado ocupa o lugar dele
+        final Object ecoF = eco;
+        if (campoLance instanceof Component) {
+            final Component cl = (Component) campoLance;
+            final Runnable troca = new Runnable() {
+                public void run() {
+                    boolean aberto = cl.isVisible();
+                    dica.setVisible(aberto);
+                    if (aberto) {
+                        Dialogos.fonte(ecoF, Estreia.negrito(13f), Estreia.OURO);
+                        pos(ecoF, 228, 442, 368, 18);
+                    } else {
+                        if (ecoF instanceof JLabel && texto(ecoF).toLowerCase().startsWith("vendido")) ((JLabel) ecoF).setText("Vendido para");
+                        Dialogos.rotulo(ecoF);
+                        pos(ecoF, 44, 402, 360, 16);
+                    }
+                    we.revalidate();
+                    we.repaint();
+                }
+            };
+            troca.run();
+            cl.addComponentListener(new java.awt.event.ComponentAdapter() {
+                public void componentShown(java.awt.event.ComponentEvent e) { troca.run(); }
+                public void componentHidden(java.awt.event.ComponentEvent e) { troca.run(); }
+            });
+        }
+
+        // o jogador muda a cada leilao: a ficha e o escudo do vendedor acompanham
+        final Object gj = campo(dz, "Gj");
+        final Runnable atualiza = new Runnable() {
+            public void run() {
+                best.F f = null;
+                try {
+                    Object i = campo(dz, "index");
+                    f = ((best.N) a.dz.FY.get((Integer) i)).iA();
+                } catch (Throwable e) { /* sem jogador */ }
+                ficha.f = f;
+                ficha.repaint();
+                if (f != null && vendedor instanceof JLabel) {
+                    try {
+                        ((JLabel) vendedor).setIcon(f.fg().x(30, 30));
+                        ((JLabel) vendedor).setText(f.fg().getNome());
+                    } catch (Throwable e) { /* fica o texto do jogo */ }
+                }
+                if (minimo instanceof JLabel) {
+                    String m = texto(minimo);
+                    if (m.startsWith("Lance m")) ((JLabel) minimo).setText(m.substring(m.indexOf(':') + 1).trim());
+                }
+                if (proximo instanceof JLabel) {
+                    JLabel l = (JLabel) proximo;
+                    String p = texto(l);
+                    if (p.startsWith("Próximo leilão:")) l.setText("<html>" + p.substring(15).trim() + "</html>");
+                    proxRot.setVisible(l.isVisible());
+                }
+            }
+        };
+        atualiza.run();
+        if (gj instanceof JLabel) {
+            ((JLabel) gj).addPropertyChangeListener("text", new java.beans.PropertyChangeListener() {
+                public void propertyChange(java.beans.PropertyChangeEvent e) { SwingUtilities.invokeLater(atualiza); }
+            });
+        }
+
+        // a janela do jogo tem 941x718; aqui fica do tamanho do conteudo
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                java.awt.Window w = SwingUtilities.getWindowAncestor(dz);
+                if (w == null || w.getWidth() < LW + 40) return;
+                java.awt.Rectangle r = w.getBounds();
+                w.setBounds(r.x + (r.width - LW) / 2, r.y + (r.height - LH) / 2, LW, LH);
+                w.validate();
+            }
+        });
+        dz.revalidate();
+    }
+
+    // Botao do jogo feito de JLabel (o clique e um MouseListener): vira pilula.
+    static void botaoRotulo(Object o, String texto, boolean primario) {
+        if (!(o instanceof JLabel)) return;
+        final JLabel l = (JLabel) o;
+        if (texto != null) l.setText(texto);
+        l.setOpaque(false);
+        l.setBorder(null);
+        l.setHorizontalAlignment(SwingConstants.CENTER);
+        l.setFont(Estreia.negrito(12.5f));
+        l.setForeground(primario ? Estreia.OURO_ESCURO : Estreia.BRANCO);
+        l.putClientProperty(BotaoRotuloUI.PRIMARIO, primario);
+        l.setUI(new BotaoRotuloUI());
+        l.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
+        l.addMouseListener(new java.awt.event.MouseAdapter() {
+            public void mouseEntered(java.awt.event.MouseEvent e) { l.putClientProperty(BotaoRotuloUI.SOBRE, true); l.repaint(); }
+            public void mouseExited(java.awt.event.MouseEvent e) { l.putClientProperty(BotaoRotuloUI.SOBRE, null); l.repaint(); }
+        });
+    }
+
+    static class BotaoRotuloUI extends BasicLabelUI {
+        static final String PRIMARIO = "brombila.primario", SOBRE = "brombila.sobre";
+        @Override
+        public void paint(Graphics g0, JComponent c) {
+            Graphics2D g = (Graphics2D) g0.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            int w = c.getWidth(), h = c.getHeight();
+            boolean primario = Boolean.TRUE.equals(c.getClientProperty(PRIMARIO));
+            boolean sobre = c.getClientProperty(SOBRE) != null;
+            RoundRectangle2D r = new RoundRectangle2D.Float(1, 1, w - 3, h - 3, h - 3, h - 3);
+            if (primario) {
+                g.setColor(sobre ? Estreia.OURO.brighter() : Estreia.OURO);
+                g.fill(r);
+            } else {
+                g.setColor(new Color(244, 241, 234, sobre ? 30 : 14));
+                g.fill(r);
+                g.setColor(new Color(244, 241, 234, 70));
+                g.draw(r);
+            }
+            g.dispose();
+            super.paint(g0, c);
+        }
+        @Override
+        protected void paintEnabledText(JLabel l, Graphics g, String s, int x, int y) {
+            ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setColor(Boolean.TRUE.equals(l.getClientProperty(PRIMARIO)) ? Estreia.OURO_ESCURO : Estreia.BRANCO);
+            g.drawString(s, x, y);
+        }
     }
 
     // ------------------------------------------------------------- Proposta de emprestimo
