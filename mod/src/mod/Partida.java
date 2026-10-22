@@ -113,6 +113,13 @@ public class Partida extends JComponent implements ActionListener {
     String aviso;
     long avisoAte;
 
+    // ordens ao vivo (c.Ordens): cartao aberto, botao na coluna e plano que cada lado esta usando
+    PainelOrdens ordens;
+    boolean paramosGo;
+    final Rectangle2D.Double botaoOrdens = new Rectangle2D.Double();
+    final int[] mentalidade = new int[2], pressaoTime = {1, 1};
+    final boolean[] planoVisto = new boolean[2];
+
     // camada pintada
     BufferedImage gramado;
     Rectangle2D.Double campo = new Rectangle2D.Double();
@@ -202,6 +209,23 @@ public class Partida extends JComponent implements ActionListener {
         this.cartas = cartas;
         setOpaque(false);
         relogio.setCoalesce(true);
+        MouseAdapter m = new MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                if (ordens != null) {
+                    int r = ordens.clique(e.getPoint());
+                    if (r == 2) fechaOrdens(true);
+                    else if (r == 3) fechaOrdens(false);
+                    repaint();
+                } else if (botaoOrdens.contains(e.getPoint())) abreOrdens();
+            }
+            public void mouseMoved(MouseEvent e) {
+                if (ordens != null) { ordens.mouse = e.getPoint(); repaint(); }
+                boolean sobre = ordens == null && botaoOrdens.contains(e.getPoint());
+                setCursor(java.awt.Cursor.getPredefinedCursor(sobre ? java.awt.Cursor.HAND_CURSOR : java.awt.Cursor.DEFAULT_CURSOR));
+            }
+        };
+        addMouseListener(m);
+        addMouseMotionListener(m);
     }
 
     // F1..F5 (velocidade) e Espaco/Enter (substituicoes) so funcionavam com a tabela em foco
@@ -221,6 +245,113 @@ public class Partida extends JComponent implements ActionListener {
                 }
             }
         } catch (Throwable t) { t.printStackTrace(); }
+        // O abre e fecha as ordens; Esc fecha sem aplicar
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0), "mod.ordens");
+        getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ESCAPE, 0), "mod.ordens.sai");
+        getActionMap().put("mod.ordens", new javax.swing.AbstractAction() {
+            public void actionPerformed(ActionEvent e) {
+                if (ordens != null) fechaOrdens(false); else if (verCampo) abreOrdens();
+            }
+        });
+        getActionMap().put("mod.ordens.sai", new javax.swing.AbstractAction() {
+            public void actionPerformed(ActionEvent e) { if (ordens != null) fechaOrdens(false); }
+        });
+    }
+
+    // ------------------------------------------------------------------ ordens ao vivo
+
+    c.b motor() {
+        try { return ((best.I) jogo).hW(); } catch (Throwable t) { return null; }
+    }
+
+    Object timeHumano() { return humano == 0 ? casa : fora; }
+
+    int minutoCorrido() { return tempo <= 1 ? gt : 45 + gt; }
+
+    void abreOrdens() {
+        if (jogo == null || fim || ordens != null || !Boolean.TRUE.equals(chama(timeHumano(), "jZ"))) return;
+        best.ah meu = (best.ah) timeHumano();
+        c.Ordens.Plano atual = c.Ordens.de(meu);
+        if (!atual.humano) {
+            c.b mt = motor();
+            atual = mt != null && mt.plano(humano) != null ? mt.plano(humano) : c.Ordens.doEscalar(meu);
+        }
+        c.b mt = motor();
+        int lado = mt != null ? mt.melhorLado(humano) : c.Ordens.MISTO;
+        ordens = new PainelOrdens(atual, Math.max(0, gt) + "' do " + (tempo <= 1 ? "1º" : "2º") + " tempo", lado, dicas(lado));
+        try {
+            Timer go = (Timer) campo(dv.getClass(), dv, "GO");
+            if (go != null && go.isRunning()) { go.stop(); paramosGo = true; }
+        } catch (Throwable t) { t.printStackTrace(); }
+        repaint();
+    }
+
+    void fechaOrdens(boolean aplica) {
+        if (ordens == null) return;
+        if (aplica) {
+            best.ah meu = (best.ah) timeHumano();
+            c.b mt = motor();
+            c.Ordens.Plano antes = c.Ordens.de(meu).humano ? c.Ordens.de(meu) : mt != null ? mt.plano(humano) : null;
+            c.Ordens.Plano p = ordens.plano.copia();
+            p.humano = true;
+            c.Ordens.marcaEscalar(p, meu);
+            c.Ordens.define(meu, p);
+            if (antes == null || !p.igual(antes)) {
+                lances.add(0, new Linha(Math.max(0, gt) + "'", "Novas ordens: " + PainelOrdens.resumo(p) + ".", 30, humano));
+                mentalidade[humano] = p.mentalidade;
+                pressaoTime[humano] = p.pressao;
+            }
+        }
+        ordens = null;
+        if (paramosGo && !pausado) {
+            try {
+                Timer go = (Timer) campo(dv.getClass(), dv, "GO");
+                if (go != null && !go.isRunning() && dv.isDisplayable()) go.restart();
+            } catch (Throwable t) { t.printStackTrace(); }
+        }
+        paramosGo = false;
+        setCursor(java.awt.Cursor.getDefaultCursor());
+        repaint();
+    }
+
+    // o que o auxiliar diz: lado do ataque, placar e cansaco
+    String[] dicas(int lado) {
+        ArrayList<String> r = new ArrayList<String>();
+        int saldo = inteiro(chama(jogo, humano == 0 ? "hu" : "hw")) - inteiro(chama(jogo, humano == 0 ? "hw" : "hu"));
+        int min = minutoCorrido();
+        c.b mt = motor();
+        c.Ordens.Plano deles = mt == null ? null : mt.plano(1 - humano);
+        if (deles != null && deles.mentalidade != c.Ordens.NORMAL) {
+            String[] jeito = {"está na retranca", "está jogando na defensiva", "", "está jogando no ataque", "partiu para o tudo ou nada"};
+            r.add(time(1 - humano) + " " + jeito[deles.mentalidade - c.Ordens.RETRANCA] + (deles.mentalidade > 0 ? ": sobra espaço nas costas deles." : ": vai ser difícil entrar."));
+        }
+        if (saldo < 0 && min >= 55) r.add("Perdendo na reta final: Ofensiva ou Tudo ou nada dão mais chance de empatar, mas abrem a defesa.");
+        else if (saldo > 0 && min >= 55) r.add("Ganhando: Defensiva ou Retranca ajudam a segurar o placar, mas o time quase não ataca.");
+        if (lado == c.Ordens.LATERAIS) r.add("Nossos pontas e laterais levam vantagem sobre a defesa deles: ataque pelas laterais.");
+        else if (lado == c.Ordens.MEIO) r.add("Nosso meio é mais forte que a defesa deles por dentro: ataque pelo meio.");
+        else r.add("Meio e laterais estão equilibrados contra essa defesa.");
+        int soma = 0, n = 0;
+        for (Ator a : atores.values()) if (a.lado == humano) { soma += inteiro(chama(a.f, "fp")); n++; }
+        if (n > 0 && soma / n < 62) r.add("O time está cansado: pressão alta vai gastar ainda mais o fôlego.");
+        while (r.size() > 3) r.remove(r.size() - 1);
+        return r.toArray(new String[0]);
+    }
+
+    // a maquina muda de postura conforme o placar: avisa nos lances e mexe no posicionamento
+    void lePlanos() {
+        c.b mt = motor();
+        if (mt == null) return;
+        for (int lado = 0; lado < 2; lado++) {
+            c.Ordens.Plano p = mt.plano(lado);
+            if (p == null) continue;
+            if (planoVisto[lado] && p.mentalidade != mentalidade[lado] && lado != humano) {
+                String[] frases = {" se fecha na retranca.", " recua e passa a se defender.", " volta a jogar normal.", " vai para o ataque.", " parte para o tudo ou nada."};
+                lances.add(0, new Linha(Math.max(0, gt) + "'", time(lado) + frases[p.mentalidade - c.Ordens.RETRANCA], 30, lado));
+            }
+            mentalidade[lado] = p.mentalidade;
+            pressaoTime[lado] = p.pressao;
+            planoVisto[lado] = true;
+        }
     }
 
     void mostra(boolean campo) {
@@ -301,7 +432,7 @@ public class Partida extends JComponent implements ActionListener {
             le(agora);
             if (jogo != null) anima(agora, dt);
         } catch (Throwable t) { t.printStackTrace(); }
-        if (pausado && agora >= retomaEm) retoma();
+        if (pausado && agora >= retomaEm && ordens == null) retoma();
         if (jogo != null && isShowing()) repaint();
     }
 
@@ -342,6 +473,11 @@ public class Partida extends JComponent implements ActionListener {
         proximoNumero[0] = proximoNumero[1] = 12;
         antes = estatisticas();
         eventosVistos = lista(chama(j, "hE")).size();
+        c.Ordens.limpa();
+        planoVisto[0] = planoVisto[1] = false;
+        mentalidade[0] = mentalidade[1] = 0;
+        pressaoTime[0] = pressaoTime[1] = 1;
+        ordens = null;
         gt = m;
         tempo = t;
         fim = false;
@@ -419,6 +555,7 @@ public class Partida extends JComponent implements ActionListener {
 
     // a cada minuto: compara o que o motor contou antes e depois e monta o lance
     void minuto(long agora) {
+        lePlanos();
         int[][] depois = estatisticas();
         List<?> ev = lista(chama(jogo, "hE"));
         ArrayList<Object> novos = new ArrayList<Object>();
@@ -674,6 +811,15 @@ public class Partida extends JComponent implements ActionListener {
         } catch (Throwable t) { t.printStackTrace(); }
     }
 
+    // para os testes: plano que o motor esta usando em cada lado
+    public static String planos() {
+        Partida p = atual;
+        if (p == null || p.jogo == null) return "sem";
+        c.b mt = p.motor();
+        if (mt == null) return "sem motor";
+        return "casa " + PainelOrdens.resumo(mt.plano(0)) + " | fora " + PainelOrdens.resumo(mt.plano(1)) + " | humano " + p.humano + " visto " + p.mentalidade[0] + "/" + p.mentalidade[1];
+    }
+
     // para os testes: em que momento a partida esta
     public static String estado() {
         Partida p = atual;
@@ -770,6 +916,8 @@ public class Partida extends JComponent implements ActionListener {
             y = 0.5 + ((a.lado == 0 ? bolaY : 1 - bolaY) - 0.5) * 0.22;
         } else {
             double sobe = Math.max(-0.06, Math.min(0.36, (perto - 0.35) * 0.55 + (comBola ? 0.05 : -0.03)));
+            // mentalidade: o time inteiro sobe ou recua; pressao alta adianta a marcacao sem a bola
+            sobe += mentalidade[a.lado] * 0.028 + (comBola ? 0 : (pressaoTime[a.lado] - 1) * 0.03);
             x = 0.06 + prof * 0.4 + sobe;
             double d = Math.abs(lat - 0.5), f = d < 0.3 ? d * 0.62 : 0.186 + (d - 0.3) * 1.27;
             y = 0.5 + (lat < 0.5 ? -f : f);
@@ -942,6 +1090,7 @@ public class Partida extends JComponent implements ActionListener {
         y += pressaoH + 8;
         pintaLances(g, px, y, pw, H - y);
         if (col > 0) pintaTime(g, 0, 0, col - 14, H);
+        if (ordens != null) ordens.pinta(g, px, 0, pw, Math.max(ph, Math.min(H, 540)));
         g.dispose();
     }
 
@@ -1308,6 +1457,13 @@ public class Partida extends JComponent implements ActionListener {
             g.setColor(new Color(0xFF8A7A));
             g.draw(new Line2D.Double(x + 10, y, x + 10, y + s - 2));
             g.draw(new Line2D.Double(x + 10, y + s - 2, x + 13, y + s - 5));
+        } else if (l.tipo == 30) {
+            // prancheta: mudanca de ordens
+            g.setColor(l.lado == humano ? OURO : Tema.TEXTO_FRACO);
+            g.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.draw(new RoundRectangle2D.Double(x + 1, y, s - 2, s, 3, 3));
+            g.draw(new Line2D.Double(x + 4, y + 4.5, x + s - 4, y + 4.5));
+            g.draw(new Line2D.Double(x + 4, y + 8.5, x + s - 6, y + 8.5));
         } else {
             g.setColor(Tema.TEXTO_FRACO);
             g.fill(new Ellipse2D.Double(x + 4, y + 4, 5, 5));
@@ -1341,7 +1497,7 @@ public class Partida extends JComponent implements ActionListener {
             public int compare(Ator a, Ator b) { return ordem(a.vaga) - ordem(b.vaga); }
         });
         Map<Object, int[]> extras = extras();
-        double topo = y + 62, rh = Math.max(24, Math.min(36, (h - topo - 70) / Math.max(11, meus.size())));
+        double topo = y + 62, rh = Math.max(24, Math.min(36, (h - topo - 190) / Math.max(11, meus.size())));
         double ly = topo;
         for (Ator a : meus) {
             boolean comBola = a == dono;
@@ -1420,9 +1576,49 @@ public class Partida extends JComponent implements ActionListener {
             g.fill(new RoundRectangle2D.Double(bx, cy - 2, bw * energia / 100.0, 4, 4, 4));
             ly += rh;
         }
+        // ordens: resumo do plano atual e botao
+        double oy = y + h - 4 - 112;
+        boolean podeOrdens = Boolean.TRUE.equals(chama(timeHumano(), "jZ")) && !fim;
+        if (podeOrdens && oy > ly + 4) {
+            g.setColor(Tema.BORDA);
+            g.draw(new Line2D.Double(x + 14, oy, x + w - 14, oy));
+            g.setFont(Estreia.espacada(Estreia.semi(9.5f), 0.14f));
+            g.setColor(OURO);
+            g.drawString("ORDENS", (float) (x + 16), (float) (oy + 22));
+            c.Ordens.Plano pl = c.Ordens.de((best.ah) timeHumano());
+            if (!pl.humano) { c.b mt = motor(); if (mt != null && mt.plano(humano) != null) pl = mt.plano(humano); }
+            g.setFont(Estreia.semi(12f));
+            fm = g.getFontMetrics();
+            String m1 = c.Ordens.MENTALIDADES[pl.mentalidade - c.Ordens.RETRANCA];
+            g.setColor(PainelOrdens.corMentalidade(pl.mentalidade - c.Ordens.RETRANCA));
+            g.drawString(m1, (float) (x + 16), (float) (oy + 42));
+            g.setFont(Estreia.texto(11f));
+            g.setColor(Tema.TEXTO_FRACO);
+            String m2 = c.Ordens.ATAQUES[pl.ataque] + " · pressão " + c.Ordens.PRESSOES[pl.pressao].toLowerCase() + " · passe " + c.Ordens.PASSES[pl.passe].toLowerCase();
+            g.drawString(corta(m2, g.getFontMetrics(), w - 32), (float) (x + 16), (float) (oy + 59));
+            botaoOrdens.setRect(x + 14, oy + 70, w - 28, 34);
+            RoundRectangle2D.Double b = new RoundRectangle2D.Double(botaoOrdens.x, botaoOrdens.y, botaoOrdens.width, 34, 34, 34);
+            g.setPaint(new GradientPaint(0, (float) botaoOrdens.y, new Color(0xF6CE6A), 0, (float) (botaoOrdens.y + 34), new Color(0xD9A53B)));
+            g.fill(b);
+            g.setFont(Estreia.semi(13f));
+            fm = g.getFontMetrics();
+            String bt = "Dar ordens";
+            g.setColor(new Color(0x1A1408));
+            g.drawString(bt, (float) (botaoOrdens.getCenterX() - fm.stringWidth(bt) / 2.0 - 8), (float) (botaoOrdens.y + 17 + fm.getAscent() / 2.0 - 2));
+            g.setFont(Estreia.negrito(10f));
+            FontMetrics fk = g.getFontMetrics();
+            double kx = botaoOrdens.getCenterX() + fm.stringWidth(bt) / 2.0 + 2;
+            g.setColor(new Color(26, 20, 8, 60));
+            g.fill(new RoundRectangle2D.Double(kx, botaoOrdens.y + 9, 16, 16, 5, 5));
+            g.setColor(new Color(0x1A1408));
+            g.drawString("O", (float) (kx + 8 - fk.stringWidth("O") / 2.0), (float) (botaoOrdens.y + 21));
+        } else {
+            botaoOrdens.setRect(0, 0, 0, 0);
+            oy = y + h;
+        }
         // legenda
         ly += 8;
-        if (ly + 40 < y + h) {
+        if (ly + 56 < oy) {
             g.setFont(Estreia.texto(11f));
             fm = g.getFontMetrics();
             g.setColor(OURO);
