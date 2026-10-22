@@ -21,6 +21,7 @@ import java.awt.event.MouseEvent;
 import java.awt.geom.Arc2D;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.Line2D;
+import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
@@ -121,6 +122,15 @@ public class Partida extends JComponent implements ActionListener {
     final Rectangle2D.Double botaoOrdens = new Rectangle2D.Double();
     final int[] mentalidade = new int[2], pressaoTime = {1, 1};
     final boolean[] planoVisto = new boolean[2];
+
+    // notas ao vivo (Notas) e aviso de fora de posicao
+    final Map<Object, Double> notas = new IdentityHashMap<Object, Double>();
+    final Map<Object, double[]> tendencia = new IdentityHashMap<Object, double[]>();   // {nota de referencia, ate quando mostra a seta, direcao}
+    String chaveNotas = "";
+    final Map<Object, Boolean> foraAvisados = new IdentityHashMap<Object, Boolean>();
+    final Map<Ator, Boolean> foraAgora = new IdentityHashMap<Ator, Boolean>();
+    String alerta, alertaSub;
+    long alertaDe, alertaAte;
 
     // camada pintada
     final Transmissao transmissao = new Transmissao(this);
@@ -488,6 +498,7 @@ public class Partida extends JComponent implements ActionListener {
         tempo = t;
         if (acabou) { termina(agora); return; }
         if (virou) segundoTempo(agora);
+        confereFora(agora);
         minuto(agora);
     }
 
@@ -508,6 +519,12 @@ public class Partida extends JComponent implements ActionListener {
         mentalidade[0] = mentalidade[1] = 0;
         pressaoTime[0] = pressaoTime[1] = 1;
         ordens = null;
+        notas.clear();
+        tendencia.clear();
+        chaveNotas = "";
+        foraAvisados.clear();
+        foraAgora.clear();
+        alertaAte = 0;
         gt = m;
         tempo = t;
         fim = false;
@@ -547,6 +564,103 @@ public class Partida extends JComponent implements ActionListener {
         abas.setVisible(true);
         mostra(preferirCampo);
         dv.revalidate();
+        confereFora(agora);
+    }
+
+    // nota ao vivo de um jogador (refeita quando muda o minuto, o placar ou sai um evento)
+    double nota(Ator a) {
+        String chave = minutoCorrido() + "/" + lista(chama(jogo, "hE")).size() + "/" + inteiro(chama(jogo, "hu")) + "/" + inteiro(chama(jogo, "hw"));
+        if (!chave.equals(chaveNotas)) {
+            chaveNotas = chave;
+            notas.clear();
+            Map<Object, Notas.Lances> ev = Notas.lances(jogo);
+            long agora = System.currentTimeMillis();
+            for (Ator b : atores.values()) {
+                double n = Notas.nota(b.f, b.vaga, b.lado, jogo, Math.max(0, minutoCorrido()), ev);
+                notas.put(b.f, n);
+                double[] t = tendencia.get(b.f);
+                // seta so quando a nota muda de uma vez (gol, cartao, defesa...), nao no desgaste minuto a minuto
+                if (t == null) tendencia.put(b.f, new double[]{n, 0, 0});
+                else {
+                    if (Math.abs(n - t[0]) >= 0.25 - 1e-9) { t[2] = Math.signum(n - t[0]); t[1] = agora + 5000; }
+                    t[0] = n;
+                }
+            }
+        }
+        Double n = notas.get(a.f);
+        if (n == null) {
+            n = Notas.nota(a.f, a.vaga, a.lado, jogo, Math.max(0, minutoCorrido()), Notas.lances(jogo));
+            notas.put(a.f, n);
+        }
+        return n;
+    }
+
+    // avisa quando um jogador do seu time entra (ou passa a jogar) fora de posicao
+    void confereFora(long agora) {
+        foraAgora.clear();
+        if (!Boolean.TRUE.equals(chama(timeHumano(), "jZ"))) return;
+        ArrayList<Ator> novos = new ArrayList<Ator>();
+        for (Ator a : atores.values()) {
+            if (a.lado != humano || !Boolean.TRUE.equals(chama(a.f, "gF"))) continue;
+            foraAgora.put(a, Boolean.TRUE);
+            if (foraAvisados.put(a.f, Boolean.TRUE) == null) novos.add(a);
+        }
+        if (novos.isEmpty()) return;
+        Collections.sort(novos, new Comparator<Ator>() {
+            public int compare(Ator a, Ator b) { return ordem(a.vaga) - ordem(b.vaga); }
+        });
+        String min = Math.max(0, gt) + "'";
+        for (int i = novos.size() - 1; i >= 0; i--) {
+            Ator a = novos.get(i);
+            lances.add(0, new Linha(min, "Fora de posição: " + nome(a.f) + " é " + Notas.natural(a.f) + " e está jogando de " + Notas.funcao(a.vaga)
+                + ". Rende a metade da força.", 31, humano));
+        }
+        if (novos.size() == 1) {
+            Ator a = novos.get(0);
+            alerta = curto(nome(a.f)) + " fora de posição";
+            alertaSub = Notas.natural(a.f) + " jogando de " + Notas.funcao(a.vaga) + " · rende a metade";
+        } else {
+            alerta = novos.size() + " jogadores fora de posição";
+            alertaSub = "Rendem a metade da força · Espaço: substituições";
+        }
+        alertaDe = agora;
+        alertaAte = agora + 6500;
+    }
+
+    void pintaAlerta(Graphics2D g, long agora) {
+        double u = (agora - alertaDe) / (double) (alertaAte - alertaDe);
+        float alfa = (float) Math.max(0, Math.min(1, Math.min(u / 0.06, (1 - u) / 0.12)));
+        Composite antes = g.getComposite();
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alfa));
+        g.setFont(Estreia.semi(14f));
+        FontMetrics f1 = g.getFontMetrics();
+        Font sub = Estreia.texto(11.5f);
+        FontMetrics f2 = g.getFontMetrics(sub);
+        double w = Math.max(f1.stringWidth(alerta), f2.stringWidth(alertaSub)) + 70, h = 50;
+        double x = campo.getCenterX() - w / 2, y = campo.y + 14 + (1 - Math.min(1, u / 0.06)) * -10;
+        RoundRectangle2D.Double r = new RoundRectangle2D.Double(x, y, w, h, 16, 16);
+        g.setColor(new Color(10, 12, 11, 225));
+        g.fill(r);
+        g.setColor(new Color(242, 193, 78, 170));
+        g.setStroke(new BasicStroke(1.2f));
+        g.draw(r);
+        exclamacao(g, x + 28, y + h / 2, 11);
+        g.setColor(Tema.TEXTO);
+        g.drawString(alerta, (float) (x + 50), (float) (y + 21));
+        g.setFont(sub);
+        g.setColor(new Color(0xFFB4A8));
+        g.drawString(alertaSub, (float) (x + 50), (float) (y + 39));
+        g.setComposite(antes);
+    }
+
+    // bolinha dourada com "!" (fora de posicao)
+    static void exclamacao(Graphics2D g, double cx, double cy, double r) {
+        g.setColor(OURO);
+        g.fill(new Ellipse2D.Double(cx - r, cy - r, 2 * r, 2 * r));
+        g.setColor(new Color(0x14110A));
+        g.setStroke(new BasicStroke((float) Math.max(1.4, r * 0.26), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.draw(new Line2D.Double(cx, cy - r * 0.5, cx, cy + r * 0.1));
+        g.fill(new Ellipse2D.Double(cx - r * 0.15, cy + r * 0.36, r * 0.3, r * 0.3));
     }
 
     // ordem dos numeros das camisas: goleiro, defesa da direita para a esquerda, meio, ataque
@@ -1199,7 +1313,7 @@ public class Partida extends JComponent implements ActionListener {
 
     // ------------------------------------------------------------------ pintura
 
-    static final int COLUNA = 244;
+    static final int COLUNA = 292;
 
     protected void paintComponent(Graphics g0) {
         if (jogo == null) return;
@@ -1225,6 +1339,7 @@ public class Partida extends JComponent implements ActionListener {
             transmissao.pinta(g, new Rectangle2D.Double(px, 0, pw, ph), agora);
             if (agora >= golDe && agora < golAte) pintaGol(g, agora);
             if (aviso != null && agora < avisoAte) pintaAviso(g, aviso, agora);
+            if (agora < alertaAte) pintaAlerta(g, agora);
             g.setClip(clip);
             g.setColor(new Color(242, 193, 78, 60));
             g.setStroke(new BasicStroke(1.2f));
@@ -1390,15 +1505,20 @@ public class Partida extends JComponent implements ActionListener {
             g.setStroke(new BasicStroke((float) Math.max(1, br * 0.18)));
             g.draw(bola);
         }
-        // nome de quem esta com a bola
+        for (Ator a : foraAgora.keySet()) {
+            if (!atores.containsValue(a)) continue;
+            exclamacao(g, sx(a.x) - R * 1.05, sy(a.y) - R * 1.05, Math.max(5, R * 0.48));
+        }
+        // nome de quem esta com a bola (e a nota dele)
         Ator mostra = dono != null ? dono : receptor;
         if (mostra != null) {
-            String n = curto(nome(mostra.f));
+            String n = curto(nome(mostra.f)) + "  " + Notas.texto(nota(mostra));
             etiqueta(g, n, sx(mostra.x), sy(mostra.y) + R * 2.15, R, null);
         }
         // gol!
         if (agora >= golDe && agora < golAte) pintaGol(g, agora);
         if (aviso != null && agora < avisoAte) pintaAviso(g, aviso, agora);
+        if (agora < alertaAte) pintaAlerta(g, agora);
     }
 
     static Color clareia(Color c, float k) {
@@ -1602,6 +1722,8 @@ public class Partida extends JComponent implements ActionListener {
             g.setColor(new Color(0xFF8A7A));
             g.draw(new Line2D.Double(x + 10, y, x + 10, y + s - 2));
             g.draw(new Line2D.Double(x + 10, y + s - 2, x + 13, y + s - 5));
+        } else if (l.tipo == 31) {
+            exclamacao(g, x + s / 2, y + s / 2, s / 2);
         } else if (l.tipo == 30) {
             // prancheta: mudanca de ordens
             g.setColor(l.lado == humano ? OURO : Tema.TEXTO_FRACO);
@@ -1630,8 +1752,10 @@ public class Partida extends JComponent implements ActionListener {
         g.setFont(Estreia.espacada(Estreia.semi(9.5f), 0.14f));
         fm = g.getFontMetrics();
         g.setColor(OURO);
-        String cab = "FOR · ENERGIA";
-        g.drawString(cab, (float) (x + w - 14 - fm.stringWidth(cab)), (float) (y + 29));
+        // cabecalho das colunas: nota, forca e energia
+        g.drawString("NOTA", (float) (x + w - 95 - fm.stringWidth("NOTA") / 2.0), (float) (y + 29));
+        g.drawString("FOR", (float) (x + w - 50 - fm.stringWidth("FOR")), (float) (y + 29));
+        g.drawString("EN", (float) (x + w - 29 - fm.stringWidth("EN") / 2.0), (float) (y + 29));
         g.setFont(Estreia.texto(11.5f));
         g.setColor(Tema.TEXTO_FRACO);
         g.drawString(curto(time(humano)), (float) (x + 16), (float) (y + 48));
@@ -1677,7 +1801,7 @@ public class Partida extends JComponent implements ActionListener {
             // nome
             boolean foraPos = Boolean.TRUE.equals(chama(a.f, "gF"));
             int[] ex = extras.get(a.f);
-            double nx = x + 78, fimNome = x + w - 78;
+            double nx = x + 78, fimNome = x + w - 122;
             g.setFont(Estreia.semi(12.5f));
             fm = g.getFontMetrics();
             double reserva = (ex != null ? (ex[0] * 13 + (ex[1] > 0 ? 11 : 0)) : 0) + (foraPos ? 16 : 0);
@@ -1686,11 +1810,7 @@ public class Partida extends JComponent implements ActionListener {
             g.drawString(nome, (float) nx, (float) (cy + fm.getAscent() / 2.0 - 2));
             double ix = nx + fm.stringWidth(nome) + 5;
             if (foraPos) {
-                g.setColor(OURO);
-                g.fill(new Ellipse2D.Double(ix, cy - 6, 12, 12));
-                g.setColor(new Color(0x14110A));
-                g.setFont(Estreia.negrito(9f));
-                g.drawString("!", (float) (ix + 4.4), (float) (cy + 3.5));
+                exclamacao(g, ix + 6, cy, 6);
                 ix += 16;
             }
             if (ex != null) {
@@ -1706,15 +1826,43 @@ public class Partida extends JComponent implements ActionListener {
                     g.fill(new RoundRectangle2D.Double(ix, cy - 6, 8, 12, 2, 2));
                 }
             }
+            // nota ao vivo (com seta quando sobe ou cai)
+            double nt = nota(a);
+            Color ncor = Notas.cor(nt);
+            RoundRectangle2D.Double nc = new RoundRectangle2D.Double(x + w - 112, cy - 9, 34, 18, 9, 9);
+            g.setColor(new Color(ncor.getRed(), ncor.getGreen(), ncor.getBlue(), 38));
+            g.fill(nc);
+            g.setColor(new Color(ncor.getRed(), ncor.getGreen(), ncor.getBlue(), 150));
+            g.draw(nc);
+            g.setFont(Estreia.negrito(11f));
+            fm = g.getFontMetrics();
+            String ns = Notas.texto(nt);
+            g.setColor(ncor);
+            g.drawString(ns, (float) (nc.getCenterX() - fm.stringWidth(ns) / 2.0), (float) (cy + fm.getAscent() / 2.0 - 1.5));
+            double[] td = tendencia.get(a.f);
+            long agoraT = System.currentTimeMillis();
+            if (td != null && td[1] > agoraT && td[2] != 0) {
+                float al = (float) Math.min(1, (td[1] - agoraT) / 1200.0);
+                Composite antes = g.getComposite();
+                g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, al));
+                double ax = x + w - 118, s3 = 4;
+                Path2D.Double seta = new Path2D.Double();
+                if (td[2] > 0) { seta.moveTo(ax - s3, cy + s3 * 0.6); seta.lineTo(ax + s3, cy + s3 * 0.6); seta.lineTo(ax, cy - s3 * 0.9); }
+                else { seta.moveTo(ax - s3, cy - s3 * 0.6); seta.lineTo(ax + s3, cy - s3 * 0.6); seta.lineTo(ax, cy + s3 * 0.9); }
+                seta.closePath();
+                g.setColor(td[2] > 0 ? new Color(0x3FD47E) : new Color(0xFF6B5E));
+                g.fill(seta);
+                g.setComposite(antes);
+            }
             // forca e energia
             int forca = inteiro(chama(a.f, "fi"));
             int energia = Math.max(0, Math.min(100, inteiro(chama(a.f, "fp"))));
             g.setFont(Estreia.titulo(15f));
             fm = g.getFontMetrics();
             String fs = String.valueOf(forca);
-            g.setColor(Tema.TEXTO);
-            g.drawString(fs, (float) (x + w - 54 - fm.stringWidth(fs)), (float) (cy + fm.getAscent() / 2.0 - 2));
-            double bx = x + w - 46, bw = 32;
+            g.setColor(foraPos ? new Color(0xFFB4A8) : Tema.TEXTO);
+            g.drawString(fs, (float) (x + w - 50 - fm.stringWidth(fs)), (float) (cy + fm.getAscent() / 2.0 - 2));
+            double bx = x + w - 42, bw = 28;
             g.setColor(new Color(255, 255, 255, 28));
             g.fill(new RoundRectangle2D.Double(bx, cy - 2, bw, 4, 4, 4));
             g.setColor(energia >= 70 ? Tema.BOM : energia >= 45 ? new Color(0xF2C14E) : new Color(0xFF6B5E));
@@ -1766,11 +1914,7 @@ public class Partida extends JComponent implements ActionListener {
         if (ly + 56 < oy) {
             g.setFont(Estreia.texto(11f));
             fm = g.getFontMetrics();
-            g.setColor(OURO);
-            g.fill(new Ellipse2D.Double(x + 16, ly + 2, 12, 12));
-            g.setColor(new Color(0x14110A));
-            g.setFont(Estreia.negrito(9f));
-            g.drawString("!", (float) (x + 20.4), (float) (ly + 11.5));
+            exclamacao(g, x + 22, ly + 8, 6);
             g.setFont(Estreia.texto(11f));
             g.setColor(Tema.TEXTO_FRACO);
             g.drawString("fora de posição (rende menos)", (float) (x + 34), (float) (ly + 12));

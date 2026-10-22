@@ -430,10 +430,17 @@ final class Transmissao {
                 p.etiqueta(g, "entrou", o[0], o[1] - R * 0.5, 9, new Color(0x5FCF8E));
             }
         }
+        // fora de posicao: "!" dourado sobre a cabeca
+        for (Partida.Ator a : p.foraAgora.keySet()) {
+            if (!p.atores.containsValue(a)) continue;
+            c.projeta(a.x * CX, 2.35, (1 - a.y) * CZ, o);
+            double R = Math.max(5, c.pxPorM(o[2]) * 0.2);
+            Partida.exclamacao(g, o[0], o[1] - R * 1.4, R);
+        }
         Partida.Ator mostra = p.dono != null ? p.dono : p.receptor;
         if (mostra != null && p.atores.containsValue(mostra)) {
             c.projeta(mostra.x * CX, 0, (1 - mostra.y) * CZ, o);
-            p.etiqueta(g, Partida.curto(Partida.nome(mostra.f)), o[0], o[1] + 14, 9.5, null);
+            p.etiqueta(g, Partida.curto(Partida.nome(mostra.f)) + "  " + Notas.texto(p.nota(mostra)), o[0], o[1] + 14, 9.5, null);
         }
     }
 
