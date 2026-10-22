@@ -780,12 +780,13 @@ public class Partida extends JComponent implements ActionListener {
         int dz = ev == null ? 0 : inteiro(chama(ev, "el"));
         Ator d0 = dono != null && dono.lado == lado ? dono : perto(lado, bolaX, bolaY, -1, null, true);
         if (d0 == null) return;
-        Ator ant = dono != null && dono.lado != lado && atores.containsValue(dono) ? dono : null;
+        Ator ant = dono != null && dono.lado != lado && atores.containsValue(dono)
+            && dist(dono.x, dono.y, bolaX, bolaY) < 0.05 ? dono : null;
         if (ant != null) {
             // a bola estava com o outro time: alguem chega e toma dele (nada de passe para o rival)
             l.chave(0, bolaX, bolaY, 0, ant);
             l.chave(0, bolaX + (ant.lado == 0 ? 0.03 : -0.03), bolaY, 0, d0).disputa = true;
-        } else if (dono != d0 && dist(d0.x, d0.y, bolaX, bolaY) > 0.03) {
+        } else if (dist(d0.x, d0.y, bolaX, bolaY) > 0.03) {
             // bola solta: espera quem vai ficar com ela chegar, sem a bola andar sozinha
             l.chave(0, bolaX, bolaY, 0, null);
             l.chave(0, bolaX, bolaY, 0, d0);
@@ -977,14 +978,14 @@ public class Partida extends JComponent implements ActionListener {
             double t = tt[i - 1] + seg;
             if (b.dono != null && !b.chute && !b.salto && atores.containsValue(b.dono)) {
                 // quem recebe esta longe: o passe vai um pouco mais na direcao dele (ate 40%)
-                double chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT + 0.4;   // + arrancada
+                double chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT + 0.7;   // + arrancada
                 if (chega > t + 0.6) {
                     double m = Math.min(0.4, 1 - (t + 0.6) / chega);
                     b.x += (b.dono.x - b.x) * m;
                     b.y += (b.dono.y - b.y) * m;
                     dm = metros(a.x, a.y, b.x, b.y);
                     t = tt[i - 1] + (b.disputa || a.dono != null && a.dono == b.dono ? dm / CONDUZ : 0.3 + dm / (dm > 28 ? PASSE_LONGO : PASSE_CURTO));
-                    chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT + 0.4;
+                    chega = metros(b.dono.x, b.dono.y, b.x, b.y) / SPRINT + 0.7;
                 }
                 t = Math.max(t, chega);
             }
