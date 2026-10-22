@@ -45,3 +45,4 @@ desktop.ini
 !mod/classes/**
 !mod/files/**
 !jogo/**
+__pycache__/
