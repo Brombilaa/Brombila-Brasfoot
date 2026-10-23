@@ -361,7 +361,7 @@ public class MenuInicial extends JComponent {
 
     private void menu(Graphics2D g, float u, int h, float seg) {
         Font fNome = Estreia.semi(1.75f * u);
-        Font fDica = Estreia.texto(0.95f * u);
+        Font fDica = Estreia.texto(1.05f * u);
         FontMetrics fm = g.getFontMetrics(fNome);
         float alt = fm.getHeight() + 1.6f * u, gap = 0.3f * u;
         float total = itens.size() * alt + (itens.size() - 1) * gap;
@@ -394,11 +394,32 @@ public class MenuInicial extends JComponent {
             g2.setColor(cor);
             g2.drawString(it.nome, x0 + lado + 1.6f * u, meio - fm.getHeight() / 2f + fm.getAscent());
             if (a > 0.01f) {
-                // dica do item selecionado, centrada embaixo do menu
+                // dica do item selecionado num balaozinho logo a direita dele, com a
+                // ponta virada para o item; entra deslizando junto com o sublinhado
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setFont(fDica);
                 FontMetrics fd = g2.getFontMetrics();
-                g2.setColor(Tema.alfa(Estreia.BRANCO, Math.round(110 * a)));
-                g2.drawString(it.dica, (w - fd.stringWidth(it.dica)) / 2f, y + total + 2.6f * u);
+                float pad = 0.9f * u, bh = fd.getHeight() + 0.8f * u, bw = fd.stringWidth(it.dica) + 2f * pad;
+                float bx = x0 + grupo + 2.2f * u - (1f - a) * 0.8f * u, by = meio - bh / 2f, ponta = 0.55f * u;
+                Graphics2D gd = (Graphics2D) g2.create();
+                comAlfa(gd, e * a);
+                java.awt.geom.Path2D balao = new java.awt.geom.Path2D.Float();
+                balao.append(new java.awt.geom.RoundRectangle2D.Float(bx, by, bw, bh, bh, bh), false);
+                java.awt.geom.Path2D seta = new java.awt.geom.Path2D.Float();
+                seta.moveTo(bx + 0.3f * u, meio - ponta);
+                seta.lineTo(bx - ponta + 0.1f * u, meio);
+                seta.lineTo(bx + 0.3f * u, meio + ponta);
+                seta.closePath();
+                java.awt.geom.Area forma = new java.awt.geom.Area(balao);
+                forma.add(new java.awt.geom.Area(seta));
+                gd.setColor(new Color(12, 16, 14, 215));
+                gd.fill(forma);
+                gd.setColor(Tema.alfa(ACENTO, 120));
+                gd.setStroke(new java.awt.BasicStroke(Math.max(1f, 0.08f * u)));
+                gd.draw(forma);
+                gd.setColor(Tema.alfa(Estreia.BRANCO, 225));
+                gd.drawString(it.dica, bx + pad, meio - fd.getHeight() / 2f + fd.getAscent());
+                gd.dispose();
             }
             g2.dispose();
         }
