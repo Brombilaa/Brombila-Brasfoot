@@ -453,20 +453,16 @@ final class Dialogos {
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             int w = c.getWidth(), h = c.getHeight();
-            RoundRectangle2D r = new RoundRectangle2D.Float(1, 1, w - 3, h - 3, h - 3, h - 3);
-            if (on) {
-                g.setColor(Estreia.OURO);
-                g.fill(r);
-            } else {
-                g.setColor(new Color(244, 241, 234, b.getModel().isRollover() ? 26 : 14));
-                g.fill(r);
-                g.setColor(new Color(244, 241, 234, 60));
-                g.draw(r);
+            float v = Animacao.valor(b, "brombila.aba", on ? 1f : 0f, 220, Float.NaN);
+            if (!on && b.getModel().isRollover()) {
+                g.setColor(new Color(244, 241, 234, 12));
+                g.fill(new RoundRectangle2D.Float(1, 1, w - 3, h - 3, h - 3, h - 3));
             }
+            Telas.pilula(g, 0, 0, w, h, v);
             java.awt.Font f = Estreia.negrito(12.5f);
             FontMetrics fm = g.getFontMetrics(f);
             g.setFont(f);
-            g.setColor(on ? Estreia.OURO_ESCURO : Estreia.BRANCO);
+            g.setColor(Tema.mistura(Estreia.BRANCO, Estreia.OURO_ESCURO, v));
             String s = b.getText();
             g.drawString(s, (w - fm.stringWidth(s)) / 2f, (h - fm.getHeight()) / 2f + fm.getAscent());
             g.dispose();
@@ -766,7 +762,11 @@ final class Dialogos {
         if (!(fb.getClientProperty("brombila.janela") instanceof JCheckBox)) {
             JCheckBox janela = Janela.chave();
             fb.putClientProperty("brombila.janela", janela);
-            adiciona(fb, janela, 600, 20, 200, 26);
+            adiciona(fb, janela, 270, 20, 158, 26);
+            // animacoes do mod e abertura do menu inicial (brombila.ini)
+            adiciona(fb, Animacao.chave("Animações", "animacoes", "Janelas, menus, abas e barras animados"), 432, 20, 112, 26);
+            adiciona(fb, Animacao.chave("Abertura", "abertura", "Animação do logo ao abrir o jogo"), 548, 20, 98, 26);
+            adiciona(fb, Animacao.chave("Som da abertura", "som", "Som da animação de abertura"), 650, 20, 136, 26);
         }
 
         Object esq = campo(fb, "vd"), dir = campo(fb, "we");

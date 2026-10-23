@@ -41,6 +41,10 @@ public class BotaoUI extends BasicButtonUI {
     private float aperto;  // 0..1, animado
     private Timer timer;
     private ChangeListener ouvinte;
+    // onda de luz do clique (ponto e hora) e posicao do mouse para o brilho
+    private long clique;
+    private float ox, oy;
+    private int mx = -1;
     private AbstractButton botao;
 
     public static ComponentUI createUI(JComponent c) {
@@ -57,6 +61,8 @@ public class BotaoUI extends BasicButtonUI {
             public void stateChanged(ChangeEvent e) { anima(); }
         };
         botao.getModel().addChangeListener(ouvinte);
+        botao.addMouseListener(mouse);
+        botao.addMouseMotionListener(mouse);
         botao.addPropertyChangeListener("model", new java.beans.PropertyChangeListener() {
             public void propertyChange(java.beans.PropertyChangeEvent e) {
                 if (e.getOldValue() instanceof ButtonModel) ((ButtonModel) e.getOldValue()).removeChangeListener(ouvinte);
@@ -69,9 +75,30 @@ public class BotaoUI extends BasicButtonUI {
     public void uninstallUI(JComponent c) {
         if (timer != null) timer.stop();
         if (botao != null && ouvinte != null) botao.getModel().removeChangeListener(ouvinte);
+        if (botao != null) {
+            botao.removeMouseListener(mouse);
+            botao.removeMouseMotionListener(mouse);
+        }
         botao = null;
         super.uninstallUI(c);
     }
+
+    private final java.awt.event.MouseAdapter mouse = new java.awt.event.MouseAdapter() {
+        public void mousePressed(java.awt.event.MouseEvent e) {
+            if (botao == null || !botao.isEnabled() || !Animacao.ligada()) return;
+            clique = System.currentTimeMillis();
+            ox = e.getX();
+            oy = e.getY();
+            anima();
+        }
+        public void mouseMoved(java.awt.event.MouseEvent e) {
+            mx = e.getX();
+            if (hover > 0f && botao != null) botao.repaint();
+        }
+        public void mouseExited(java.awt.event.MouseEvent e) { mx = -1; }
+    };
+
+    private static final int ONDA_MS = 480;
 
     private void anima() {
         if (timer == null) {
@@ -90,7 +117,8 @@ public class BotaoUI extends BasicButtonUI {
         hover = aproxima(hover, alvoH, 0.09f);   // ~170 ms
         aperto = aproxima(aperto, alvoA, 0.25f); // ~60 ms
         botao.repaint();
-        if (hover == alvoH && aperto == alvoA) timer.stop();
+        boolean onda = System.currentTimeMillis() - clique < ONDA_MS;
+        if (hover == alvoH && aperto == alvoA && !onda) timer.stop();
     }
 
     private static float aproxima(float v, float alvo, float passo) {
@@ -120,7 +148,8 @@ public class BotaoUI extends BasicButtonUI {
             float hv = Animacao.suave(hover);
             int dy = Math.round(aperto);
             if (b.isContentAreaFilled()) {
-                estreia(g2, b, w, h, hv, dy);
+                Shape corpo = estreia(g2, b, w, h, hv, dy);
+                if (b.isEnabled()) luz(g2, b, corpo, hv);
             } else if (hv > 0.01f && b.isEnabled()) {
                 // botao so de icone: halo de refletor + sublinhado dourado
                 g2.setPaint(new RadialGradientPaint(w / 2f, h, Math.max(w, h) * 0.75f, new float[] {0f, 1f},
@@ -137,7 +166,33 @@ public class BotaoUI extends BasicButtonUI {
     }
 
     // Pilula dourada (principal) ou contorno claro, como no modelo "Noite de estreia".
-    private static void estreia(Graphics2D g2, AbstractButton b, int w, int h, float hv, int dy) {
+    // Brilho suave que acompanha o mouse em cima do botao e onda de luz que se abre do ponto
+    // do clique (0,48 s), presos ao formato do botao.
+    private void luz(Graphics2D g, AbstractButton b, Shape corpo, float hv) {
+        if (!Animacao.ligada()) return;
+        boolean prim = primario(b);
+        java.awt.Rectangle c = corpo.getBounds();
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.clip(corpo);
+        if (hv > 0.01f && mx >= 0) {
+            float r = Math.max(c.height * 1.6f, 30f);
+            Color cor = prim ? new Color(255, 248, 226) : Estreia.OURO;
+            g2.setPaint(new RadialGradientPaint(mx, c.y + c.height / 2f, r, new float[] {0f, 1f},
+                new Color[] {Tema.alfa(cor, Math.round((prim ? 110 : 40) * hv)), Tema.alfa(cor, 0)}));
+            g2.fill(c);
+        }
+        float t = (System.currentTimeMillis() - clique) / (float) ONDA_MS;
+        if (clique > 0 && t >= 0f && t < 1f) {
+            float rmax = (float) Math.hypot(Math.max(ox - c.x, c.x + c.width - ox), Math.max(oy - c.y, c.y + c.height - oy));
+            float r = 4f + (rmax - 4f) * Animacao.suave(t);
+            Color cor = prim ? Color.WHITE : Estreia.OURO;
+            g2.setColor(Tema.alfa(cor, Math.round((prim ? 110 : 70) * (1f - t))));
+            g2.fill(new java.awt.geom.Ellipse2D.Float(ox - r, oy - r, 2 * r, 2 * r));
+        }
+        g2.dispose();
+    }
+
+    private static Shape estreia(Graphics2D g2, AbstractButton b, int w, int h, float hv, int dy) {
         float sobe = primario(b) ? 1.5f * hv : 0f;
         // pilula; botoes quase quadrados (so de icone) ficam com cantos arredondados
         float raio = (w < 2 * h && b.getClientProperty(REDONDO) == null) ? RAIO : h - 2 * MARGEM;
@@ -166,6 +221,7 @@ public class BotaoUI extends BasicButtonUI {
             g2.setColor(Tema.mistura(new Color(244, 241, 234, 56), Estreia.BRANCO, hv));
             g2.draw(corpo);
         }
+        return corpo;
     }
 
     // Principal: marcado pela tela (PRIMARIO) ou, nas telas do jogo, todo botao

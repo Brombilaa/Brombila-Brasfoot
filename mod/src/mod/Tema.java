@@ -304,6 +304,7 @@ public final class Tema {
                     }
                     Animacao.fadeIn(w);
                 }
+                if (e.getID() == WindowEvent.WINDOW_CLOSED) Animacao.fechou((Window) e.getSource());
                 final Object src = (e instanceof ContainerEvent) ? ((ContainerEvent) e).getChild() : e.getSource();
                 if (src instanceof Component) {
                     SwingUtilities.invokeLater(new Runnable() {

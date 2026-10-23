@@ -9,7 +9,7 @@ import javax.sound.sampled.FloatControl;
 
 // Sons do mod (mod/sons, dentro do .exe). Carrega numa thread para nao travar a tela e,
 // se o som ficar pronto depois da hora, comeca do ponto certo (fica junto da animacao).
-// -Dbrombila.som=0 desliga.
+// -Dbrombila.som=0 ou "Som da abertura" nas Preferencias (brombila.ini som=0) desliga.
 final class Som {
     private final String recurso;
     private volatile Clip clip;
@@ -20,7 +20,7 @@ final class Som {
 
     static Som carrega(String recurso) {
         final Som s = new Som(recurso);
-        if ("0".equals(System.getProperty("brombila.som"))) {
+        if ("0".equals(System.getProperty("brombila.som")) || "0".equals(Janela.pref("som", "1"))) {
             s.parado = true;
             return s;
         }
