@@ -1,10 +1,8 @@
 package mod;
 
 import java.awt.AlphaComposite;
-import java.awt.BasicStroke;
 import java.awt.Canvas;
 import java.awt.Color;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Frame;
 import java.awt.Graphics2D;
@@ -15,10 +13,8 @@ import java.awt.RenderingHints;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.geom.Arc2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferStrategy;
-import java.awt.image.BufferedImage;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
@@ -31,14 +27,13 @@ final class Carregando {
     private Carregando() {}
 
     static final int ATRASO = 450, MINIMO = 350;
-    static final int LARG = 300, ALT = 96;
+    static final int LARG = 330, ALT = 104;
     static final Color VERDE = new Color(0x4CD93F);
 
     private static volatile long batida = System.currentTimeMillis();
     private static volatile Rectangle alvo;
     private static Window janela;
     private static Canvas tela;
-    private static BufferedImage logo;
 
     static void liga() {
         SwingUtilities.invokeLater(new Runnable() {
@@ -61,13 +56,6 @@ final class Carregando {
         tela.setBackground(Estreia.NOITE);
         tela.setIgnoreRepaint(true);
         janela.add(tela);
-        try {
-            BufferedImage b = Logo.branco();
-            int h = 52, w = Math.round(h * b.getWidth() / (float) b.getHeight());
-            logo = Logo.reduz(b, w, h);
-        } catch (Throwable t) {
-            logo = null;
-        }
 
         new Timer(100, new ActionListener() {
             public void actionPerformed(ActionEvent e) {
@@ -133,48 +121,77 @@ final class Carregando {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-        float ent = Math.min(1f, t / 0.25f);
-        ent = ent * ent * (3f - 2f * ent);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        float ent = suave(Math.min(1f, t / 0.3f));
         g.setColor(Estreia.NOITE);
         g.fillRect(0, 0, LARG, ALT);
-        // borda fina clara
+        // luz verde bem fraca vinda de baixo, atras da bola
+        g.setPaint(new java.awt.RadialGradientPaint(new java.awt.geom.Point2D.Float(58, ALT - 18), 70,
+            new float[] {0f, 1f}, new Color[] {new Color(76, 217, 63, 34), new Color(76, 217, 63, 0)}));
+        g.fillRect(0, 0, LARG, ALT);
         g.setColor(new Color(255, 255, 255, 30));
         g.draw(new RoundRectangle2D.Float(0.5f, 0.5f, LARG - 1, ALT - 1, 22, 22));
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ent));
 
-        // logo branco a esquerda
-        int x = 22;
-        if (logo != null) {
-            g.drawImage(logo, x, (ALT - logo.getHeight()) / 2, null);
-            x += logo.getWidth() + 18;
-            g.setColor(new Color(255, 255, 255, 26));
-            g.fillRect(x - 9, 24, 1, ALT - 48);
+        // ---- bola quicando no gramado (quique de 0,8 s, com amassado no chao)
+        float chao = ALT - 24, cx = 58, r = 15;
+        float ciclo = 0.8f, f = (t % ciclo) / ciclo;
+        float subida = 1f - (2f * f - 1f) * (2f * f - 1f);       // parabola 0..1..0
+        float altura = 34f * subida;
+        float toque = Math.max(0f, 1f - Math.min(f, 1f - f) * 2f / 0.12f); // perto do chao
+        float amassa = 0.18f * toque;
+        // linha do gramado que some nas pontas
+        g.setPaint(new java.awt.LinearGradientPaint(cx - 38, 0, cx + 38, 0, new float[] {0f, 0.5f, 1f},
+            new Color[] {new Color(76, 217, 63, 0), new Color(76, 217, 63, 150), new Color(76, 217, 63, 0)}));
+        g.fill(new java.awt.geom.Rectangle2D.Float(cx - 38, chao, 76, 1.5f));
+        // sombra que encolhe quando a bola sobe
+        float sl = r * (1.5f - 0.7f * subida), sa = 0.55f - 0.4f * subida;
+        g.setColor(new Color(0f, 0f, 0f, Math.max(0f, sa)));
+        g.fill(new java.awt.geom.Ellipse2D.Float(cx - sl, chao - 2.5f, 2 * sl, 5f));
+        // rastro de quadros anteriores
+        for (int k = 3; k >= 1; k--) {
+            float fk = ((t - k * 0.035f) % ciclo + ciclo) % ciclo / ciclo;
+            float hk = 34f * (1f - (2f * fk - 1f) * (2f * fk - 1f));
+            g.setColor(new Color(76, 217, 63, 26 - 6 * k));
+            g.fill(new java.awt.geom.Ellipse2D.Float(cx - r * 0.8f, chao - r - hk - r * 0.8f + 2, r * 1.6f, r * 1.6f));
         }
+        Graphics2D gb = (Graphics2D) g.create();
+        gb.translate(cx, chao);
+        gb.scale(1f + amassa, 1f - amassa);
+        Bola.desenha(gb, 0, -r - altura / (1f - amassa), r, t * 7.0);
+        gb.dispose();
 
-        // anel girando
-        float cx = x + 16, cy = ALT / 2f, r = 13;
-        g.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.setColor(new Color(255, 255, 255, 28));
-        g.draw(new Arc2D.Float(cx - r, cy - r, 2 * r, 2 * r, 0, 360, Arc2D.OPEN));
-        float giro = t * 300f % 360f;
-        float abre = 70f + 110f * (0.5f + 0.5f * (float) Math.sin(t * 3.2f));
-        g.setColor(VERDE);
-        g.draw(new Arc2D.Float(cx - r, cy - r, 2 * r, 2 * r, -giro, abre, Arc2D.OPEN));
-
-        // texto
-        float tx = cx + r + 16;
-        Font f1 = Estreia.semi(15f), f2 = Estreia.texto(11.5f);
-        g.setFont(f1);
-        FontMetrics m1 = g.getFontMetrics();
-        g.setColor(Estreia.BRANCO);
-        g.drawString("Carregando", tx, cy - 3);
-        int pontos = ((int) (t * 3f)) % 4;
-        g.setColor(VERDE);
-        g.drawString("...".substring(0, pontos), tx + m1.stringWidth("Carregando"), cy - 3);
-        g.setFont(f2);
-        FontMetrics m2 = g.getFontMetrics();
+        // ---- texto com as letras em onda
+        float tx = 108, base = ALT / 2f + 2;
+        g.setFont(Estreia.titulo(30f));
+        FontMetrics m = g.getFontMetrics();
+        String txt = "CARREGANDO";
+        float x = tx;
+        for (int i = 0; i < txt.length(); i++) {
+            String c = txt.substring(i, i + 1);
+            float onda = (float) Math.sin(t * 5.0 - i * 0.55);
+            float dy = -2.2f * Math.max(0f, onda);
+            g.setColor(Tema.mistura(Estreia.BRANCO, VERDE, 0.55f * Math.max(0f, onda) * Math.max(0f, onda)));
+            g.drawString(c, x, base + dy);
+            x += m.stringWidth(c) + 1.2f;
+        }
+        // trilho com um cometa verde que vai e volta
+        float tw = x - tx - 1.2f, ty = base + 12;
+        g.setColor(new Color(255, 255, 255, 22));
+        g.fill(new RoundRectangle2D.Float(tx, ty, tw, 3, 3, 3));
+        float v = suave((float) (0.5 - 0.5 * Math.cos(t * 2.2)));
+        float cl = tw * 0.32f, cxm = tx + v * (tw - cl);
+        g.setPaint(new java.awt.LinearGradientPaint(cxm, 0, cxm + cl, 0, new float[] {0f, 0.6f, 1f},
+            new Color[] {new Color(76, 217, 63, 0), VERDE, new Color(200, 255, 190)}));
+        g.fill(new RoundRectangle2D.Float(cxm, ty, cl, 3, 3, 3));
+        g.setFont(Estreia.texto(11f));
         g.setColor(Estreia.FRACO);
-        g.drawString("aguarde um instante", tx, cy + 3 + m2.getAscent());
+        g.drawString("aguarde um instante", tx, ty + 18);
         g.setComposite(AlphaComposite.SrcOver);
+    }
+
+    private static float suave(float x) {
+        x = Math.max(0f, Math.min(1f, x));
+        return x * x * (3f - 2f * x);
     }
 }
