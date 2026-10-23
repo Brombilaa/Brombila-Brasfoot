@@ -75,6 +75,54 @@ final class Logo {
         g.dispose();
         return out;
     }
+    // Bola do logo (medida no logo-branco 900x584): centro e raio do corte, que cai no
+    // vao escuro entre a bola e o B, entao o resto do logo sai inteiro.
+    static final float BOLA_X = 381f / 900f, BOLA_Y = 190.5f / 584f, BOLA_R = 92.5f / 584f;
+
+    // {logo sem a bola, bola sozinha (quadrada, centrada)} na escala de img.
+    static BufferedImage[] separa(BufferedImage img) {
+        int w = img.getWidth(), h = img.getHeight();
+        float cx = BOLA_X * w, cy = BOLA_Y * h, r = BOLA_R * h;
+        java.awt.geom.Ellipse2D.Float circ = new java.awt.geom.Ellipse2D.Float(cx - r, cy - r, 2 * r, 2 * r);
+        BufferedImage sem = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = sem.createGraphics();
+        g.drawImage(img, 0, 0, null);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setComposite(java.awt.AlphaComposite.DstOut);
+        g.fill(circ);
+        g.dispose();
+        int d = (int) Math.ceil(2 * r) + 2;
+        float ox = cx - d / 2f, oy = cy - d / 2f;
+        BufferedImage bola = new BufferedImage(d, d, BufferedImage.TYPE_INT_ARGB);
+        g = bola.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(img, java.awt.geom.AffineTransform.getTranslateInstance(-ox, -oy), null);
+        g.dispose();
+        // DstIn so age onde a fonte desenha: a mascara cobre o quadro todo (fora do circulo = 0)
+        BufferedImage mascara = new BufferedImage(d, d, BufferedImage.TYPE_INT_ARGB);
+        g = mascara.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g.fill(new java.awt.geom.Ellipse2D.Float(d / 2f - r, d / 2f - r, 2 * r, 2 * r));
+        g.dispose();
+        g = bola.createGraphics();
+        g.setComposite(java.awt.AlphaComposite.DstIn);
+        g.drawImage(mascara, 0, 0, null);
+        g.dispose();
+        return new BufferedImage[] {sem, bola};
+    }
+
+    // Desenha a bola com o centro em (cx, cy), girada ang radianos e no tamanho tam (diametro
+    // do quadro da bola em px).
+    static void bola(java.awt.Graphics2D g, BufferedImage bola, float cx, float cy, float tam, double ang) {
+        java.awt.geom.AffineTransform at = new java.awt.geom.AffineTransform();
+        at.translate(cx, cy);
+        at.rotate(ang);
+        at.scale(tam / bola.getWidth(), tam / bola.getHeight());
+        at.translate(-bola.getWidth() / 2.0, -bola.getHeight() / 2.0);
+        g.drawImage(bola, at, null);
+    }
+
     private static List<Image> icones;
 
     static List<Image> icones() {
