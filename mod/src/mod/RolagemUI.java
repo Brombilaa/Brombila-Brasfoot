@@ -12,7 +12,7 @@ import javax.swing.plaf.ComponentUI;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 
 // Barra de rolagem fina, sem setas: trilho escuro e alca arredondada que
-// acende em verde quando o mouse passa ou arrasta.
+// acende em dourado quando o mouse passa ou arrasta.
 public class RolagemUI extends BasicScrollBarUI {
     public static ComponentUI createUI(JComponent c) {
         return new RolagemUI();
@@ -48,7 +48,7 @@ public class RolagemUI extends BasicScrollBarUI {
         int x = vertical ? r.x + (r.width - esp) / 2 : r.x + 2;
         int y = vertical ? r.y + 2 : r.y + (r.height - esp) / 2;
         int w = vertical ? esp : r.width - 4, h = vertical ? r.height - 4 : esp;
-        Color cor = isDragging ? Tema.NEON : isThumbRollover() ? Tema.MENTA : new Color(0x4A4740);
+        Color cor = isDragging ? Tema.DOURADO : isThumbRollover() ? Tema.CREME : new Color(0x4A4740);
         if (Estreia.dentro(scrollbar)) cor = isDragging ? Estreia.OURO : isThumbRollover() ? Estreia.BRANCO : new Color(244, 241, 234, 70);
         g2.setColor(cor);
         g2.fillRoundRect(x, y, w, h, esp, esp);

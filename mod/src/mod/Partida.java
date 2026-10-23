@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.AlphaComposite;
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
@@ -25,7 +27,6 @@ import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -65,7 +66,7 @@ public class Partida extends JComponent implements ActionListener {
 
     static final Color GRAMA_A = new Color(0x1C5A2A), GRAMA_B = new Color(0x184F25);
     static final Color LINHA = new Color(255, 255, 255, 190);
-    static final Color OURO = Tema.NEON;
+    static final Color OURO = Tema.DOURADO;
 
     static boolean preferirCampo = true;   // ultima aba escolhida (vale para as proximas rodadas)
     static Partida atual;
@@ -556,14 +557,6 @@ public class Partida extends JComponent implements ActionListener {
         m.setAccessible(true);
         metodos.put(k, m);
         return m;
-    }
-
-    static Object campo(Class<?> c, Object o, String nome) {
-        try {
-            Field f = c.getDeclaredField(nome);
-            f.setAccessible(true);
-            return f.get(o);
-        } catch (Throwable t) { return null; }
     }
 
     static int inteiro(Object o) { return o instanceof Number ? ((Number) o).intValue() : 0; }

@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -15,7 +17,6 @@ import java.awt.RadialGradientPaint;
 import java.awt.RenderingHints;
 import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
-import java.lang.reflect.Field;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -37,16 +38,6 @@ final class Janelas {
     private Janelas() {}
 
     static final String FEITO = "brombila.janela";
-
-    private static Object campo(Object dono, String nome) {
-        try {
-            Field f = dono.getClass().getDeclaredField(nome);
-            f.setAccessible(true);
-            return f.get(dono);
-        } catch (Throwable t) {
-            return null;
-        }
-    }
 
     // Reposiciona um componente num painel com o AbsoluteLayout do jogo (components.b).
     static void posicao(Component c, int x, int y, int w, int h) {

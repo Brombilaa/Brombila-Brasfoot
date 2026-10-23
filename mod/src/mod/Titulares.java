@@ -38,7 +38,7 @@ final class Titulares {
             int k = formacaoAtual(bz);
             if (k < 1) k = melhorFormacao(bz);
             if (k < 1) return;
-            Object o = Dialogos.campo(bz, "Bf");
+            Object o = Reflexao.campo(bz, "Bf");
             if (!(o instanceof JComboBox)) return;
             JComboBox combo = (JComboBox) o;
             if (k + 1 >= combo.getItemCount()) return;
@@ -57,7 +57,7 @@ final class Titulares {
 
     // Formacao (indice de aq.sJ) que bate com as 11 posicoes ocupadas no campo, ou -1.
     static int formacaoAtual(JPanel bz) {
-        Object o = Dialogos.campo(bz, "AE");
+        Object o = Reflexao.campo(bz, "AE");
         if (!(o instanceof ArrayList)) return -1;
         ArrayList<?> slots = (ArrayList<?>) o;
         Set<Integer> ocupadas = new HashSet<Integer>();
@@ -79,7 +79,7 @@ final class Titulares {
     // a de maior soma de forca; cada jogador improvisado custa 8 pontos.
     @SuppressWarnings("unchecked")
     static int melhorFormacao(JPanel bz) {
-        Object o = Dialogos.campo(bz, "AF");
+        Object o = Reflexao.campo(bz, "AF");
         if (!(o instanceof ArrayList)) return -1;
         int[][] f = best.aq.sJ;
         int melhor = -1;

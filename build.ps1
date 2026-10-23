@@ -4,9 +4,12 @@
   O .exe do jogo e um stub Launch4j seguido de um .jar. Este script:
     1. separa o stub do .jar;
     2. recria o .jar trocando o Rsrc-Main-Class do MANIFEST para mod.Boot,
-       substituindo as imagens de mod\assets e adicionando as classes do tema (mod\classes);
-    3. junta stub + novo .jar no executavel de saida;
-    4. copia mod\files (ex.: fundos de img\) para a pasta do executavel.
+       substituindo as imagens de mod\assets e adicionando as classes do mod (mod\classes);
+    3. junta stub + novo .jar no executavel de saida. O stub (com o icone novo) vem do
+       jogo\BrombilaBrasfoot.exe do repositorio; sem ele, fica o do original.
+
+  Os fundos img\f01.jpg e f02.jpg vao dentro do .exe e o proprio jogo grava na pasta img ao abrir.
+  O tools\monta_exe.py faz a mesma coisa em Python.
 
   Uso:
     powershell -ExecutionPolicy Bypass -File .\build.ps1
@@ -25,36 +28,6 @@ $root   = $PSScriptRoot
 $modDir = Join-Path $root 'mod'
 $assets = Join-Path $modDir 'assets'
 
-# Compila mod\src (tema verde) se houver JDK; senao usa as classes versionadas em mod\classes.
-$classes = Join-Path $modDir 'classes'
-if (Get-Command javac -ErrorAction SilentlyContinue) {
-    $tmpCls = Join-Path ([IO.Path]::GetTempPath()) ('brombila-cls-' + [guid]::NewGuid())
-    $fontes = Get-ChildItem -Path (Join-Path $modDir 'src') -Recurse -Filter *.java | ForEach-Object { $_.FullName }
-    & javac -source 8 -target 8 -nowarn -encoding UTF-8 -d $tmpCls $fontes
-    if ($LASTEXITCODE -ne 0) { throw 'javac falhou ao compilar mod\src' }
-    $classes = $tmpCls
-}
-
-# Arquivos que entram no .jar: caminho dentro do jar -> bytes
-$replace = @{}
-Get-ChildItem -Path $classes -Recurse -File -Filter *.class | ForEach-Object {
-    $rel = $_.FullName.Substring($classes.Length + 1).Replace('\', '/')
-    $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
-}
-# Classes do proprio jogo reescritas pelo mod (ex.: components/ao.class, fonte em mod\src-jogo).
-# Precisam do .jar do jogo para compilar, entao entram sempre ja compiladas de mod\classes.
-$versionadas = Join-Path $modDir 'classes'
-Get-ChildItem -Path $versionadas -Recurse -File -Filter *.class | ForEach-Object {
-    $rel = $_.FullName.Substring($versionadas.Length + 1).Replace('\', '/')
-    if (-not $rel.StartsWith('mod/') -and -not $replace.ContainsKey($rel)) {
-        $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
-    }
-}
-Get-ChildItem -Path $assets -Recurse -File | ForEach-Object {
-    $rel = $_.FullName.Substring($assets.Length + 1).Replace('\', '/')
-    $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
-}
-
 # Separa stub e jar usando o diretorio central do zip (fim do arquivo).
 $exe = [IO.File]::ReadAllBytes($Original)
 $eocd = -1
@@ -71,6 +44,49 @@ $inJar  = New-Object IO.MemoryStream(, $exe)
 $inJar.Position = $stubLen
 $jarBytes = New-Object byte[] ($exe.Length - $stubLen)
 [void]$inJar.Read($jarBytes, 0, $jarBytes.Length)
+
+# Classes do mod: com JDK, compila mod\src + mod\src-jogo (as classes do jogo reescritas pelo mod,
+# como components\ao) com o .jar do jogo no classpath; sem JDK, usa as versionadas em mod\classes.
+$classes = Join-Path $modDir 'classes'
+if (Get-Command javac -ErrorAction SilentlyContinue) {
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('brombila-' + [guid]::NewGuid())
+    New-Item -ItemType Directory -Path $tmp | Out-Null
+    $cp = Join-Path $tmp 'jogo.jar'
+    [IO.File]::WriteAllBytes($cp, $jarBytes)
+    $tmpCls = Join-Path $tmp 'classes'
+    $fontes = Get-ChildItem -Path (Join-Path $modDir 'src'), (Join-Path $modDir 'src-jogo') -Recurse -Filter *.java | ForEach-Object { $_.FullName }
+    & javac --release 8 -nowarn -encoding UTF-8 -cp $cp -d $tmpCls $fontes
+    if ($LASTEXITCODE -ne 0) {
+        # JDK 8 nao conhece --release
+        & javac -source 8 -target 8 -nowarn -encoding UTF-8 -cp $cp -d $tmpCls $fontes
+    }
+    if ($LASTEXITCODE -ne 0) { throw 'javac falhou ao compilar mod\src' }
+    $classes = $tmpCls
+}
+
+# Arquivos que entram no .jar: caminho dentro do jar -> bytes
+$replace = @{}
+Get-ChildItem -Path $classes -Recurse -File -Filter *.class | ForEach-Object {
+    $rel = $_.FullName.Substring($classes.Length + 1).Replace('\', '/')
+    $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
+}
+Get-ChildItem -Path $assets -Recurse -File | ForEach-Object {
+    $rel = $_.FullName.Substring($assets.Length + 1).Replace('\', '/')
+    $replace[$rel] = [IO.File]::ReadAllBytes($_.FullName)
+}
+
+# Stub com o icone novo, se o .exe do repositorio existir.
+$versionado = Join-Path $root 'jogo\BrombilaBrasfoot.exe'
+$stub = New-Object byte[] $stubLen
+[Array]::Copy($exe, 0, $stub, 0, $stubLen)
+if (Test-Path $versionado) {
+    $fsv = [IO.File]::OpenRead($versionado)
+    [void]$fsv.Read($stub, 0, $stubLen)
+    $fsv.Close()
+} else {
+    Write-Warning 'Sem jogo\BrombilaBrasfoot.exe: o icone fica o original.'
+}
+
 $src = New-Object IO.Compression.ZipArchive((New-Object IO.MemoryStream(, $jarBytes)), [IO.Compression.ZipArchiveMode]::Read)
 
 $outJar = New-Object IO.MemoryStream
@@ -107,22 +123,9 @@ $dst.Dispose(); $src.Dispose()
 $outDir = Split-Path -Parent $Output
 if ($outDir -and -not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
 $fs = [IO.File]::Create($Output)
-$fs.Write($exe, 0, $stubLen)
+$fs.Write($stub, 0, $stubLen)
 $jar = $outJar.ToArray()
 $fs.Write($jar, 0, $jar.Length)
 $fs.Close()
-
-# Arquivos soltos do mod (fora do .jar), ex.: img\f01.jpg e img\f02.jpg
-$files = Join-Path $modDir 'files'
-if ($outDir -and (Test-Path $files)) {
-    Get-ChildItem -Path $files -Recurse -File | ForEach-Object {
-        $rel  = $_.FullName.Substring($files.Length + 1)
-        $dest = Join-Path $outDir $rel
-        $dDir = Split-Path -Parent $dest
-        if (-not (Test-Path $dDir)) { New-Item -ItemType Directory -Path $dDir | Out-Null }
-        Copy-Item -LiteralPath $_.FullName -Destination $dest -Force
-        Write-Host "Copiado: $rel"
-    }
-}
 
 Write-Host ("Pronto: {0} ({1:N0} bytes, {2} arquivos do mod)" -f $Output, ($stubLen + $jar.Length), $replace.Count)

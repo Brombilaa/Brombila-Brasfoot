@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
@@ -12,7 +14,6 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.RoundRectangle2D;
-import java.lang.reflect.Field;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -35,16 +36,6 @@ import javax.swing.plaf.basic.BasicSliderUI;
 // cartoes de vidro no lugar dos paineis verdes, tabelas neutras e botoes-pilula com icones.
 final class Editor {
     private Editor() {}
-
-    private static Object campo(Object dono, String nome) {
-        try {
-            Field f = dono.getClass().getDeclaredField(nome);
-            f.setAccessible(true);
-            return f.get(dono);
-        } catch (Throwable t) {
-            return null;
-        }
-    }
 
     // ------------------------------------------------------------- janela principal
 

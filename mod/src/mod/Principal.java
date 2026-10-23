@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.FontMetrics;
@@ -32,13 +34,12 @@ final class Principal {
         if (eg.getClientProperty(Janelas.FEITO) != null) return;
         eg.putClientProperty(Janelas.FEITO, Boolean.TRUE);
         Tempo.principal = new java.lang.ref.WeakReference<JPanel>(eg);
-        painelDoTime(Dialogos.campo(eg, "wf"), eg);
-        jogador(Dialogos.campo(eg, "If"));
-        Object t = Dialogos.campo(eg, "Iy");
+        painelDoTime(Reflexao.campo(eg, "wf"), eg);
+        jogador(Reflexao.campo(eg, "If"));
+        Object t = Reflexao.campo(eg, "Iy");
         if (t instanceof JTable) elenco((JTable) t);
     }
 
-    private static Object campo(Object dono, String nome) { return Dialogos.campo(dono, nome); }
     private static void pos(Object o, int x, int y, int w, int h) { Dialogos.pos(o, x, y, w, h); }
 
     // ------------------------------------------------------------- painel do time

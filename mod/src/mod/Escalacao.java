@@ -108,11 +108,6 @@ public final class Escalacao {
     // forca < 0 esconde a forca (modo habilidade individual); energia < 0 esconde a barra;
     // extra (se nao for nulo) substitui forca/energia por um texto.
     public static Image rotulo(String nome, String posicao, boolean improvisado, int forca, int energia,
-                               String lado, String extra) {
-        return rotulo(nome, posicao, improvisado, forca, energia, lado, extra, false, ROTULO_L - 6);
-    }
-
-    public static Image rotulo(String nome, String posicao, boolean improvisado, int forca, int energia,
                                String lado, String extra, boolean pilula) {
         return rotulo(nome, posicao, improvisado, forca, energia, lado, extra, pilula, ROTULO_L - 6);
     }

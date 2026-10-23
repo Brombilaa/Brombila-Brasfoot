@@ -49,7 +49,7 @@ public class CelulaRodada extends JLabel {
             setFont(getFont().deriveFont(Font.BOLD));
         } else if (col == 0 && bg != null && Tema.igual(bg, new Color(27, 50, 24))) {
             tipo = TITULO;
-            setForeground(Tema.NEON);
+            setForeground(Tema.DOURADO);
             setFont(getFont().deriveFont(Font.BOLD));
         } else if (col == 0) {
             tipo = ESTADIO;
@@ -68,7 +68,7 @@ public class CelulaRodada extends JLabel {
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             int w = getWidth(), h = getHeight();
             if (hover > 0 && tipo != TITULO) {
-                g2.setColor(Tema.alfa(Tema.NEON, Math.round(16 * hover)));
+                g2.setColor(Tema.alfa(Tema.DOURADO, Math.round(16 * hover)));
                 g2.fillRect(0, 0, w, h);
             }
             if (tipo == TIME) {
@@ -91,21 +91,21 @@ public class CelulaRodada extends JLabel {
             } else if (tipo == PLACAR) {
                 RoundRectangle2D r = new RoundRectangle2D.Float(0.5f, 0.5f, w - 1, h - 1, 8, 8);
                 if (gol) {
-                    g2.setColor(Tema.alfa(Tema.NEON, 70));
+                    g2.setColor(Tema.alfa(Tema.DOURADO, 70));
                     g2.setStroke(new BasicStroke(4f));
                     g2.draw(r);
-                    g2.setPaint(new GradientPaint(0, 0, new Color(0xFFE08A), 0, h, Tema.NEON_ESCURO));
+                    g2.setPaint(new GradientPaint(0, 0, new Color(0xFFE08A), 0, h, Tema.DOURADO_ESCURO));
                 } else {
                     g2.setPaint(new GradientPaint(0, 0, new Color(0x0F1211), 0, h, new Color(0x080A09)));
                 }
                 g2.fill(r);
                 g2.setStroke(new BasicStroke(1f));
-                g2.setColor(gol ? Tema.NEON : Tema.alfa(Tema.NEON, 70));
+                g2.setColor(gol ? Tema.DOURADO : Tema.alfa(Tema.DOURADO, 70));
                 g2.draw(r);
                 centraliza(g2, w, h);
             } else if (tipo == TITULO) {
                 desenhaConteudo(g2, 6, w, h);
-                g2.setPaint(new GradientPaint(0, 0, Tema.NEON, w, 0, Tema.alfa(Tema.NEON, 0)));
+                g2.setPaint(new GradientPaint(0, 0, Tema.DOURADO, w, 0, Tema.alfa(Tema.DOURADO, 0)));
                 g2.fillRect(4, h - 2, w - 4, 1);
             } else {
                 // estadio e lances: o JLabel desenha (o texto dos lances vem em HTML)
