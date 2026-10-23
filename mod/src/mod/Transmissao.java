@@ -693,7 +693,8 @@ final class Transmissao {
     }
 
     BufferedImage placa(int i) {
-        String[] t = {"BROMBILA BRASFOOT", "CAMPEONATO BRASILEIRO", "BROMBILA BRASFOOT", "TEMPORADA 2023"};
+        // sem o ano por enquanto (as artes das placas ainda vao ser refeitas)
+        String[] t = {"BROMBILA BRASFOOT", "CAMPEONATO BRASILEIRO", "BROMBILA BRASFOOT", "CAMPEONATO BRASILEIRO"};
         BufferedImage im = new BufferedImage(420, 34, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = im.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
