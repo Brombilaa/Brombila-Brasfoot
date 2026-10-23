@@ -11,7 +11,63 @@ import javax.imageio.ImageIO;
 final class Logo {
     private Logo() {}
 
-    private static BufferedImage logo;
+    private static BufferedImage logo, branco;
+
+    static BufferedImage branco() {
+        if (branco == null) {
+            try {
+                branco = ImageIO.read(Logo.class.getResource("/mod/logo/logo-branco.png"));
+            } catch (Throwable t) {
+                branco = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+            }
+        }
+        return branco;
+    }
+
+    // Sombra suave (preta, desfocada) com margem r em volta.
+    static BufferedImage sombra(BufferedImage img, int r) {
+        int w = img.getWidth() + 2 * r, h = img.getHeight() + 2 * r;
+        int[] a = new int[w * h];
+        for (int y = 0; y < img.getHeight(); y++)
+            for (int x = 0; x < img.getWidth(); x++) a[(y + r) * w + x + r] = img.getRGB(x, y) >>> 24;
+        int[] t = new int[w * h];
+        for (int passo = 0; passo < 2; passo++) { // dois borroes de caixa ~ gaussiano
+            for (int y = 0; y < h; y++) {
+                int s = 0;
+                for (int x = -r; x < w; x++) {
+                    if (x + r < w) s += a[y * w + x + r];
+                    if (x - r - 1 >= 0) s -= a[y * w + x - r - 1];
+                    if (x >= 0) t[y * w + x] = s / (2 * r + 1);
+                }
+            }
+            for (int x = 0; x < w; x++) {
+                int s = 0;
+                for (int y = -r; y < h; y++) {
+                    if (y + r < h) s += t[(y + r) * w + x];
+                    if (y - r - 1 >= 0) s -= t[(y - r - 1) * w + x];
+                    if (y >= 0) a[y * w + x] = s / (2 * r + 1);
+                }
+            }
+        }
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        for (int i = 0; i < a.length; i++) out.setRGB(i % w, i / w, Math.min(255, a[i] * 3 / 2) << 24);
+        return out;
+    }
+
+    // Faixa de luz dourada-clara que passa sobre o logo (so onde ha desenho); p de 0 a 1.
+    static BufferedImage brilho(BufferedImage img, float p) {
+        int w = img.getWidth(), h = img.getHeight();
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = out.createGraphics();
+        g.drawImage(img, 0, 0, null);
+        g.setComposite(java.awt.AlphaComposite.SrcIn);
+        float lb = 0.22f * w, x = -lb + (w + 2 * lb) * p, inc = 0.35f * h;
+        g.setPaint(new java.awt.LinearGradientPaint(x - inc, 0, x + inc + 0.01f, h, new float[] {0f, 0.5f, 1f},
+            new java.awt.Color[] {new java.awt.Color(255, 236, 190, 0), new java.awt.Color(255, 236, 190, 150), new java.awt.Color(255, 236, 190, 0)}));
+        g.fillRect(0, 0, w, h);
+        g.dispose();
+        return out;
+    }
     private static List<Image> icones;
 
     static BufferedImage logo() {
