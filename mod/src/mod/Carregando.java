@@ -59,11 +59,14 @@ final class Carregando {
         new Timer(100, new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 batida = System.currentTimeMillis();
-                Window w = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
-                if (w == janela) w = null;
-                if (w == null || !w.isShowing()) {
-                    for (Window x : Window.getWindows()) if (x != janela && x.isShowing() && x instanceof Frame) w = x;
+                // cobre a maior janela do jogo (a principal), mesmo com uma janelinha por cima
+                Window w = null;
+                for (Window x : Window.getWindows()) {
+                    if (x == janela || !x.isShowing() || !(x instanceof Frame)) continue;
+                    if (w == null || x.getWidth() * x.getHeight() > w.getWidth() * w.getHeight()) w = x;
                 }
+                if (w == null) w = KeyboardFocusManager.getCurrentKeyboardFocusManager().getActiveWindow();
+                if (w == janela) w = null;
                 if (w != null && w.isShowing()) {
                     Point p = w.getLocationOnScreen();
                     alvo = new Rectangle(p.x, p.y, w.getWidth(), w.getHeight());

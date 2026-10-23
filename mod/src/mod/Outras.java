@@ -454,6 +454,7 @@ final class Outras {
             g.setHorizontalAlignment(SwingConstants.LEFT);
         }
         pos(gramado, 202, 37, 100, 22);
+        Titulares.instala(bz);
     }
 
     // Condicao do gramado: chip verde (boa), amarelo (ruim) ou vermelho (precaria/pessima).
