@@ -144,6 +144,9 @@ public class ao {
         BufferedImage bufferedImage = new BufferedImage(n5, n6, 2);
         Graphics2D graphics2D = bufferedImage.createGraphics();
         mod.Escalacao.prepara(graphics2D);
+        // Escalar animado: compara com o desenho anterior e manda quem mudou de lugar voar
+        mod.Voo.posicoes(RJ, this.AI.getImage(), image2, this.AH.getImage());
+        if (!bl2 && n4 == 0) mod.Voo.renderizando(arrayList, this);
         int n7 = 1;
         int n8 = 25;
         if (n4 == 1 || n4 == 3) {
@@ -179,6 +182,13 @@ public class ao {
                 if (bl2) {
                     n10 = RK[n9][0];
                     n11 = RK[n9][1];
+                }
+                if ((n4 == 0 || n4 == 1) && !bl2 && mod.Voo.voando(((ao)arrayList.get(n9)).x())) {
+                    // ainda voando para ca: so o lugar vazio
+                    if (n4 == 1) mod.Escalacao.camisa(graphics2D, this.AH.getImage(), n10 + 4, n11 + 4, 42, 42);
+                    else mod.Escalacao.camisa(graphics2D, this.AH.getImage(), n10, n11, 0, 0);
+                    ++n9;
+                    continue;
                 }
                 if (n4 == 1) {
                     // banco do Escalar: camisa menor e rotulo estreito, 4 px abaixo do titulo
@@ -238,6 +248,8 @@ public class ao {
         mod.Escalacao.prepara(graphics2D);
         RH.clear();
         RI.clear();
+        mod.Voo.comecaLista();
+        mod.Voo.renderizando(arrayList, this);
         int n4 = 20;
         int n5 = 0;
         int n6 = n4;
@@ -247,10 +259,13 @@ public class ao {
             if (((ao)arrayList.get(n8)).vf() != null) {
                 Image image3 = ((ao)arrayList.get(n8)).x() != null && ((ao)arrayList.get(n8)).x().getPosicao() == 0 ? this.AI.getImage() : image2;
                 mod.Escalacao.cartao(graphics2D, n6 - 21, n7 - 4, 87, 84);
-                if (n8 != n2) {
+                mod.Voo.naLista(n8, n6 + RD, n7 + RE);
+                if (mod.Voo.voando(((ao)arrayList.get(n8)).x())) {
+                    // voando para ca: so o cartao vazio
+                } else if (n8 != n2) {
                     mod.Escalacao.camisa(graphics2D, image3, n6, n7, 45, 45);
                 }
-                if (((ao)arrayList.get(n8)).x() != null) {
+                if (((ao)arrayList.get(n8)).x() != null && !mod.Voo.voando(((ao)arrayList.get(n8)).x())) {
                     graphics2D.drawImage(ao.a(((ao)arrayList.get(n8)).x(), 2, n8, ""), n6 - 53, n7 + 42, null);
                     if (n8 != n2) {
                         mod.Escalacao.numero(graphics2D, image3, ((ao)arrayList.get(n8)).x().fn(), n6, n7, 45, 45);
