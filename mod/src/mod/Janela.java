@@ -45,6 +45,19 @@ public class Janela {
         }
     }
 
+    // Outras preferencias do mod no mesmo arquivo (animacoes, abertura...).
+    static String pref(String k, String padrao) {
+        carrega();
+        String v = cfg.getProperty(k);
+        return v == null ? padrao : v.trim();
+    }
+
+    static synchronized void grava(String k, String v) {
+        carrega();
+        cfg.setProperty(k, v);
+        grava();
+    }
+
     static boolean emJanela() {
         carrega();
         return "1".equals(cfg.getProperty("janela"));

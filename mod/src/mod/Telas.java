@@ -212,25 +212,34 @@ final class Telas {
         public void paint(Graphics g0, JComponent c) {
             Graphics2D g = (Graphics2D) g0.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            int w = c.getWidth(), h = c.getHeight();
-            RoundRectangle2D r = new RoundRectangle2D.Float(1, 1, w - 3, h - 3, h - 3, h - 3);
-            if (escolhida()) {
-                g.setColor(Estreia.OURO);
-                g.fill(r);
-            } else {
-                g.setColor(new Color(244, 241, 234, 14));
-                g.fill(r);
-                g.setColor(new Color(244, 241, 234, 60));
-                g.draw(r);
-            }
+            v = Animacao.valor(c, "brombila.aba", escolhida() ? 1f : 0f, 220, Float.NaN);
+            pilula(g, 0, 0, c.getWidth(), c.getHeight(), v);
             g.dispose();
             super.paint(g0, c);
         }
+        private float v;
         @Override
         protected void paintEnabledText(JLabel l, Graphics g, String s, int x, int y) {
             ((Graphics2D) g).setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g.setColor(escolhida() ? Estreia.OURO_ESCURO : Estreia.BRANCO);
+            g.setColor(Tema.mistura(Estreia.BRANCO, Estreia.OURO_ESCURO, v));
             g.drawString(s, x, y);
+        }
+    }
+
+    // Aba-pilula com v de 0 (contorno) a 1 (dourada). No meio da troca, o dourado cresce do
+    // centro para as bordas enquanto o contorno some.
+    static void pilula(Graphics2D g, float x, float y, float w, float h, float v) {
+        RoundRectangle2D r = new RoundRectangle2D.Float(x + 1, y + 1, w - 3, h - 3, h - 3, h - 3);
+        if (v < 1f) {
+            g.setColor(new Color(244, 241, 234, Math.round(14 * (1f - v))));
+            g.fill(r);
+            g.setColor(new Color(244, 241, 234, Math.round(60 * (1f - v))));
+            g.draw(r);
+        }
+        if (v > 0f) {
+            float lw = (w - 3) * (0.55f + 0.45f * v);
+            g.setColor(Tema.alfa(Estreia.OURO, Math.round(255 * Math.min(1f, v * 1.6f))));
+            g.fill(new RoundRectangle2D.Float(x + 1 + (w - 3 - lw) / 2f, y + 1, lw, h - 3, h - 3, h - 3));
         }
     }
 
@@ -428,22 +437,29 @@ final class Telas {
         }
         @Override
         protected int calculateTabHeight(int pos, int i, int fontHeight) { return fontHeight + 12; }
+        // Todas as abas em contorno; a pilula dourada e desenhada uma vez so e desliza ate a
+        // aba escolhida (x e largura animados).
         @Override
-        protected void paintTabBackground(Graphics g0, int pos, int i, int x, int y, int w, int h, boolean sel) {
+        protected void paintTabArea(Graphics g0, int pos, int sel) {
             Graphics2D g = (Graphics2D) g0.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            RoundRectangle2D r = new RoundRectangle2D.Float(x + 2, y + 1, w - 4, h - 2, h - 2, h - 2);
-            if (sel) {
-                g.setColor(Estreia.OURO);
-                g.fill(r);
-            } else {
-                g.setColor(new Color(244, 241, 234, 14));
-                g.fill(r);
-                g.setColor(new Color(244, 241, 234, 60));
-                g.draw(r);
+            for (int i = 0; i < tabPane.getTabCount() && i < rects.length; i++) {
+                Rectangle r = rects[i];
+                pilula(g, r.x + 1, r.y, r.width - 2, r.height + 1, 0f);
+            }
+            if (sel >= 0 && sel < rects.length) {
+                Rectangle r = rects[sel];
+                float x = Animacao.valor(tabPane, "brombila.abaX", r.x, 260, Float.NaN);
+                float w = Animacao.valor(tabPane, "brombila.abaW", r.width, 260, Float.NaN);
+                pilula(g, x + 1, r.y, w - 2, r.height + 1, 1f);
+                dourada = new Rectangle(Math.round(x), r.y, Math.round(w), r.height);
             }
             g.dispose();
+            super.paintTabArea(g0, pos, sel);
         }
+        private Rectangle dourada;
+        @Override
+        protected void paintTabBackground(Graphics g0, int pos, int i, int x, int y, int w, int h, boolean sel) {}
         @Override
         protected void paintTabBorder(Graphics g, int pos, int i, int x, int y, int w, int h, boolean sel) {}
         @Override
@@ -454,7 +470,14 @@ final class Telas {
             Graphics2D g = (Graphics2D) g0;
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g.setFont(f);
-            g.setColor(sel ? Estreia.OURO_ESCURO : Estreia.BRANCO);
+            // texto escuro na parte que a pilula dourada cobre
+            Rectangle aba = i < rects.length ? rects[i] : r;
+            float cobre = 0f;
+            if (dourada != null) {
+                int a0 = Math.max(aba.x, dourada.x), a1 = Math.min(aba.x + aba.width, dourada.x + dourada.width);
+                cobre = Math.max(0f, Math.min(1f, (a1 - a0) / (float) Math.max(1, aba.width)));
+            }
+            g.setColor(Tema.mistura(Estreia.BRANCO, Estreia.OURO_ESCURO, cobre));
             g.drawString(s, r.x, r.y + fm.getAscent());
         }
         @Override

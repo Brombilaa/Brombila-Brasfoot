@@ -61,7 +61,9 @@ public class MenuInicial extends JComponent {
     // Abertura com o logo antes do menu (ABERTURA s). Termina com o logo no lugar dele no
     // menu; ai o menu comeca a entrar. Clique ou tecla pula. -Dbrombila.abertura=0 desliga.
     static final float ABERTURA = 3.7f;
-    private long inicioMenu = "0".equals(System.getProperty("brombila.abertura")) ? inicio : inicio + Math.round(ABERTURA * 1000);
+    // Preferencias: "Abertura" (brombila.ini abertura=0 desliga).
+    private long inicioMenu = "0".equals(System.getProperty("brombila.abertura")) || "0".equals(Janela.pref("abertura", "1"))
+        ? inicio : inicio + Math.round(ABERTURA * 1000);
     private static final float[][] POEIRA = poeira(46);
     // som da abertura (tools/som/abertura.py); a torcida continua um pouco no menu
     private final Som som = inicioMenu > inicio ? Som.carrega("/mod/sons/abertura.wav") : null;

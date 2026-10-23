@@ -164,6 +164,28 @@ final class Menus {
         return m + KeyEvent.getKeyText(k.getKeyCode());
     }
 
+    // ------------------------------------------------------------------ entrada
+
+    // Ao abrir, os itens descem 6 px e aparecem em cascata (14 ms entre um e outro, 130 ms cada).
+    static final String ABRIU = "brombila.menuAbriu";
+    static final int DURACAO_ENTRADA = 600;
+
+    // ms desde que o menu abriu (grande = ja terminou a entrada).
+    static long aberto(JComponent popup) {
+        Object t = popup.getClientProperty(ABRIU);
+        return t instanceof Long ? System.currentTimeMillis() - (Long) t : Long.MAX_VALUE / 2;
+    }
+
+    static float entrada(JComponent item) {
+        java.awt.Container p = item.getParent();
+        if (!(p instanceof javax.swing.JPopupMenu)) return 1f;
+        long e = aberto((JComponent) p);
+        if (e > DURACAO_ENTRADA) return 1f;
+        int i = 0;
+        for (java.awt.Component c : p.getComponents()) { if (c == item) break; i++; }
+        return Animacao.suave((e - 14f * Math.min(i, 14)) / 130f);
+    }
+
     // ------------------------------------------------------------------ item
 
     public static class Item extends BasicMenuItemUI {
@@ -210,6 +232,12 @@ final class Menus {
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
             int w = m.getWidth(), h = m.getHeight();
+            float ent = entrada(m);
+            if (ent <= 0f) { g.dispose(); return; }
+            if (ent < 1f) {
+                g.translate(0, -6f * (1f - ent));
+                g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, ent));
+            }
             boolean ativo = m.isEnabled() && (bm.isArmed() || bm.isSelected() || bm.isRollover());
             boolean perigo = perigoso(m.getText());
             Color acento = perigo ? PERIGO : Estreia.OURO;
@@ -264,10 +292,36 @@ final class Menus {
             popupMenu.setOpaque(true);
         }
 
+        private javax.swing.event.PopupMenuListener abre;
+
+        @Override
+        protected void installListeners() {
+            super.installListeners();
+            final javax.swing.JPopupMenu p = popupMenu;
+            abre = new javax.swing.event.PopupMenuListener() {
+                public void popupMenuWillBecomeVisible(javax.swing.event.PopupMenuEvent e) {
+                    if (!Animacao.ligada()) { p.putClientProperty(ABRIU, null); return; }
+                    p.putClientProperty(ABRIU, System.currentTimeMillis());
+                    Animacao.repinta(p);
+                }
+                public void popupMenuWillBecomeInvisible(javax.swing.event.PopupMenuEvent e) {}
+                public void popupMenuCanceled(javax.swing.event.PopupMenuEvent e) {}
+            };
+            p.addPopupMenuListener(abre);
+        }
+
+        @Override
+        protected void uninstallListeners() {
+            if (abre != null) popupMenu.removePopupMenuListener(abre);
+            super.uninstallListeners();
+        }
+
         @Override
         public void paint(Graphics g0, JComponent c) {
             Graphics2D g = (Graphics2D) g0.create();
             int w = c.getWidth(), h = c.getHeight();
+            // enquanto os itens entram, pede os proximos quadros (o painel repinta os filhos)
+            if (aberto(c) < DURACAO_ENTRADA) Animacao.repinta(c);
             g.setColor(FUNDO);
             g.fillRect(0, 0, w, h);
             // brilho suave de refletor no topo
@@ -293,7 +347,8 @@ final class Menus {
             g.setColor(new Color(244, 241, 234, 34));
             g.drawRect(x, y, w - 1, h - 1);
             g.setColor(Tema.alfa(Estreia.OURO, 120));
-            g.fillRect(x + 1, y, w - 2, 1);
+            float f = c instanceof JComponent ? Animacao.suave(aberto((JComponent) c) / 260f) : 1f;
+            g.fillRect(x + 1, y, Math.round((w - 2) * f), 1);
             g.dispose();
         }
     }
@@ -308,6 +363,7 @@ final class Menus {
 
         @Override
         public void paint(Graphics g, JComponent c) {
+            if (entrada(c) < 1f) return;
             g.setColor(new Color(244, 241, 234, 16));
             g.fillRect(MARGEM, c.getHeight() / 2, c.getWidth() - 2 * MARGEM, 1);
         }

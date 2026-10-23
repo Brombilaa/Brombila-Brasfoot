@@ -43,7 +43,8 @@ public class BarraUI extends BasicProgressBarUI {
             int x = in.left, y = in.top, w = pb.getWidth() - in.left - in.right, h = pb.getHeight() - in.top - in.bottom;
             if (w <= 0 || h <= 0) return;
             boolean texto = pb.isStringPainted();
-            double pct = pb.getPercentComplete();
+            // enche da esquerda na primeira vez e desliza quando o valor muda
+            double pct = Animacao.valor(pb, "brombila.barra", (float) pb.getPercentComplete(), 650, 0f);
             Color cor = cor(pb, pct);
             int bx = x, bw = w;
             if (texto) {
