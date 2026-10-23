@@ -103,6 +103,9 @@ final class Menus {
         icone("falso9", circ(12, 9, 4.5), "M16.5 9v4.5a5.5 5.5 0 0 1-5.5 5.5H8.5");
         icone("estadio", new Ellipse2D.Double(3, 5, 18, 9), "M3 9.5V16.5C3 19 7 21 12 21C17 21 21 19 21 16.5V9.5",
             "M8 13.6v6.8M16 13.6v6.8");
+        icone("janela", "M4.5 4h15A1.5 1.5 0 0 1 21 5.5v13a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5v-13A1.5 1.5 0 0 1 4.5 4z",
+            "M3 8.5h18", "M6 6.3h.1M8.5 6.3h.1");
+        icone("telaCheia", "M3.5 9V3.5H9M15 3.5h5.5V9M20.5 15v5.5H15M9 20.5H3.5V15");
         icone("torcida", circ(7, 9, 2.5), circ(17, 9, 2.5), circ(12, 7.5, 3), "M2.5 19v-1a4 4 0 0 1 4-4h1",
             "M21.5 19v-1a4 4 0 0 0-4-4h-1", "M6.5 20v-1.5a4.5 4.5 0 0 1 4.5-4.5h2a4.5 4.5 0 0 1 4.5 4.5V20");
     }
@@ -118,7 +121,7 @@ final class Menus {
         {"deletar", "lixeira"}, {"adicionar jogador", "jogadorMais"}, {"aposentar", "aposentar"},
         {"convocar", "bandeira"}, {"calend", "calendario"}, {"jogos do seu time", "calendario"},
         {"amistoso", "amistoso"}, {"falta", "alvo"}, {"capit", "capitao"}, {"escanteio", "escanteio"},
-        {"falso 9", "falso9"},
+        {"falso 9", "falso9"}, {"modo janela", "janela"}, {"tela cheia", "telaCheia"},
     };
 
     static String normaliza(String s) {
