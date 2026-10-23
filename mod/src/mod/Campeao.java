@@ -54,11 +54,11 @@ final class Campeao {
     static void aplica(JPanel dj) {
         if (dj.getClientProperty(Janelas.FEITO) != null) return;
         dj.putClientProperty(Janelas.FEITO, Boolean.TRUE);
-        String time = texto(Dialogos.campo(dj, "uu"));
-        String comp = texto(Dialogos.campo(dj, "Sx"));
-        String tec = texto(Dialogos.campo(dj, "Fs"));
-        Object ic = Dialogos.campo(dj, "uu") instanceof JLabel ? ((JLabel) Dialogos.campo(dj, "uu")).getIcon() : null;
-        Object at = Dialogos.campo(dj, "aeJ");
+        String time = texto(Reflexao.campo(dj, "uu"));
+        String comp = texto(Reflexao.campo(dj, "Sx"));
+        String tec = texto(Reflexao.campo(dj, "Fs"));
+        Object ic = Reflexao.campo(dj, "uu") instanceof JLabel ? ((JLabel) Reflexao.campo(dj, "uu")).getIcon() : null;
+        Object at = Reflexao.campo(dj, "aeJ");
         best.ah clube = procuraTime(time);
         Festa f = new Festa(time, comp, tec, clube, ic instanceof Icon ? (Icon) ic : null, trofeu(at, comp));
         dj.removeAll();

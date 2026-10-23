@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -71,21 +73,6 @@ final class Dialogos {
     }
 
     // ------------------------------------------------------------- pecas comuns
-
-    static Object campo(Object dono, String nome) {
-        for (Class<?> k = dono.getClass(); k != null; k = k.getSuperclass()) {
-            try {
-                Field f = k.getDeclaredField(nome);
-                f.setAccessible(true);
-                return f.get(dono);
-            } catch (NoSuchFieldException e) {
-                // tenta na superclasse
-            } catch (Throwable t) {
-                return null;
-            }
-        }
-        return null;
-    }
 
     static Object restricao(int x, int y, int w, int h) {
         try {
@@ -776,6 +763,11 @@ final class Dialogos {
         titulo(t, 28f);
         pos(t, 28, 12, 300, 40);
         fechar(campo(fb, "vm"), 867);
+        if (!(fb.getClientProperty("brombila.janela") instanceof JCheckBox)) {
+            JCheckBox janela = Janela.chave();
+            fb.putClientProperty("brombila.janela", janela);
+            adiciona(fb, janela, 600, 20, 200, 26);
+        }
 
         Object esq = campo(fb, "vd"), dir = campo(fb, "we");
         cartao(esq);

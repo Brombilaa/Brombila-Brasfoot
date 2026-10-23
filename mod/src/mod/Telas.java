@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
@@ -10,7 +12,6 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.geom.Path2D;
 import java.awt.geom.RoundRectangle2D;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -34,16 +35,6 @@ final class Telas {
     private Telas() {}
 
     static final String NAO_DEFINIDO = "(ainda não definido)";
-
-    private static Object campo(Object dono, String nome) {
-        try {
-            Field f = dono.getClass().getDeclaredField(nome);
-            f.setAccessible(true);
-            return f.get(dono);
-        } catch (Throwable t) {
-            return null;
-        }
-    }
 
     private static void fonte(Object o, java.awt.Font f, Color cor) {
         if (!(o instanceof JComponent)) return;

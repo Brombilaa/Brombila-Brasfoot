@@ -1,6 +1,6 @@
 package mod;
 
-// Ponto de entrada do mod (Rsrc-Main-Class no MANIFEST): instala o tema verde
+// Ponto de entrada do mod (Rsrc-Main-Class no MANIFEST): instala o tema
 // e depois chama o main original do jogo (best.h2).
 public class Boot {
     public static void main(String[] args) throws Exception {
@@ -16,6 +16,11 @@ public class Boot {
             Tema.instalar();
         } catch (Throwable t) {
             // Se o tema falhar por qualquer motivo, o jogo abre normal.
+            t.printStackTrace();
+        }
+        try {
+            Carregando.liga();  // aviso "Carregando" quando o jogo trava a tela
+        } catch (Throwable t) {
             t.printStackTrace();
         }
         try {

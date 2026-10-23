@@ -16,7 +16,7 @@ import javax.swing.plaf.UIResource;
 import javax.swing.plaf.basic.BasicProgressBarUI;
 
 // Barras de progresso (energia, confianca...): trilho escuro arredondado e
-// preenchimento neon com a ponta brilhando. A cor muda com o valor: verde,
+// preenchimento com a ponta brilhando. A cor muda com o valor: verde,
 // amarelo e vermelho, a menos que o jogo tenha escolhido uma cor propria.
 public class BarraUI extends BasicProgressBarUI {
     public static ComponentUI createUI(JComponent c) {

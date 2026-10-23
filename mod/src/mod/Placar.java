@@ -34,7 +34,7 @@ final class Placar {
     static void instala(JPanel dv) {
         if (dv.getClientProperty("mod.placar") != null) return;
         dv.putClientProperty("mod.placar", Boolean.TRUE);
-        Object hr = Dialogos.campo(dv, "Hr"), hq = Dialogos.campo(dv, "Hq");
+        Object hr = Reflexao.campo(dv, "Hr"), hq = Reflexao.campo(dv, "Hq");
         if (!(hr instanceof JPanel)) return;
         JPanel faixa = (JPanel) hr;
         final Painel p = new Painel(dv);
@@ -49,10 +49,10 @@ final class Placar {
             c.addPropertyChangeListener("icon", l);
         }
         for (String s : new String[] {"Hg", "uh", "Hf"}) {
-            Object o = Dialogos.campo(dv, s);
+            Object o = Reflexao.campo(dv, s);
             if (o instanceof JComponent) ((JComponent) o).addPropertyChangeListener(l);
         }
-        Object hf = Dialogos.campo(dv, "Hf");
+        Object hf = Reflexao.campo(dv, "Hf");
         if (hf instanceof JProgressBar) {
             ((JProgressBar) hf).addChangeListener(new javax.swing.event.ChangeListener() {
                 public void stateChanged(javax.swing.event.ChangeEvent e) { p.repaint(); }
@@ -93,8 +93,8 @@ final class Placar {
     // Times do jogo mostrado no placar (dV.vK.get(GW).tR()), para cores e escudos nitidos.
     static best.ah[] times(JPanel dv) {
         try {
-            Object lista = Dialogos.campo(dv, "vK");
-            Object gw = Dialogos.campo(dv, "GW");
+            Object lista = Reflexao.campo(dv, "vK");
+            Object gw = Reflexao.campo(dv, "GW");
             if (!(lista instanceof List) || !(gw instanceof Integer)) return null;
             int i = (Integer) gw;
             if (i < 0 || i >= ((List<?>) lista).size()) return null;
@@ -159,7 +159,7 @@ final class Placar {
             setOpaque(false);
         }
 
-        Object c(String n) { return Dialogos.campo(dv, n); }
+        Object c(String n) { return Reflexao.campo(dv, n); }
 
         Icon escudo(int i, best.ah[] t, String rotulo) {
             if (t != null && t != cache) {

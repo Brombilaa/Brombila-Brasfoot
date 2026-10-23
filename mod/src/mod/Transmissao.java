@@ -336,7 +336,7 @@ final class Transmissao {
         g.drawString("câmera lenta · clique para pular", (float) (sx + w + 12), (float) (sy + h / 2 + fm.getAscent() / 2.0 - 2));
         g.setColor(new Color(255, 255, 255, 40));
         g.fill(new Rectangle2D.Double(area.x, area.y + area.height - faixa - 3, area.width, 3));
-        g.setColor(Tema.NEON);
+        g.setColor(Tema.DOURADO);
         g.fill(new Rectangle2D.Double(area.x, area.y + area.height - faixa - 3, area.width * Math.min(1, u), 3));
         // entrada: clarao dourado rapido
         long desde = agora - replayDe;
@@ -767,7 +767,7 @@ final class Transmissao {
             double ax = x + a.x * mw, ay = y + a.y * mh;
             g.setColor(cc);
             g.fill(new Ellipse2D.Double(ax - 3, ay - 3, 6, 6));
-            g.setColor(a == p.dono ? Tema.NEON : new Color(0, 0, 0, 140));
+            g.setColor(a == p.dono ? Tema.DOURADO : new Color(0, 0, 0, 140));
             g.draw(new Ellipse2D.Double(ax - 3, ay - 3, 6, 6));
         }
         if (p.bolaVisivel) {

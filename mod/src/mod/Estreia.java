@@ -36,7 +36,7 @@ final class Estreia {
     static final Color LINHA = new Color(244, 241, 234, 36);
     static final Color NOITE = new Color(0x060908);
 
-    // Marca os paineis no estilo: o tema "Noite de jogo" nao troca as cores deles.
+    // Marca os paineis no estilo: o Tema nao troca as cores deles.
     static final String MARCA = "brombila.estreia";
 
     static boolean dentro(Component c) {
@@ -117,6 +117,7 @@ final class Estreia {
         ICONES.put("cima", new Shape[] {svg("M12 19V5M6 11l6-6 6 6")});
         ICONES.put("etiqueta", new Shape[] {svg("M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9z"), new Ellipse2D.Double(7, 7, 3, 3)});
         ICONES.put("obra", new Shape[] {svg("M3 20h18M5 20V11l7-5 7 5v9M9.5 20v-5h5v5")});
+        ICONES.put("camisa", new Shape[] {svg("M8.5 4L3 7l2 4.5 2-1V20h10v-9.5l2 1L21 7l-5.5-3a3.5 3 0 0 1-7 0z")});
         ICONES.put("todos", new Shape[] {svg("M4 6.5l2 2 3.5-4M4 13.5l2 2 3.5-4M12 7h8M12 14h8M12 20h8")});
     }
 

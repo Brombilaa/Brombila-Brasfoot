@@ -4,7 +4,6 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
@@ -205,6 +204,4 @@ public class Pergunta extends BasicOptionPaneUI {
             g.dispose();
         }
     }
-
-    static Font fonteMensagem() { return Estreia.semi(16f); }
 }

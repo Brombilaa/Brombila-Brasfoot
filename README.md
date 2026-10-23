@@ -1,35 +1,36 @@
-# Brasfoot 22-23 — Mod Brombila
+# Brombila Brasfoot (mod do Brasfoot 22-23)
 
-Mod pessoal do Brasfoot 22-23 com o tema "Noite de jogo": interface escura, verde neon, cartões de vidro com brilho de refletor, botões e barras animados, rolagem suave e o título "Brombila Brasfoot".
+Mod pessoal do Brasfoot 22-23 com o tema "Noite de estreia": interface escura e dourada, menu inicial com foto de estádio, fontes Saira Extra Condensed e Manrope, ícones em traço fino, partida ao vivo em 2D e 3D, ordens ao vivo, pênaltis em 3D e janelas novas para a temporada.
 
-Além dos arquivos do mod, a pasta `jogo/` guarda uma cópia completa do jogo do mod (`C:\BrombilaBrasfoot`, sem o backup zip): `BrombilaBrasfoot.exe`, times, escudos, camisas, troféus, sons e configs. Por isso o repositório deve continuar **privado**.
+A pasta `jogo/` guarda uma cópia completa do jogo do mod (`C:\BrombilaBrasfoot`), com times, escudos, camisas, troféus, sons e configs. Por isso o repositório deve continuar **privado**.
 
 ## Estrutura
 
-- `jogo/` — o jogo pronto para jogar. Copie o conteúdo para `C:\BrombilaBrasfoot` e abra `BrombilaBrasfoot.exe` (precisa de Java 8).
-- `mod/src/mod/` — código do tema "Noite de jogo" (Java, compila para Java 8; não depende do Nashorn):
-  - `Boot` — ponto de entrada: liga o antialiasing do texto, instala o tema e chama o `main` original (`best.h2`).
-  - `Tema` — paleta e regras de cor: fundos (temas internos do jogo, azuis e fundos claros) viram verde quase preto, textos escuros viram claros, amarelo vira neon; título das janelas; tabelas zebradas com a linha sob o mouse acendendo.
-  - `BotaoUI` — botões neon com degradê e brilho animado no hover; "Voltar/Cancelar/Sair" ficam só com contorno; botões só de ícone ganham halo e sublinhado neon.
-  - `PainelUI` — fundo com degradê, brilho de refletores e granulado; painéis internos viram cartões de vidro.
-  - `BarraUI` — barras de energia/confiança arredondadas com a ponta brilhando (verde, amarelo, vermelho).
-  - `Icones` — caixinhas de marcar e bolinhas de opção neon.
-  - `RolagemUI` / `RolagemSuave` — barra de rolagem fina e rolagem animada da rodinha do mouse.
-  - `Animacao` — fade-in das janelas sem borda (popups do jogo) e curvas de animação.
-- `mod/classes/` — as classes já compiladas, versionadas para quem não tem JDK.
-- `mod/assets/` — ícones da barra de cima no estilo "Linha neon" (gerados por `tools/icones/IconesNeon.java`), ícones que eram azuis recoloridos para verde, e as caixinhas de marcar das tabelas redesenhadas para o fundo escuro (substituem os originais dentro do .jar).
-- `mod/files/` — arquivos soltos do mod copiados para a pasta do jogo (fundos do estádio `img/f01.jpg` e `img/f02.jpg` em verde).
-- `build.ps1` — monta o `BrombilaBrasfoot.exe` a partir do executável original.
+- `jogo/` — o jogo pronto para jogar. Copie o conteúdo para `C:\BrombilaBrasfoot` e abra `BrombilaBrasfoot.exe` (precisa de Java 8 ou mais novo).
+- `mod/src/mod/` — o código do mod (Java 8). Entrada em `Boot` (instala o `Tema` e chama o `main` original, `best.h2`). Cada arquivo começa com um comentário dizendo qual tela ou parte do jogo ele cuida.
+- `mod/src-jogo/` — classes do próprio jogo reescritas pelo mod (por exemplo `components/ao`, a tela Escalar time). Compilam com o .jar do jogo no classpath.
+- `mod/classes/` — tudo compilado, versionado para montar o .exe sem JDK. Tem que bater com o código.
+- `mod/assets/` — arquivos que entram no .jar: imagens do jogo redesenhadas (mesmo nome do original), arquivos novos do mod em `mod/` (logo, fontes, taças, bonecos 3D, fundos) e as classes remendadas `best/ah` e `a/dR`, `a/hz` (geradas por `tools/escudos` e `tools/carreira`).
+- `tools/` — geradores das artes e remendos: ícones (`icones/`), tema dourado e fundos (`tema/`), gramados (`escalar/`), taças (`tacas/`), bonecos 3D (`tv/`), simulação da partida (`partida/`), ícone do .exe (`logo/`) e a montagem do .exe (`monta_exe.py`).
 
-## Como montar
+## Como montar o .exe
 
-1. Tenha o jogo original em `C:\Brasfoot22-23\bf22-23.exe`.
-2. No PowerShell, dentro desta pasta:
+O executável é um stub Launch4j seguido de um .jar. A montagem pega o .jar do jogo original, troca o `Rsrc-Main-Class` do MANIFEST de `best.h2` para `mod.Boot`, substitui/adiciona as classes e os arquivos de `mod/assets` e junta com o stub do `jogo/BrombilaBrasfoot.exe` (que já tem o ícone novo).
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\build.ps1
-   ```
+No Windows (PowerShell), com o jogo original em `C:\Brasfoot22-23\bf22-23.exe`:
 
-   Isso gera `C:\BrombilaBrasfoot\BrombilaBrasfoot.exe` e copia os arquivos de `mod/files` para `C:\BrombilaBrasfoot`. Use `-Original` e `-Output` para outros caminhos.
+```powershell
+powershell -ExecutionPolicy Bypass -File .\build.ps1
+```
 
-O executável é um stub Launch4j seguido de um .jar. O script separa os dois, troca o `Rsrc-Main-Class` do MANIFEST de `best.h2` para `mod.Boot`, substitui as imagens de `mod/assets`, adiciona as classes do tema (compila `mod/src` se tiver `javac`, senão usa `mod/classes`) e junta tudo de novo.
+Isso gera `C:\BrombilaBrasfoot\BrombilaBrasfoot.exe`. Use `-Original` e `-Output` para outros caminhos. Com JDK instalado, o código é compilado na hora; sem JDK, usa `mod/classes`.
+
+Com Python 3:
+
+```sh
+python3 tools/monta_exe.py caminho/bf22-23.exe jogo/BrombilaBrasfoot.exe --compila
+```
+
+`--compila` recompila `mod/src` e `mod/src-jogo` para `mod/classes` antes de montar.
+
+Os fundos `img/f01.jpg` e `img/f02.jpg` vão dentro do .exe; o jogo lê esses dois do disco, então o mod grava os do tema na pasta `img` ao abrir.

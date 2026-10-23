@@ -18,7 +18,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.plaf.ComponentUI;
 import javax.swing.plaf.basic.BasicPanelUI;
 
-// Fundo dos paineis escuros no estilo "Noite de jogo":
+// Fundo dos paineis escuros no estilo "Noite de estreia":
 //  - degrade vertical + brilho de refletores nos cantos de cima + granulado,
 //    tudo nas coordenadas da janela (paineis aninhados nao mostram emenda);
 //  - painel com cor diferente do painel de fora vira "cartao de vidro":
@@ -88,7 +88,7 @@ public class PainelUI extends BasicPanelUI {
                 g2.fillRect(0, 0, w, h);
                 g2.setPaint(new GradientPaint(0, 0, new Color(255, 255, 255, 60), 0, Math.min(h, 140), new Color(255, 255, 255, 10)));
                 g2.drawRect(0, 0, w - 1, h - 1);
-                g2.setPaint(new GradientPaint(0, 0, Tema.alfa(Tema.NEON, 0), w / 2f, 0, Tema.alfa(Tema.NEON, 110), true));
+                g2.setPaint(new GradientPaint(0, 0, Tema.alfa(Tema.DOURADO, 0), w / 2f, 0, Tema.alfa(Tema.DOURADO, 110), true));
                 g2.fillRect(0, 0, w, 1);
             }
         } finally {
