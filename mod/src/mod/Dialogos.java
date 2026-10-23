@@ -776,6 +776,11 @@ final class Dialogos {
         titulo(t, 28f);
         pos(t, 28, 12, 300, 40);
         fechar(campo(fb, "vm"), 867);
+        if (!(fb.getClientProperty("brombila.janela") instanceof JCheckBox)) {
+            JCheckBox janela = Janela.chave();
+            fb.putClientProperty("brombila.janela", janela);
+            adiciona(fb, janela, 600, 20, 200, 26);
+        }
 
         Object esq = campo(fb, "vd"), dir = campo(fb, "we");
         cartao(esq);

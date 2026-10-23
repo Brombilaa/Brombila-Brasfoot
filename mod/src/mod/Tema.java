@@ -273,6 +273,8 @@ public final class Tema {
         });
         try { escureceDefaults(); } catch (Throwable t) {}
 
+        try { Janela.instala(); } catch (Throwable t) {}  // F11: modo janela / tela cheia
+
         long mask = AWTEvent.CONTAINER_EVENT_MASK | AWTEvent.WINDOW_EVENT_MASK;
         Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
             public void eventDispatched(AWTEvent e) {
@@ -281,15 +283,24 @@ public final class Tema {
                     if (((ContainerEvent) e).getChild() instanceof javax.swing.JOptionPane) {
                         Pergunta.prepara((javax.swing.JOptionPane) ((ContainerEvent) e).getChild());
                     }
+                    // menu Opcoes: "Modo janela / Tela cheia" logo depois de Preferencias
+                    if (((ContainerEvent) e).getChild() instanceof javax.swing.JMenuItem && e.getSource() instanceof javax.swing.JPopupMenu) {
+                        Janela.itemMenu((javax.swing.JPopupMenu) e.getSource(), (javax.swing.JMenuItem) ((ContainerEvent) e).getChild());
+                    }
                     // tela inicial do jogo sendo montada: esconde ate trocar pelo menu novo
                     Object s = e.getSource();
                     Window w = (s instanceof Window) ? (Window) s : SwingUtilities.getWindowAncestor((Component) s);
                     if (w != null && w.getClass().getName().equals("a.gq") && !w.isShowing()) MenuInicial.prepara(w);
+                    // janela principal do jogo sendo montada: modo janela, se foi o escolhido
+                    if (w != null && w.getClass() == javax.swing.JFrame.class && !w.isDisplayable() && Janela.ehPrincipal(w)) {
+                        Janela.antesDeMostrar((javax.swing.JFrame) w);
+                    }
                 }
                 if (e.getID() == WindowEvent.WINDOW_OPENED) {
                     Window w = (Window) e.getSource();
                     Logo.icone(w);
                     if (w.getClass().getName().equals("a.gq")) MenuInicial.instala((javax.swing.JFrame) w);
+                    if (w.getClass() == javax.swing.JFrame.class && Janela.ehPrincipal(w)) Janela.abriu((javax.swing.JFrame) w);
                     if (w instanceof javax.swing.JDialog && temPergunta(w)) {
                         // perguntas (JOptionPane): a fonte nova muda a largura do texto,
                         // entao a janela e refeita no tamanho certo
