@@ -27,7 +27,7 @@ final class Carregando {
     private Carregando() {}
 
     static final int ATRASO = 450, MINIMO = 350;
-    static final int LARG = 330, ALT = 104;
+    static final int LARG = 330, ALT = 104, CANTO = 30;
     static final Color VERDE = new Color(0x4CD93F);
 
     private static volatile long batida = System.currentTimeMillis();
@@ -48,7 +48,7 @@ final class Carregando {
         janela.setBackground(Estreia.NOITE);
         janela.setSize(LARG, ALT);
         try {
-            janela.setShape(new RoundRectangle2D.Float(0, 0, LARG, ALT, 22, 22));
+            janela.setShape(new RoundRectangle2D.Float(0, 0, LARG, ALT, CANTO, CANTO));
         } catch (Throwable t) {
             // sem cantos redondos
         }
@@ -123,14 +123,16 @@ final class Carregando {
         g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         float ent = suave(Math.min(1f, t / 0.3f));
+        RoundRectangle2D cartao = new RoundRectangle2D.Float(0, 0, LARG, ALT, CANTO, CANTO);
         g.setColor(Estreia.NOITE);
-        g.fillRect(0, 0, LARG, ALT);
+        g.fill(cartao);
+        g.clip(cartao);
         // luz verde bem fraca vinda de baixo, atras da bola
         g.setPaint(new java.awt.RadialGradientPaint(new java.awt.geom.Point2D.Float(58, ALT - 18), 70,
             new float[] {0f, 1f}, new Color[] {new Color(76, 217, 63, 34), new Color(76, 217, 63, 0)}));
         g.fillRect(0, 0, LARG, ALT);
         g.setColor(new Color(255, 255, 255, 30));
-        g.draw(new RoundRectangle2D.Float(0.5f, 0.5f, LARG - 1, ALT - 1, 22, 22));
+        g.draw(new RoundRectangle2D.Float(0.5f, 0.5f, LARG - 1, ALT - 1, CANTO - 1, CANTO - 1));
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ent));
 
         // ---- bola quicando no gramado (quique de 0,8 s, com amassado no chao)
