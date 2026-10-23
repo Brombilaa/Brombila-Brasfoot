@@ -167,7 +167,13 @@ final class ConfigEstreia {
 
         Object combo = campo(hU, "afA");
         if (combo instanceof javax.swing.JComboBox) {
-            javax.swing.JComboBox<?> cb = (javax.swing.JComboBox<?>) combo;
+            @SuppressWarnings("unchecked")
+            javax.swing.JComboBox<Object> cb = (javax.swing.JComboBox<Object>) combo;
+            // so 2026 e 2027 (o jogo grava o ano pelo indice da escolha; ver mod.Ano)
+            int escolha = Math.max(0, cb.getSelectedIndex());
+            cb.setModel(new javax.swing.DefaultComboBoxModel<Object>(new Object[] {
+                String.valueOf(Ano.PRIMEIRA), String.valueOf(Ano.SEGUNDA)}));
+            cb.setSelectedIndex(Math.min(escolha, 1));
             cb.setFont(Estreia.semi(13f));
             cb.setBackground(CELULA);
             cb.setForeground(Estreia.BRANCO);
