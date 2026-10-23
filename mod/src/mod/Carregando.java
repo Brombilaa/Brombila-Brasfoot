@@ -127,11 +127,8 @@ final class Carregando {
         g.setColor(Estreia.NOITE);
         g.fill(cartao);
         g.clip(cartao);
-        // luz verde bem fraca vinda de baixo, atras da bola
-        g.setPaint(new java.awt.RadialGradientPaint(new java.awt.geom.Point2D.Float(58, ALT - 18), 70,
-            new float[] {0f, 1f}, new Color[] {new Color(76, 217, 63, 34), new Color(76, 217, 63, 0)}));
-        g.fillRect(0, 0, LARG, ALT);
-        g.setColor(new Color(255, 255, 255, 30));
+        g.drawImage(fundo(), 0, 0, null);
+        g.setColor(new Color(255, 255, 255, 34));
         g.draw(new RoundRectangle2D.Float(0.5f, 0.5f, LARG - 1, ALT - 1, CANTO - 1, CANTO - 1));
         g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ent));
 
@@ -190,6 +187,49 @@ final class Carregando {
         g.setColor(Estreia.FRACO);
         g.drawString("aguarde um instante", tx, ty + 18);
         g.setComposite(AlphaComposite.SrcOver);
+    }
+
+    private static java.awt.image.BufferedImage fundo;
+
+    // Fundo igual ao do menu: estadio escurecido, brilho dourado de refletor no
+    // alto e uma luz verde fraca atras da bola. Feito uma vez so.
+    static synchronized java.awt.image.BufferedImage fundo() {
+        if (fundo != null) return fundo;
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(LARG, ALT, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = img.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.setColor(Estreia.NOITE);
+        g.fillRect(0, 0, LARG, ALT);
+        try {
+            java.awt.image.BufferedImage f = Estreia.foto();
+            // pedaco da arquibancada iluminada, como no alto do menu
+            double esc = LARG * 1.6 / f.getWidth();
+            int fw = (int) Math.round(f.getWidth() * esc), fh = (int) Math.round(f.getHeight() * esc);
+            g.drawImage(Logo.reduz(f, fw, fh), (LARG - fw) / 2, -(int) (fh * 0.18), null);
+        } catch (Throwable t) {
+            // so a cor de fundo
+        }
+        g.setColor(new Color(6, 9, 8, 205));
+        g.fillRect(0, 0, LARG, ALT);
+        java.awt.geom.AffineTransform el = new java.awt.geom.AffineTransform();
+        el.translate(LARG * 0.62, -ALT * 0.15);
+        el.scale(1.0, 0.45);
+        g.setPaint(new java.awt.RadialGradientPaint(new java.awt.geom.Point2D.Float(0, 0), LARG * 0.6f,
+            new java.awt.geom.Point2D.Float(0, 0), new float[] {0f, 1f},
+            new Color[] {new Color(242, 193, 78, 60), new Color(242, 193, 78, 0)},
+            java.awt.MultipleGradientPaint.CycleMethod.NO_CYCLE, java.awt.MultipleGradientPaint.ColorSpaceType.SRGB, el));
+        g.fillRect(0, 0, LARG, ALT);
+        g.setPaint(new java.awt.RadialGradientPaint(new java.awt.geom.Point2D.Float(58, ALT - 18), 70,
+            new float[] {0f, 1f}, new Color[] {new Color(76, 217, 63, 30), new Color(76, 217, 63, 0)}));
+        g.fillRect(0, 0, LARG, ALT);
+        // filete dourado no alto, como o do logo no menu
+        g.setPaint(new java.awt.LinearGradientPaint(LARG * 0.2f, 0, LARG * 0.8f, 0, new float[] {0f, 0.5f, 1f},
+            new Color[] {Tema.alfa(Estreia.OURO, 0), Tema.alfa(Estreia.OURO, 150), Tema.alfa(Estreia.OURO, 0)}));
+        g.fillRect((int) (LARG * 0.2f), 1, (int) (LARG * 0.6f), 1);
+        g.dispose();
+        fundo = img;
+        return img;
     }
 
     private static float suave(float x) {
