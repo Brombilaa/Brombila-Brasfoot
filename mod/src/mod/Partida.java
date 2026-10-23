@@ -279,6 +279,27 @@ public class Partida extends JComponent implements ActionListener {
                     getActionMap().put(nome, acoes.get(nome));
                 }
             }
+            // velocidade mais facil: 1 a 5 (em cima das letras ou no teclado numerico) fazem o mesmo que
+            // F1 a F5, e + / - sobem ou descem uma velocidade. Usam as mesmas acoes do jogo, entao
+            // valem as mesmas velocidades que o F1..F5 libera.
+            for (int i = 0; i < 5; i++) {
+                Object nome = de.get(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_F1 + i, 0));
+                velocidades[i] = nome == null || acoes.get(nome) == null ? null : nome.toString();
+                if (velocidades[i] == null) continue;
+                para.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_1 + i, 0), velocidades[i]);
+                para.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_NUMPAD1 + i, 0), velocidades[i]);
+            }
+            int[] mais = {java.awt.event.KeyEvent.VK_ADD, java.awt.event.KeyEvent.VK_PLUS, java.awt.event.KeyEvent.VK_EQUALS};
+            int[] menos = {java.awt.event.KeyEvent.VK_SUBTRACT, java.awt.event.KeyEvent.VK_MINUS};
+            for (int k : mais) para.put(KeyStroke.getKeyStroke(k, 0), "mod.vel+");
+            para.put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_EQUALS, java.awt.event.InputEvent.SHIFT_DOWN_MASK), "mod.vel+");
+            for (int k : menos) para.put(KeyStroke.getKeyStroke(k, 0), "mod.vel-");
+            getActionMap().put("mod.vel+", new javax.swing.AbstractAction() {
+                public void actionPerformed(ActionEvent e) { passo(1); }
+            });
+            getActionMap().put("mod.vel-", new javax.swing.AbstractAction() {
+                public void actionPerformed(ActionEvent e) { passo(-1); }
+            });
         } catch (Throwable t) { t.printStackTrace(); }
         // O abre e fecha as ordens; Esc fecha sem aplicar
         getInputMap(WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_O, 0), "mod.ordens");
@@ -295,6 +316,102 @@ public class Partida extends JComponent implements ActionListener {
         getActionMap().put("mod.ordens.sai", new javax.swing.AbstractAction() {
             public void actionPerformed(ActionEvent e) { if (ordens != null) fechaOrdens(false); }
         });
+    }
+
+    final String[] velocidades = new String[5];   // acao do jogo em cada uma das teclas F1..F5
+
+    // + e -: acha qual das 5 velocidades esta valendo (o "d" do jogo e aq.rz[n], com n tirado do
+    // nome da acao, "f1" = 0) e dispara a acao da vizinha
+    void passo(int dir) {
+        int atual = nivel(atraso());
+        if (atual < 0) return;
+        for (int i = atual + dir; i >= 0 && i < 5; i += dir) {
+            if (velocidades[i] == null) continue;
+            javax.swing.Action a = getActionMap().get(velocidades[i]);
+            if (a != null) a.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, velocidades[i]));
+            return;
+        }
+        // ja no limite: avisa em vez de nao acontecer nada
+        velSobe = dir > 0;
+        velTexto = dir > 0 ? "Já está na mais rápida" : "Já está na mais lenta";
+        velPara = atraso();
+        velDesde = System.currentTimeMillis();
+        repaint();
+    }
+
+    // qual das 5 teclas (0 a 4) da a velocidade d; -1 se nao der para saber
+    int nivel(int d) {
+        int atual = -1, perto = Integer.MAX_VALUE;
+        for (int i = 0; i < 5; i++) {
+            if (velocidades[i] == null) continue;
+            try {
+                int n = Integer.parseInt(velocidades[i].substring(1)) - 1;
+                int dist = Math.abs(best.aq.rz[n] - d);
+                if (dist < perto) { perto = dist; atual = i; }
+            } catch (Throwable t) { /* nome fora do padrao */ }
+        }
+        return atual;
+    }
+
+    // aviso de velocidade: aparece quando a velocidade do jogo muda, venha de onde vier (1 a 5,
+    // + e -, F1 a F5 ou o proprio jogo)
+    int velVista, velPara;
+    boolean velSobe;
+    String velTexto = "";
+    long velDesde;
+
+    void confereVelocidade(long agora) {
+        int d = atraso();
+        if (velVista != 0 && d != velVista) {
+            velSobe = d < velVista;          // menos tempo por minuto = mais rapido
+            velTexto = velSobe ? "Velocidade aumentada" : "Velocidade diminuída";
+            velPara = d;
+            velDesde = agora;
+        }
+        velVista = d;
+    }
+
+    void pintaVelocidade(Graphics2D g, long agora) {
+        long t = agora - velDesde;
+        if (velDesde == 0 || t > 1500) return;
+        float al = (float) Math.min(1, Math.min(t / 150.0, (1500 - t) / 300.0));
+        boolean sobe = velSobe;
+        int nv = nivel(velPara);
+        String txt = velTexto;
+        Composite antes = g.getComposite();
+        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0, al)));
+        g.setFont(Estreia.negrito(13f));
+        FontMetrics fm = g.getFontMetrics();
+        double barras = nv >= 0 ? 5 * 7 + 10 : 0;
+        double w = 34 + fm.stringWidth(txt) + barras + 22, h = 32;
+        double x = campo.getCenterX() - w / 2, y = campo.getMaxY() - h - 18 + (1 - al) * 8;
+        g.setColor(new Color(8, 10, 9, 220));
+        g.fill(new RoundRectangle2D.Double(x, y, w, h, h, h));
+        g.setColor(new Color(242, 193, 78, 150));
+        g.setStroke(new BasicStroke(1.2f));
+        g.draw(new RoundRectangle2D.Double(x, y, w, h, h, h));
+        // setas duplas (avancar ou voltar)
+        double cx = x + 20, cy = y + h / 2;
+        g.setColor(OURO);
+        for (int k = 0; k < 2; k++) {
+            double ox = cx - 6 + k * 6;
+            Path2D.Double seta = new Path2D.Double();
+            if (sobe) { seta.moveTo(ox - 3, cy - 5); seta.lineTo(ox + 3, cy); seta.lineTo(ox - 3, cy + 5); }
+            else { seta.moveTo(ox + 3, cy - 5); seta.lineTo(ox - 3, cy); seta.lineTo(ox + 3, cy + 5); }
+            seta.closePath();
+            g.fill(seta);
+        }
+        g.setColor(Tema.TEXTO);
+        g.drawString(txt, (float) (x + 34), (float) (cy + fm.getAscent() / 2.0 - 2));
+        if (nv >= 0) {
+            double bx = x + 34 + fm.stringWidth(txt) + 12;
+            for (int i = 0; i < 5; i++) {
+                double bh = 6 + i * 2.5;
+                g.setColor(i <= nv ? OURO : new Color(255, 255, 255, 40));
+                g.fill(new RoundRectangle2D.Double(bx + i * 7, cy + 7 - bh, 4.5, bh, 2, 2));
+            }
+        }
+        g.setComposite(antes);
     }
 
     // ------------------------------------------------------------------ ordens ao vivo
@@ -517,6 +634,8 @@ public class Partida extends JComponent implements ActionListener {
 
     void comeca(Object j, int m, int t, long agora) {
         jogo = j;
+        velVista = 0;
+        velDesde = 0;
         casa = chama(j, "hc");
         fora = chama(j, "hd");
         humano = Boolean.TRUE.equals(chama(fora, "jZ")) && !Boolean.TRUE.equals(chama(casa, "jZ")) ? 1 : 0;
@@ -1414,6 +1533,7 @@ public class Partida extends JComponent implements ActionListener {
         g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         long agora = System.currentTimeMillis();
+        confereVelocidade(agora);
         int W = getWidth(), H = getHeight();
         int col = W >= 860 ? COLUNA : 0;
         double areaX = col, areaW = W - col;
@@ -1431,6 +1551,7 @@ public class Partida extends JComponent implements ActionListener {
             if (agora >= golDe && agora < golAte) pintaGol(g, agora);
             if (aviso != null && agora < avisoAte) pintaAviso(g, aviso, agora);
             if (agora < alertaAte) pintaAlerta(g, agora);
+            pintaVelocidade(g, agora);
             g.setClip(clip);
             g.setColor(new Color(242, 193, 78, 60));
             g.setStroke(new BasicStroke(1.2f));
@@ -1610,6 +1731,7 @@ public class Partida extends JComponent implements ActionListener {
         if (agora >= golDe && agora < golAte) pintaGol(g, agora);
         if (aviso != null && agora < avisoAte) pintaAviso(g, aviso, agora);
         if (agora < alertaAte) pintaAlerta(g, agora);
+        pintaVelocidade(g, agora);
     }
 
     static Color clareia(Color c, float k) {
@@ -2026,7 +2148,7 @@ public class Partida extends JComponent implements ActionListener {
         }
         // legenda: teclas desenhadas e o simbolo de fora de posicao
         ly += 10;
-        String[][] linhas = {{"F1–F5", "Velocidade"}, {"Espaço", "Substituições"}, {"V", "Câmera 3D / prancheta"}, {"O", "Dar ordens"}, {"!", "Fora de posição (rende menos)"}};
+        String[][] linhas = {{"1–5 + −", "Velocidade"}, {"Espaço", "Substituições"}, {"V", "Câmera 3D / prancheta"}, {"O", "Dar ordens"}, {"!", "Fora de posição (rende menos)"}};
         if (ly + 40 < oy) {
             g.setColor(Tema.BORDA);
             g.draw(new Line2D.Double(x + 14, ly, x + w - 14, ly));
@@ -2038,12 +2160,17 @@ public class Partida extends JComponent implements ActionListener {
                 if (ly + 24 > oy - 6) break;
                 if (l[1].equals("Dar ordens") && botaoOrdens.width <= 0) continue;
                 double cy = ly + 10;
+                double tx = x + 16 + 58;
                 if (l[0].equals("!")) exclamacao(g, x + 16 + 9, cy, 8);
-                else tecla(g, l[0], x + 16, cy);
+                else {
+                    double kx = x + 16;
+                    for (String k : l[0].split(" ")) kx += tecla(g, k, kx, cy) + 4;
+                    tx = Math.max(tx, kx + 8);
+                }
                 g.setFont(Estreia.texto(12f));
                 g.setColor(l[0].equals("!") ? new Color(0xFFB4A8) : Tema.TEXTO);
                 fm = g.getFontMetrics();
-                g.drawString(l[1], (float) (x + 16 + 58), (float) (cy + fm.getAscent() / 2.0 - 2));
+                g.drawString(l[1], (float) tx, (float) (cy + fm.getAscent() / 2.0 - 2));
                 ly += 26;
             }
         }
@@ -2056,7 +2183,7 @@ public class Partida extends JComponent implements ActionListener {
     }
 
     // tecla de teclado desenhada (com a "sombra" de baixo, como uma tecla de verdade)
-    static void tecla(Graphics2D g, String t, double x, double cy) {
+    static double tecla(Graphics2D g, String t, double x, double cy) {
         g.setFont(Estreia.negrito(10f));
         FontMetrics fm = g.getFontMetrics();
         double w = Math.max(20, fm.stringWidth(t) + 12), h = 19, y = cy - h / 2;
@@ -2069,6 +2196,7 @@ public class Partida extends JComponent implements ActionListener {
         g.draw(new RoundRectangle2D.Double(x + 0.5, y + 0.5, w - 1, h - 1, 7, 7));
         g.setColor(OURO);
         centro(g, t, x + w / 2, y + h / 2);
+        return w;
     }
 
     // gols e cartoes de cada jogador nesta partida
