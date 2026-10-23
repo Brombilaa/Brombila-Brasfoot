@@ -21,8 +21,10 @@ import javax.swing.Timer;
 // Aviso "Carregando" quando o jogo trava a tela (o jogo faz contas pesadas na
 // thread da interface e a janela para de responder). Um Timer bate a cada 100 ms
 // na thread da interface; se ela fica mais de ATRASO ms sem bater, outra thread
-// mostra um cartao proprio, desenhado por ela mesma (sem depender do Swing),
-// no centro da janela do jogo. Quando a interface volta, o cartao some.
+// cobre a janela do jogo inteira com uma janela propria, desenhada por ela mesma
+// (sem depender do Swing): a imagem da tela escurecida e desfocada, com o cartao
+// no centro. Assim o mouse fica sempre em cima de uma janela que responde e o
+// cursor azul de espera do Windows nao aparece. Quando a interface volta, tudo some.
 final class Carregando {
     private Carregando() {}
 
@@ -47,12 +49,9 @@ final class Carregando {
         janela.setFocusableWindowState(false);
         janela.setBackground(Estreia.NOITE);
         janela.setSize(LARG, ALT);
-        try {
-            janela.setShape(new RoundRectangle2D.Float(0, 0, LARG, ALT, CANTO, CANTO));
-        } catch (Throwable t) {
-            // sem cantos redondos
-        }
+        janela.setCursor(java.awt.Cursor.getDefaultCursor());
         tela = new Canvas();
+        tela.setCursor(java.awt.Cursor.getDefaultCursor());
         tela.setBackground(Estreia.NOITE);
         tela.setIgnoreRepaint(true);
         janela.add(tela);
@@ -93,18 +92,41 @@ final class Carregando {
         }
     }
 
+    private static java.awt.Robot robo;
+
     private static void mostra() throws InterruptedException {
         Rectangle a = alvo;
-        janela.setLocation(a.x + (a.width - LARG) / 2, a.y + (a.height - ALT) / 2);
+        // foto da janela do jogo do jeito que ela esta, para servir de fundo
+        java.awt.image.BufferedImage foto = null;
+        try {
+            if (robo == null) robo = new java.awt.Robot();
+            foto = robo.createScreenCapture(a);
+        } catch (Throwable t) {
+            // sem foto: fundo escuro liso
+        }
+        java.awt.image.BufferedImage veu = veu(foto, a.width, a.height);
+        janela.setBounds(a);
         janela.setVisible(true);
         if (tela.getBufferStrategy() == null) tela.createBufferStrategy(2);
         BufferStrategy bs = tela.getBufferStrategy();
         long ini = System.currentTimeMillis();
         while (System.currentTimeMillis() - batida >= ATRASO || System.currentTimeMillis() - ini < MINIMO) {
             float t = (System.currentTimeMillis() - ini) / 1000f;
+            float ent = suave(Math.min(1f, t / 0.25f));
             do {
                 Graphics2D g = (Graphics2D) bs.getDrawGraphics();
                 try {
+                    if (foto != null) g.drawImage(foto, 0, 0, null);
+                    else {
+                        g.setColor(Estreia.NOITE);
+                        g.fillRect(0, 0, a.width, a.height);
+                    }
+                    g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, ent));
+                    g.drawImage(veu, 0, 0, null);
+                    g.setComposite(AlphaComposite.SrcOver);
+                    g.translate((a.width - LARG) / 2, (a.height - ALT) / 2);
+                    // cartao sobe um pouco ao entrar
+                    g.translate(0, Math.round(10 * (1f - ent)));
                     desenha(g, t);
                 } finally {
                     g.dispose();
@@ -119,6 +141,28 @@ final class Carregando {
             System.err.println("TRAVA " + (System.currentTimeMillis() - ini + ATRASO) + " ms");
     }
 
+    // A foto da tela desfocada (reduz e amplia) e escurecida, com um brilho dourado
+    // fraco atras do cartao.
+    private static java.awt.image.BufferedImage veu(java.awt.image.BufferedImage foto, int w, int h) {
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = img.createGraphics();
+        g.setColor(Estreia.NOITE);
+        g.fillRect(0, 0, w, h);
+        if (foto != null) {
+            int pw = Math.max(1, w / 10), ph = Math.max(1, h / 10);
+            java.awt.image.BufferedImage p = Logo.reduz(foto, pw, ph);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            g.drawImage(p, 0, 0, w, h, null);
+        }
+        g.setColor(new Color(6, 9, 8, 168));
+        g.fillRect(0, 0, w, h);
+        g.setPaint(new java.awt.RadialGradientPaint(new java.awt.geom.Point2D.Float(w / 2f, h / 2f), Math.max(w, h) * 0.6f,
+            new float[] {0f, 1f}, new Color[] {new Color(242, 193, 78, 22), new Color(0, 0, 0, 70)}));
+        g.fillRect(0, 0, w, h);
+        g.dispose();
+        return img;
+    }
+
     static void desenha(Graphics2D g, float t) {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -126,6 +170,11 @@ final class Carregando {
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         float ent = suave(Math.min(1f, t / 0.3f));
         RoundRectangle2D cartao = new RoundRectangle2D.Float(0, 0, LARG, ALT, CANTO, CANTO);
+        for (int k = 6; k >= 1; k--) {
+            g.setColor(new Color(0, 0, 0, 14));
+            g.fill(new RoundRectangle2D.Float(-k * 2, -k * 2 + 6, LARG + k * 4, ALT + k * 4, CANTO + k * 4, CANTO + k * 4));
+        }
+        g = (Graphics2D) g.create();
         g.setColor(Estreia.NOITE);
         g.fill(cartao);
         g.clip(cartao);
@@ -188,7 +237,7 @@ final class Carregando {
         g.setFont(Estreia.texto(11f));
         g.setColor(Estreia.FRACO);
         g.drawString("aguarde um instante", tx, ty + 18);
-        g.setComposite(AlphaComposite.SrcOver);
+        g.dispose();
     }
 
     private static java.awt.image.BufferedImage fundo;
