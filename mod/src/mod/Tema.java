@@ -288,6 +288,7 @@ public final class Tema {
                 }
                 if (e.getID() == WindowEvent.WINDOW_OPENED) {
                     Window w = (Window) e.getSource();
+                    Logo.icone(w);
                     if (w.getClass().getName().equals("a.gq")) MenuInicial.instala((javax.swing.JFrame) w);
                     if (w instanceof javax.swing.JDialog && temPergunta(w)) {
                         // perguntas (JOptionPane): a fonte nova muda a largura do texto,

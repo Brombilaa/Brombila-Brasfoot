@@ -275,25 +275,24 @@ public class MenuInicial extends JComponent {
         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, Math.min(1f, a))));
     }
 
-    // "BROMBILA" cheio e "BRASFOOT" so no contorno, em Saira Extra Condensed.
+    // Logo do Leo (B com bola + BROMBILA BRASFOOT) no lugar do titulo em texto.
+    private BufferedImage logoCache;
+    static final Color ACENTO = "verde".equals(System.getProperty("brombila.acento")) ? new Color(0x4CD93F) : Estreia.OURO;
+
     private void titulo(Graphics2D g, float u, float seg) {
         float e = entrada(seg, 0.2f, 0.9f);
         if (e <= 0f) return;
+        BufferedImage lo = Logo.logo();
+        int alt = Math.round(22f * u);
+        int larg = Math.round(alt * lo.getWidth() / (float) lo.getHeight());
+        if (logoCache == null || logoCache.getHeight() != alt) logoCache = Logo.reduz(lo, larg, alt);
         Graphics2D g2 = (Graphics2D) g.create();
         comAlfa(g2, e);
-        g2.translate(0, (1f - e) * 1.4f * u);
-        Font f = Estreia.titulo(8.4f * u);
-        float x = 6.5f * u;
-        float linha = 0.84f * 8.4f * u;
-        TextLayout l1 = new TextLayout("BROMBILA", f, g2.getFontRenderContext());
-        TextLayout l2 = new TextLayout("BRASFOOT", f, g2.getFontRenderContext());
-        float meio = (linha - (l1.getAscent() + l1.getDescent())) / 2f;
-        float b1 = 8.4f * u + meio + l1.getAscent();
-        g2.setColor(Estreia.BRANCO);
-        l1.draw(g2, x, b1);
-        Shape contorno = l2.getOutline(AffineTransform.getTranslateInstance(x, b1 + linha));
-        g2.setStroke(new BasicStroke(Math.max(1f, 0.1f * u), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(contorno);
+        float esc = 0.96f + 0.04f * e;
+        float x = 4.8f * u, y = 2.6f * u + (1f - e) * 1.4f * u;
+        g2.translate(x + larg / 2f, y + alt / 2f);
+        g2.scale(esc, esc);
+        g2.drawImage(logoCache, -larg / 2, -alt / 2, null);
         g2.dispose();
     }
 
@@ -319,12 +318,12 @@ public class MenuInicial extends JComponent {
             // barra dourada a esquerda
             float bh = 2.4f * u * a;
             if (bh > 0.5f) {
-                g2.setColor(Estreia.OURO);
+                g2.setColor(ACENTO);
                 g2.fill(new java.awt.geom.Rectangle2D.Float(x0 - 2.4f * u, meio - bh / 2f, Math.max(2f, 0.3f * u), bh));
             }
             Color cor = Tema.mistura(Estreia.FRACO, Estreia.BRANCO, a);
             float lado = 2f * u;
-            Estreia.icone(g2, it.icone, x0, meio - lado / 2f, lado, Tema.mistura(Estreia.FRACO, Estreia.OURO, a));
+            Estreia.icone(g2, it.icone, x0, meio - lado / 2f, lado, Tema.mistura(Estreia.FRACO, ACENTO, a));
             g2.setFont(fNome);
             g2.setColor(cor);
             g2.drawString(it.nome, x0 + lado + 1.6f * u, meio - fm.getHeight() / 2f + fm.getAscent());
