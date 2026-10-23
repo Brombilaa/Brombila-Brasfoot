@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -20,7 +22,6 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.Point2D;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.Field;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -51,16 +52,6 @@ final class ConfigEstreia {
     static final Color ZEBRA = new Color(0x121714);
     static final Color CABECALHO = new Color(0x0A0D0C);
     static final Color SELECAO = new Color(0x3A3120);
-
-    private static Object campo(Object dono, String nome) {
-        try {
-            Field f = dono.getClass().getDeclaredField(nome);
-            f.setAccessible(true);
-            return f.get(dono);
-        } catch (Throwable t) {
-            return null;
-        }
-    }
 
     static void aplica(final JPanel hU) {
         if (hU.getClientProperty(Estreia.MARCA) != null) return;

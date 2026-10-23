@@ -124,9 +124,9 @@ public class BotaoUI extends BasicButtonUI {
             } else if (hv > 0.01f && b.isEnabled()) {
                 // botao so de icone: halo de refletor + sublinhado dourado
                 g2.setPaint(new RadialGradientPaint(w / 2f, h, Math.max(w, h) * 0.75f, new float[] {0f, 1f},
-                    new Color[] {Tema.alfa(Tema.NEON, Math.round(70 * hv)), Tema.alfa(Tema.NEON, 0)}));
+                    new Color[] {Tema.alfa(Tema.DOURADO, Math.round(70 * hv)), Tema.alfa(Tema.DOURADO, 0)}));
                 g2.fillRect(0, 0, w, h);
-                g2.setColor(Tema.alfa(Tema.NEON, Math.round(255 * hv)));
+                g2.setColor(Tema.alfa(Tema.DOURADO, Math.round(255 * hv)));
                 int lw = Math.round((w - 16) * hv);
                 g2.fillRect((w - lw) / 2, h - 2, lw, 2);
             }
@@ -184,7 +184,7 @@ public class BotaoUI extends BasicButtonUI {
         boolean pilula = b.isContentAreaFilled();
         if (!pilula) {
             fg = b.isEnabled() ? Tema.texto(b.getForeground()) : Tema.TEXTO_FRACO;
-            if (hover > 0 && b.isEnabled()) fg = Tema.mistura(fg, Tema.NEON, Animacao.suave(hover));
+            if (hover > 0 && b.isEnabled()) fg = Tema.mistura(fg, Tema.DOURADO, Animacao.suave(hover));
         } else if (!b.isEnabled()) {
             fg = Estreia.APAGADO;
         } else if (primario(b)) {

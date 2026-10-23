@@ -36,7 +36,7 @@ final class Estreia {
     static final Color LINHA = new Color(244, 241, 234, 36);
     static final Color NOITE = new Color(0x060908);
 
-    // Marca os paineis no estilo: o tema "Noite de jogo" nao troca as cores deles.
+    // Marca os paineis no estilo: o Tema nao troca as cores deles.
     static final String MARCA = "brombila.estreia";
 
     static boolean dentro(Component c) {

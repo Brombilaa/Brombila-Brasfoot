@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -71,21 +73,6 @@ final class Dialogos {
     }
 
     // ------------------------------------------------------------- pecas comuns
-
-    static Object campo(Object dono, String nome) {
-        for (Class<?> k = dono.getClass(); k != null; k = k.getSuperclass()) {
-            try {
-                Field f = k.getDeclaredField(nome);
-                f.setAccessible(true);
-                return f.get(dono);
-            } catch (NoSuchFieldException e) {
-                // tenta na superclasse
-            } catch (Throwable t) {
-                return null;
-            }
-        }
-        return null;
-    }
 
     static Object restricao(int x, int y, int w, int h) {
         try {

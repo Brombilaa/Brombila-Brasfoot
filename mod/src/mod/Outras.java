@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.Color;
 import java.awt.Component;
 import javax.swing.BorderFactory;
@@ -35,7 +37,6 @@ final class Outras {
         return true;
     }
 
-    private static Object campo(Object dono, String nome) { return Dialogos.campo(dono, nome); }
     private static void pos(Object o, int x, int y, int w, int h) { Dialogos.pos(o, x, y, w, h); }
 
     private static String texto(Object o) {

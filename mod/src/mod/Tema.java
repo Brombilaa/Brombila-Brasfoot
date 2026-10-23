@@ -47,15 +47,15 @@ import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumnModel;
 import javax.swing.text.JTextComponent;
 
-// Tema "Noite de jogo" do Brombila Brasfoot: interface escura, verde neon,
-// cartoes de vidro e brilho de refletor.
+// Tema "Noite de estreia" do Brombila Brasfoot: interface escura, dourado sobre
+// quase preto, cartoes de vidro e brilho de refletor.
 //
 // O jogo pinta a interface com o tema azul-marinho dele (best.aq.E e ~1000 cores
 // fixas no codigo). Aqui:
-//   1. fundos: as cores de tema do jogo e os azuis viram verde quase preto, e os
+//   1. fundos: as cores de tema do jogo e os azuis viram quase preto, e os
 //      fundos claros (tabelas, caixas brancas) viram superficies escuras;
-//   2. textos: escuros viram claros, amarelo vira neon, cores fortes clareiam;
-//   3. botoes neon com brilho animado (BotaoUI), paineis de vidro com refletores
+//   2. textos: escuros viram claros, amarelo vira dourado, cores fortes clareiam;
+//   3. botoes-pilula com brilho animado (BotaoUI), paineis de vidro com refletores
 //      (PainelUI), barras de progresso (BarraUI), check/radio (Icones) e barras
 //      de rolagem finas (RolagemUI);
 //   4. rolagem animada (RolagemSuave), linha sob o mouse acende nas tabelas e
@@ -64,9 +64,8 @@ public final class Tema {
     public static final String NOME = "Brombila Brasfoot";
 
     // Paleta
-    // Desde 2026-10-21 a paleta e a "Noite de estreia" (dourado sobre quase preto),
-    // a mesma do menu inicial. Os nomes NEON/MENTA ficaram por compatibilidade:
-    // NEON e o dourado de destaque e MENTA o creme dos cabecalhos.
+    // "Noite de estreia" (a mesma do menu inicial): DOURADO e o destaque, CREME o
+    // creme dos cabecalhos.
     public static final Color BASE = new Color(0x090B0A);
     public static final Color FUNDO = new Color(0x0D100F);
     public static final Color PAINEL = new Color(0x121614);
@@ -76,9 +75,9 @@ public final class Tema {
     public static final Color SELECAO = new Color(0x3A3120);
     public static final Color TEXTO = new Color(0xF1EEE7);
     public static final Color TEXTO_FRACO = new Color(0x9E9B92);
-    public static final Color NEON = new Color(0xF2C14E);
-    public static final Color NEON_ESCURO = new Color(0xC28E2C);
-    public static final Color MENTA = new Color(0xE8D7AE);
+    public static final Color DOURADO = new Color(0xF2C14E);
+    public static final Color DOURADO_ESCURO = new Color(0xC28E2C);
+    public static final Color CREME = new Color(0xE8D7AE);
     public static final Color OURO = new Color(0xFFD84D);
     public static final Color VERMELHO = new Color(0xFF5A4D);
     public static final Color BOM = new Color(0x5FCF8E); // verde so para "bom" (energia, confianca)
@@ -111,11 +110,6 @@ public final class Tema {
     // Cor de texto/linha -> versao do tema escuro.
     public static Color texto(Color c) {
         return converte(c, cacheTexto, false);
-    }
-
-    // Compatibilidade: cores "neutras" (bordas etc.) seguem a regra de texto.
-    public static Color verde(Color c) {
-        return texto(c);
     }
 
     private static Color converte(Color c, Map<Integer, Color> cache, boolean ehFundo) {
@@ -157,7 +151,7 @@ public final class Tema {
         }
         if (s >= 0.4f && h >= 0.2f && h <= 0.45f && b < 0.6f) {
             // faixas verdes do jogo (ex.: "Banco de reservas"): viram faixa escura com toque dourado
-            return mistura(PAINEL, NEON, 0.06f);
+            return mistura(PAINEL, DOURADO, 0.06f);
         }
         if (s < 0.12f && b >= 0.45f && b < 0.7f) {
             // cinza medio (paineis da escalacao): superficie escura
@@ -173,7 +167,7 @@ public final class Tema {
     private static Color calculaTexto(Color c) {
         float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
         float h = hsb[0], s = hsb[1], b = hsb[2];
-        if (amarelo(h, s, b)) return NEON;
+        if (amarelo(h, s, b)) return DOURADO;
         if (s >= 0.10f && h >= 0.45f && h <= 0.78f) {
             // azul -> creme dourado, sempre claro o bastante para ler no escuro
             return new Color(Color.HSBtoRGB(MATIZ, Math.min(0.45f, s * 0.6f), Math.max(b, 0.86f)));
@@ -242,10 +236,10 @@ public final class Tema {
         UIManager.put("CheckBox.icon", new Icones.Check());
         UIManager.put("RadioButton.icon", new Icones.Radio());
         UIManager.put("TableHeader.background", new ColorUIResource(BASE));
-        UIManager.put("TableHeader.foreground", new ColorUIResource(MENTA));
+        UIManager.put("TableHeader.foreground", new ColorUIResource(CREME));
         UIManager.put("TableHeader.cellBorder", new BorderUIResource(
             BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, alfa(NEON, 110)),
+                BorderFactory.createMatteBorder(0, 0, 1, 0, alfa(DOURADO, 110)),
                 BorderFactory.createEmptyBorder(4, 6, 3, 6))));
         UIManager.put("Table.selectionBackground", new ColorUIResource(SELECAO));
         UIManager.put("Table.selectionForeground", new ColorUIResource(Color.WHITE));
@@ -255,10 +249,10 @@ public final class Tema {
         UIManager.put("ToolTip.background", new ColorUIResource(PAINEL));
         UIManager.put("ToolTip.foreground", new ColorUIResource(TEXTO));
         UIManager.put("ToolTip.border", new BorderUIResource(
-            BorderFactory.createCompoundBorder(new LineBorder(alfa(NEON, 140), 1),
+            BorderFactory.createCompoundBorder(new LineBorder(alfa(DOURADO, 140), 1),
                 BorderFactory.createEmptyBorder(4, 8, 4, 8))));
-        UIManager.put("TextField.caretForeground", new ColorUIResource(NEON));
-        UIManager.put("TextArea.caretForeground", new ColorUIResource(NEON));
+        UIManager.put("TextField.caretForeground", new ColorUIResource(DOURADO));
+        UIManager.put("TextArea.caretForeground", new ColorUIResource(DOURADO));
         UIManager.put("ComboBox.selectionBackground", new ColorUIResource(SELECAO));
         UIManager.put("ComboBox.selectionForeground", new ColorUIResource(Color.WHITE));
         UIManager.put("List.selectionBackground", new ColorUIResource(SELECAO));
@@ -350,7 +344,7 @@ public final class Tema {
     // Tema Metal escuro (o jogo usa Metal nas telas principais).
     static class TemaMetal extends OceanTheme {
         private static ColorUIResource cor(Color c) { return new ColorUIResource(c); }
-        protected ColorUIResource getPrimary1() { return cor(NEON_ESCURO); }
+        protected ColorUIResource getPrimary1() { return cor(DOURADO_ESCURO); }
         protected ColorUIResource getPrimary2() { return cor(SELECAO); }
         protected ColorUIResource getPrimary3() { return cor(SELECAO); }
         protected ColorUIResource getSecondary1() { return cor(BORDA); }
@@ -513,7 +507,7 @@ public final class Tema {
             if (c instanceof JTextComponent) {
                 JTextComponent t = (JTextComponent) c;
                 if (!igual(t.getSelectionColor(), SELECAO)) t.setSelectionColor(SELECAO);
-                if (!igual(t.getCaretColor(), NEON)) t.setCaretColor(NEON);
+                if (!igual(t.getCaretColor(), DOURADO)) t.setCaretColor(DOURADO);
                 if (!igual(t.getSelectedTextColor(), Color.WHITE)) t.setSelectedTextColor(Color.WHITE);
                 Color fg = t.getForeground(), n = texto(fg);
                 if (!igual(fg, n)) t.setForeground(n);
@@ -555,13 +549,13 @@ public final class Tema {
         }
     }
 
-    // Linhas de borda: cinzas/brancos viram a borda discreta do tema, cores viram neon.
+    // Linhas de borda: cinzas/brancos viram a borda discreta do tema, cores viram dourado.
     static Color linha(Color c) {
         if (c == null) return null;
         float[] hsb = Color.RGBtoHSB(c.getRed(), c.getGreen(), c.getBlue(), null);
-        if (igual(c, BORDA) || igual(c, alfa(NEON, 120))) return c;
+        if (igual(c, BORDA) || igual(c, alfa(DOURADO, 120))) return c;
         if (hsb[1] < 0.15f) return BORDA;
-        return alfa(NEON, 120);
+        return alfa(DOURADO, 120);
     }
 
     // ------------------------------------------------------------- tabelas
@@ -667,9 +661,9 @@ public final class Tema {
                         return c;
                     }
                     if (row < 0) {
-                        // Cabecalho: escuro com texto menta.
+                        // Cabecalho: escuro com texto creme.
                         bg = BASE;
-                        fg = MENTA;
+                        fg = CREME;
                         if (c instanceof JComponent) ((JComponent) c).setOpaque(true);
                     } else if (sel) {
                         bg = SELECAO;
@@ -681,7 +675,7 @@ public final class Tema {
                         if (bg != null && lm instanceof Integer && (Integer) lm == row) {
                             Object br = t.getClientProperty(BRILHO);
                             float f = (br instanceof Float) ? (Float) br : 1f;
-                            bg = mistura(bg, NEON, 0.13f * f);
+                            bg = mistura(bg, DOURADO, 0.13f * f);
                         }
                         fg = texto(atualFg);
                     }

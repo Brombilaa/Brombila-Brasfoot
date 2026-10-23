@@ -312,6 +312,4 @@ final class Menus {
             g.fillRect(MARGEM, c.getHeight() / 2, c.getWidth() - 2 * MARGEM, 1);
         }
     }
-
-    static boolean ehMenu(Component c) { return c instanceof JPopupMenu || c instanceof JMenuItem; }
 }

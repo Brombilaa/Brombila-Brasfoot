@@ -11,7 +11,7 @@ import javax.imageio.ImageIO;
 final class Logo {
     private Logo() {}
 
-    private static BufferedImage logo, branco;
+    private static BufferedImage branco;
 
     static BufferedImage branco() {
         if (branco == null) {
@@ -55,10 +55,17 @@ final class Logo {
     }
 
     // Faixa de luz dourada-clara que passa sobre o logo (so onde ha desenho); p de 0 a 1.
+    // A imagem de saida e reaproveitada entre quadros (o menu chama isso a cada quadro do brilho).
+    private static BufferedImage brilhoBuf;
+
     static BufferedImage brilho(BufferedImage img, float p) {
         int w = img.getWidth(), h = img.getHeight();
-        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        if (brilhoBuf == null || brilhoBuf.getWidth() != w || brilhoBuf.getHeight() != h) {
+            brilhoBuf = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        }
+        BufferedImage out = brilhoBuf;
         java.awt.Graphics2D g = out.createGraphics();
+        g.setComposite(java.awt.AlphaComposite.Src);
         g.drawImage(img, 0, 0, null);
         g.setComposite(java.awt.AlphaComposite.SrcIn);
         float lb = 0.22f * w, x = -lb + (w + 2 * lb) * p, inc = 0.35f * h;
@@ -69,17 +76,6 @@ final class Logo {
         return out;
     }
     private static List<Image> icones;
-
-    static BufferedImage logo() {
-        if (logo == null) {
-            try {
-                logo = ImageIO.read(Logo.class.getResource("/mod/logo/logo.png"));
-            } catch (Throwable t) {
-                logo = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-            }
-        }
-        return logo;
-    }
 
     static List<Image> icones() {
         if (icones == null) {

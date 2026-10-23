@@ -29,7 +29,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import javax.swing.JComponent;
@@ -93,13 +92,8 @@ public class MenuInicial extends JComponent {
     }
 
     private static JLabel rotulo(Object dono, String campo) {
-        try {
-            Field f = dono.getClass().getDeclaredField(campo);
-            f.setAccessible(true);
-            return (JLabel) f.get(dono);
-        } catch (Throwable t) {
-            return null;
-        }
+        Object o = Reflexao.campo(dono, campo);
+        return o instanceof JLabel ? (JLabel) o : null;
     }
 
     MenuInicial(JFrame gq) {
@@ -119,13 +113,17 @@ public class MenuInicial extends JComponent {
         setOpaque(true);
         setFocusable(true);
         timer = new Timer(Animacao.QUADRO_MS, new ActionListener() {
-            public void actionPerformed(ActionEvent e) { repaint(); }
+            public void actionPerformed(ActionEvent e) {
+                repaint();
+                int d = (int) intervalo();
+                if (timer.getDelay() != d) timer.setDelay(d);
+            }
         });
 
         MouseAdapter mouse = new MouseAdapter() {
             public void mouseMoved(MouseEvent e) {
                 int i = itemEm(e.getX(), e.getY());
-                if (i >= 0) selecionado = i;
+                if (i >= 0 && i != selecionado) { selecionado = i; acorda(); }
                 setCursor(Cursor.getPredefinedCursor(i >= 0 ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
             }
             public void mouseClicked(MouseEvent e) {
@@ -138,11 +136,37 @@ public class MenuInicial extends JComponent {
         addKeyListener(new KeyAdapter() {
             public void keyPressed(KeyEvent e) {
                 int n = itens.size();
-                if (e.getKeyCode() == KeyEvent.VK_DOWN) selecionado = (selecionado + 1) % n;
-                else if (e.getKeyCode() == KeyEvent.VK_UP) selecionado = (selecionado + n - 1) % n;
+                if (e.getKeyCode() == KeyEvent.VK_DOWN) { selecionado = (selecionado + 1) % n; acorda(); }
+                else if (e.getKeyCode() == KeyEvent.VK_UP) { selecionado = (selecionado + n - 1) % n; acorda(); }
                 else if (e.getKeyCode() == KeyEvent.VK_ENTER || e.getKeyCode() == KeyEvent.VK_SPACE) aciona(selecionado);
             }
         });
+    }
+
+    // Intervalo do proximo quadro conforme o que esta mexendo: entrada e troca de item a
+    // 60 quadros/s, brilho do logo a 30, faixa de luz (bem suave) a 20 e so o zoom lento
+    // do estadio a 12.
+    // Cada tique do relogio custa, entao o relogio tambem desacelera (nao so o desenho).
+    private long intervalo() {
+        float seg = (System.currentTimeMillis() - inicio) / 1000f;
+        if (seg < 2.5f) return Animacao.QUADRO_MS;
+        for (int i = 0; i < itens.size(); i++) {
+            float a = itens.get(i).ativo;
+            if (a != (i == selecionado ? 1f : 0f)) return Animacao.QUADRO_MS;
+        }
+        float faixa = ((seg - 1.5f) % 7f) / 7f;
+        float brilho = ((seg - 1.2f) % 9f) / 1.6f;
+        if (brilho <= 1.05f) return 30;
+        if (faixa > 0.53f) return 50;
+        return 80;
+    }
+
+    // Mudou o item escolhido: volta a 60 quadros/s na hora.
+    private void acorda() {
+        if (timer.getDelay() != Animacao.QUADRO_MS) {
+            timer.setDelay(Animacao.QUADRO_MS);
+            timer.restart();
+        }
     }
 
     @Override public void addNotify() { super.addNotify(); timer.start(); }
@@ -214,23 +238,41 @@ public class MenuInicial extends JComponent {
     }
 
     // Foto do estadio com zoom lento (26 s, vai e volta), veu escuro e faixa de luz.
+    // A foto ampliada com o veu fica pronta numa imagem e so e refeita quando o zoom anda
+    // um pouco (~0,5 px na borda); nos outros quadros e so copiada. O zoom e lento demais
+    // para a diferenca aparecer, e o menu parado gasta bem menos processador.
+    private BufferedImage fundoPronto;
+    private float fundoT = -1f;
+
     private void fundo(Graphics2D g2, int w, int h, float seg) {
-        g2.setColor(Estreia.NOITE);
-        g2.fillRect(0, 0, w, h);
-        BufferedImage f = Estreia.foto();
         float ciclo = (seg / 26f) % 2f;
         float t = ciclo < 1f ? ciclo : 2f - ciclo;
         t = t * t * (3f - 2f * t); // ease-in-out
-        double escala = 1.04 + 0.10 * t;
-        double cobre = Math.max(w / (double) f.getWidth(), h / (double) f.getHeight());
-        AffineTransform at = new AffineTransform();
-        at.translate(w / 2.0 - 0.02 * t * w, h / 2.0 + 0.01 * t * h);
-        at.scale(cobre * escala, cobre * escala);
-        at.translate(-f.getWidth() / 2.0, -f.getHeight() / 2.0);
-        g2.drawImage(f, at, null);
-
-        if (veu == null || veu.getWidth() != w || veu.getHeight() != h) veu = veu(w, h);
-        g2.drawImage(veu, 0, 0, null);
+        if (fundoPronto == null || fundoPronto.getWidth() != w || fundoPronto.getHeight() != h
+                || Math.abs(t - fundoT) * Math.max(w, h) > 6f) {
+            if (fundoPronto == null || fundoPronto.getWidth() != w || fundoPronto.getHeight() != h) {
+                java.awt.GraphicsConfiguration gc = getGraphicsConfiguration();
+                fundoPronto = gc != null ? gc.createCompatibleImage(w, h) : new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            }
+            Graphics2D gf = fundoPronto.createGraphics();
+            gf.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            gf.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+            gf.setColor(Estreia.NOITE);
+            gf.fillRect(0, 0, w, h);
+            BufferedImage f = Estreia.foto();
+            double escala = 1.04 + 0.10 * t;
+            double cobre = Math.max(w / (double) f.getWidth(), h / (double) f.getHeight());
+            AffineTransform at = new AffineTransform();
+            at.translate(w / 2.0 - 0.02 * t * w, h / 2.0 + 0.01 * t * h);
+            at.scale(cobre * escala, cobre * escala);
+            at.translate(-f.getWidth() / 2.0, -f.getHeight() / 2.0);
+            gf.drawImage(f, at, null);
+            if (veu == null || veu.getWidth() != w || veu.getHeight() != h) veu = veu(w, h);
+            gf.drawImage(veu, 0, 0, null);
+            gf.dispose();
+            fundoT = t;
+        }
+        g2.drawImage(fundoPronto, 0, 0, null);
 
         // faixa de luz: espera 1,5 s, depois passa a cada 7 s
         float p = ((seg - 1.5f) % 7f) / 7f;

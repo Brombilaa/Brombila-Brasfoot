@@ -33,7 +33,7 @@ final class Intervalo {
 
         // placar (cartao 1)
         for (String[] r : new String[][] {{"zO", "22"}, {"zP", "102"}}) {
-            c = Dialogos.campo(cd, r[0]);
+            c = Reflexao.campo(cd, r[0]);
             if (c instanceof JLabel) {
                 JLabel l = (JLabel) c;
                 l.setOpaque(false);
@@ -45,10 +45,10 @@ final class Intervalo {
                 l.setHorizontalAlignment(SwingConstants.LEFT);
             }
         }
-        Dialogos.pos(Dialogos.campo(cd, "zO"), DX + 18, 20, 220, 32);
-        Dialogos.pos(Dialogos.campo(cd, "zP"), DX + 18, 74, 220, 32);
+        Dialogos.pos(Reflexao.campo(cd, "zO"), DX + 18, 20, 220, 32);
+        Dialogos.pos(Reflexao.campo(cd, "zP"), DX + 18, 74, 220, 32);
         for (String s : new String[] {"Dw", "Dx"}) {
-            c = Dialogos.campo(cd, s);
+            c = Reflexao.campo(cd, s);
             if (c instanceof JLabel) {
                 JLabel l = (JLabel) c;
                 l.setOpaque(false);
@@ -57,10 +57,10 @@ final class Intervalo {
                 l.setHorizontalAlignment(SwingConstants.RIGHT);
             }
         }
-        Dialogos.pos(Dialogos.campo(cd, "Dw"), DX + DW - 70, 16, 52, 40);
-        Dialogos.pos(Dialogos.campo(cd, "Dx"), DX + DW - 70, 70, 52, 40);
+        Dialogos.pos(Reflexao.campo(cd, "Dw"), DX + DW - 70, 16, 52, 40);
+        Dialogos.pos(Reflexao.campo(cd, "Dx"), DX + DW - 70, 70, 52, 40);
         for (String s : new String[] {"DB", "DC"}) {
-            c = Dialogos.campo(cd, s);
+            c = Reflexao.campo(cd, s);
             if (c instanceof JLabel) {
                 JLabel l = (JLabel) c;
                 l.setOpaque(false);
@@ -68,25 +68,25 @@ final class Intervalo {
                 l.setForeground(Tema.alfa(Estreia.OURO, 210));
             }
         }
-        Dialogos.pos(Dialogos.campo(cd, "DB"), DX + 18, 50, 120, 16);
-        Dialogos.pos(Dialogos.campo(cd, "DC"), DX + 18, 104, 120, 16);
+        Dialogos.pos(Reflexao.campo(cd, "DB"), DX + 18, 50, 120, 16);
+        Dialogos.pos(Reflexao.campo(cd, "DC"), DX + 18, 104, 120, 16);
 
         // estadio e minuto (cartao 2)
-        c = Dialogos.campo(cd, "ug");
+        c = Reflexao.campo(cd, "ug");
         if (c instanceof JComponent) ((JComponent) c).setVisible(false);
         // o minuto (Dv/DE) passa a ser desenhado pelo fundo, que le os rotulos
-        c = Dialogos.campo(cd, "we");
+        c = Reflexao.campo(cd, "we");
         if (c instanceof JComponent) ((JComponent) c).setVisible(false);
-        c = Dialogos.campo(cd, "Cg");
+        c = Reflexao.campo(cd, "Cg");
         Dialogos.fonte(c, Estreia.semi(12.5f), Estreia.BRANCO);
         Dialogos.pos(c, DX + 78, 154, DW - 92, 20);
-        Dialogos.fonte(Dialogos.campo(cd, "Dy"), Estreia.texto(12f), Estreia.FRACO);
-        Dialogos.pos(Dialogos.campo(cd, "Dy"), DX + 78, 182, 100, 20);
-        Dialogos.fonte(Dialogos.campo(cd, "Dz"), Estreia.texto(12f), Estreia.FRACO);
-        Dialogos.pos(Dialogos.campo(cd, "Dz"), DX + 186, 182, 100, 20);
+        Dialogos.fonte(Reflexao.campo(cd, "Dy"), Estreia.texto(12f), Estreia.FRACO);
+        Dialogos.pos(Reflexao.campo(cd, "Dy"), DX + 78, 182, 100, 20);
+        Dialogos.fonte(Reflexao.campo(cd, "Dz"), Estreia.texto(12f), Estreia.FRACO);
+        Dialogos.pos(Reflexao.campo(cd, "Dz"), DX + 186, 182, 100, 20);
 
         // lances (cartao 3)
-        c = Dialogos.campo(cd, "ut");
+        c = Reflexao.campo(cd, "ut");
         if (c instanceof JScrollPane) {
             JScrollPane sp = (JScrollPane) c;
             sp.setBorder(BorderFactory.createEmptyBorder());
@@ -98,14 +98,14 @@ final class Intervalo {
         Dialogos.adiciona(cd, lances, DX + 18, 232, 120, 16);
 
         // estatisticas (cartao 4)
-        c = Dialogos.campo(cd, "xI");
+        c = Reflexao.campo(cd, "xI");
         if (c instanceof JLabel) {
             ((JLabel) c).setVisible(false);
             Dialogos.adiciona(cd, new Placar.Barras((JLabel) c), DX + 18, 548, DW - 36, 104);
         }
 
         // rodape: substituicoes, taticas e voltar
-        c = Dialogos.campo(cd, "DA");
+        c = Reflexao.campo(cd, "DA");
         if (c instanceof JLabel) {
             ((JLabel) c).setUI(new Substituicoes());
             Dialogos.fonte(c, Estreia.negrito(12f), Estreia.BRANCO);
@@ -113,11 +113,11 @@ final class Intervalo {
         Dialogos.pos(c, 14, 672, 190, 44);
         String[][] rot = {{"vy", "Estilo de jogo"}, {"vz", "Marcação"}, {"vA", "Ataques"}};
         for (String[] r : rot) {
-            c = Dialogos.campo(cd, r[0]);
+            c = Reflexao.campo(cd, r[0]);
             if (c instanceof JLabel) ((JLabel) c).setText(r[1]);
             Dialogos.rotulo(c);
         }
-        c = Dialogos.campo(cd, "Dm");
+        c = Reflexao.campo(cd, "Dm");
         if (c instanceof JButton) {
             JButton b = (JButton) c;
             b.putClientProperty(BotaoUI.PRIMARIO, Boolean.TRUE);
@@ -128,7 +128,7 @@ final class Intervalo {
         Dialogos.pos(c, DX, 674, DW, 40);
 
         // banco: cartao escuro no lugar da imagem com ruido
-        c = Dialogos.campo(cd, "Dq");
+        c = Reflexao.campo(cd, "Dq");
         if (c instanceof JLabel) {
             JLabel l = (JLabel) c;
             l.setText("");
@@ -138,7 +138,7 @@ final class Intervalo {
         // fundo por cima do f02.jpg que o jogo desenha (ultimo filho = pintado primeiro)
         final Fundo fundo = new Fundo(cd);
         for (String s : new String[] {"Dv", "DE"}) {
-            c = Dialogos.campo(cd, s);
+            c = Reflexao.campo(cd, s);
             if (c instanceof JLabel) ((JLabel) c).addPropertyChangeListener("text", new java.beans.PropertyChangeListener() {
                 public void propertyChange(java.beans.PropertyChangeEvent e) { fundo.repaint(); }
             });
@@ -222,7 +222,7 @@ final class Intervalo {
             Placar.cartao(g, DX, 138, DW, 76, 16, false);
             g.setColor(Estreia.LINHA);
             g.fillRect(DX + 72, 150, 1, 52);
-            minuto(g, Placar.texto(Dialogos.campo(cd, "Dv")), Placar.texto(Dialogos.campo(cd, "DE")));
+            minuto(g, Placar.texto(Reflexao.campo(cd, "Dv")), Placar.texto(Reflexao.campo(cd, "DE")));
             Placar.cartao(g, DX, 224, DW, 300, 16, false);
             Placar.cartao(g, DX, 534, DW, 128, 16, false);
             g.setColor(new Color(244, 241, 234, 24));

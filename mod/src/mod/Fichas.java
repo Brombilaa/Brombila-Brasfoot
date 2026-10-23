@@ -1,5 +1,7 @@
 package mod;
 
+import static mod.Reflexao.campo;
+
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -40,7 +42,6 @@ final class Fichas {
         else if (n.equals("a.eg")) Principal.aplica(p);
     }
 
-    private static Object campo(Object dono, String nome) { return Dialogos.campo(dono, nome); }
     private static void pos(Object o, int x, int y, int w, int h) { Dialogos.pos(o, x, y, w, h); }
 
     private static void texto(Object o, float px, Color cor) { Dialogos.fonte(o, Estreia.texto(px), cor); }

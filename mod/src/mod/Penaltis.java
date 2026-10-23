@@ -854,7 +854,7 @@ public final class Penaltis extends JComponent {
         float y = (float) (area.y + area.height * 0.28);
         g.setColor(new Color(0, 0, 0, 140));
         g.drawString(t, (float) (area.getCenterX() - fm.stringWidth(t) / 2.0) + 1, y + 1);
-        g.setColor(Tema.NEON);
+        g.setColor(Tema.DOURADO);
         g.drawString(t, (float) (area.getCenterX() - fm.stringWidth(t) / 2.0), y);
     }
 
@@ -910,7 +910,7 @@ public final class Penaltis extends JComponent {
         if (!disputa) {
             g.setFont(Estreia.espacada(Estreia.semi(11f), 0.18f));
             FontMetrics fm = g.getFontMetrics();
-            g.setColor(Tema.NEON);
+            g.setColor(Tema.DOURADO);
             String s = "PÊNALTI";
             g.drawString(s, (float) (x + 20), (float) (y + h / 2 + fm.getAscent() / 2.0 - 2));
             g.setFont(Estreia.titulo(24f));
@@ -956,7 +956,7 @@ public final class Penaltis extends JComponent {
                 Ellipse2D.Double e = new Ellipse2D.Double(cx2 - R, y0 - R, 2 * R, 2 * R);
                 if (idx < m.size()) {
                     if (m.get(idx) == 1) {
-                        g.setColor(Tema.NEON);
+                        g.setColor(Tema.DOURADO);
                         g.fill(e);
                     } else {
                         g.setColor(new Color(0xE5463B));
@@ -984,14 +984,14 @@ public final class Penaltis extends JComponent {
             g.setColor(new Color(242, 193, 78, 110));
             g.setStroke(new BasicStroke(1f));
             g.draw(ra);
-            g.setColor(Tema.NEON);
+            g.setColor(Tema.DOURADO);
             g.drawString(a, (float) (meio - f2.stringWidth(a) / 2.0), (float) (y + h + 8 + ah / 2 + f2.getAscent() / 2.0 - 2));
         }
         // de quem e a vez
         Cobranca k = c;
         if (k != null && vencedor == null) {
             double cx2 = k.lado == 0 ? x + 8 : x + w - 8;
-            g.setColor(Tema.NEON);
+            g.setColor(Tema.DOURADO);
             g.fill(new RoundRectangle2D.Double(cx2 - 2, y + 14, 4, h - 28, 4, 4));
         }
     }
@@ -999,7 +999,7 @@ public final class Penaltis extends JComponent {
     void textos(Graphics2D g, Rectangle2D.Double area, Cobranca k, long t) {
         if (k == null || aoContinuar != null) return;
         String grande = null, linha;
-        Color cor = Tema.NEON;
+        Color cor = Tema.DOURADO;
         String nome = Partida.nome(k.batedor);
         if (k.chegou < 0) {
             if (t > CONTATO) return;
@@ -1008,7 +1008,7 @@ public final class Penaltis extends JComponent {
         } else {
             switch (k.resultado) {
                 case GOL: grande = "GOL!"; linha = k.lance == 1 ? "De cavadinha! " + nome + " não perdoa" : nome + " bate e marca"; break;
-                case DEFESA: grande = "DEFENDEU!"; cor = Tema.MENTA; linha = "Grande defesa de " + Partida.nome(k.goleiro); break;
+                case DEFESA: grande = "DEFENDEU!"; cor = Tema.CREME; linha = "Grande defesa de " + Partida.nome(k.goleiro); break;
                 case TRAVE: grande = "NA TRAVE!"; cor = new Color(0xFF8A5B); linha = nome + " acerta a trave"; break;
                 default: grande = "PRA FORA!"; cor = new Color(0xFF8A5B); linha = nome + " manda para fora";
             }
@@ -1060,7 +1060,7 @@ public final class Penaltis extends JComponent {
         g.setFont(Estreia.espacada(Estreia.semi(12f), 0.2f));
         FontMetrics fm = g.getFontMetrics();
         String s = "FIM DA DISPUTA";
-        g.setColor(Tema.NEON);
+        g.setColor(Tema.DOURADO);
         g.drawString(s, (float) (area.getCenterX() - fm.stringWidth(s) / 2.0), (float) (cy - 58));
         g.setFont(Estreia.titulo(54f));
         fm = g.getFontMetrics();

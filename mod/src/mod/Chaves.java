@@ -89,7 +89,7 @@ final class Chaves {
             }
         };
         // o jogador mudou de fase ou de competicao: refaz
-        Object wp = Dialogos.campo(al, "wp");
+        Object wp = Reflexao.campo(al, "wp");
         if (wp instanceof JComponent) {
             ((JComponent) wp).addPropertyChangeListener("model", ev -> {
                 if (!lendo[0]) SwingUtilities.invokeLater(atualiza[0]);
@@ -109,7 +109,7 @@ final class Chaves {
     }
 
     private static Class<?> tipo(JPanel al) {
-        Object wp = Dialogos.campo(al, "wp");
+        Object wp = Reflexao.campo(al, "wp");
         if (!(wp instanceof javax.swing.JTable)) return null;
         javax.swing.JTable t = (javax.swing.JTable) wp;
         return t.getRowCount() > 0 && t.getValueAt(0, 0) != null ? t.getValueAt(0, 0).getClass() : null;
@@ -182,9 +182,9 @@ final class Chaves {
     @SuppressWarnings("unchecked")
     private static Fase fase(JPanel al) {
         Fase f = new Fase();
-        Object wm = Dialogos.campo(al, "wm");
+        Object wm = Reflexao.campo(al, "wm");
         f.nome = wm instanceof JLabel && ((JLabel) wm).getText() != null ? ((JLabel) wm).getText().trim() : "";
-        Object vt = Dialogos.campo(al, "vT");
+        Object vt = Reflexao.campo(al, "vT");
         if (vt instanceof List) {
             for (Object o : new ArrayList<Object>((List<Object>) vt)) {
                 if (o instanceof components.d && ((components.d) o).sR() && !((components.d) o).sS()) f.chaves.add(confronto((components.d) o));
@@ -198,7 +198,7 @@ final class Chaves {
         List<Fase> fases = new ArrayList<Fase>();
         Fase atual = fase(al);
         fases.add(atual);
-        Object wo = Dialogos.campo(al, "wO");
+        Object wo = Reflexao.campo(al, "wO");
         Method anda;
         try {
             anda = al.getClass().getDeclaredMethod("cH", int.class);
@@ -222,7 +222,7 @@ final class Chaves {
             try {
                 for (int i = 0; i < passos; i++) anda.invoke(al, -1);
                 // confere se voltou para a mesma fase
-                Object wm = Dialogos.campo(al, "wm");
+                Object wm = Reflexao.campo(al, "wm");
                 for (int i = 0; i < 4 && wm instanceof JLabel && !atual.nome.equals(((JLabel) wm).getText().trim()); i++) anda.invoke(al, -1);
             } catch (Throwable t) {
                 // sem volta
