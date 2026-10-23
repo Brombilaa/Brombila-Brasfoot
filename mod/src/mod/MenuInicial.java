@@ -42,7 +42,7 @@ import javax.swing.Timer;
 // janela, so que fora da tela), entao Novo jogo, Jogo salvo, Editor e
 // Registrar funcionam exatamente como antes.
 public class MenuInicial extends JComponent {
-    private static final String VERSAO = "22.23";
+    private static final String VERSAO = "10/2026";   // mes e ano da versao do mod
 
     private static class Item {
         final String nome, dica, icone;
@@ -414,8 +414,8 @@ public class MenuInicial extends JComponent {
         float base = h - 2.8f * u;
         g2.setFont(f1);
         g2.setColor(Estreia.FRACO);
-        g2.drawString("versão", 6.5f * u, base);
-        float x = 6.5f * u + g2.getFontMetrics().stringWidth("versão") + 0.5f * u;
+        g2.drawString("versão:", 6.5f * u, base);
+        float x = 6.5f * u + g2.getFontMetrics().stringWidth("versão:") + 0.5f * u;
         g2.setFont(f2);
         g2.setColor(Estreia.BRANCO);
         g2.drawString(VERSAO, x, base);
