@@ -255,13 +255,16 @@ public class MenuInicial extends JComponent {
         BufferedImage v = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = v.createGraphics();
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setPaint(new LinearGradientPaint(0, 0, w, 0, new float[] {0f, 0.34f, 0.70f, 1f}, new Color[] {
-            new Color(6, 9, 8, 245), new Color(6, 9, 8, 219), new Color(6, 9, 8, 64), new Color(6, 9, 8, 140)}));
+        // escuro no meio (logo e menu centrados) e um pouco mais nas bordas
+        g.setColor(new Color(6, 9, 8, 196));
         g.fillRect(0, 0, w, h);
-        // brilho dourado de refletor no alto, a direita
+        g.setPaint(new RadialGradientPaint(new Point2D.Float(w / 2f, h * 0.55f), Math.max(w, h) * 0.75f,
+            new float[] {0f, 1f}, new Color[] {new Color(6, 9, 8, 0), new Color(6, 9, 8, 120)}));
+        g.fillRect(0, 0, w, h);
+        // brilho dourado de refletor no alto, atras do logo
         float rx = 0.6f * w * 0.7f, ry = 0.5f * h * 0.7f;
         AffineTransform elipse = new AffineTransform();
-        elipse.translate(0.70f * w, 0.08f * h);
+        elipse.translate(0.50f * w, 0.02f * h);
         elipse.scale(1.0, ry / rx);
         g.setPaint(new RadialGradientPaint(new Point2D.Float(0, 0), rx, new Point2D.Float(0, 0), new float[] {0f, 1f},
             new Color[] {new Color(242, 193, 78, 46), new Color(242, 193, 78, 0)},
@@ -275,26 +278,43 @@ public class MenuInicial extends JComponent {
         g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.max(0f, Math.min(1f, a))));
     }
 
-    // "BROMBILA" cheio e "BRASFOOT" so no contorno, em Saira Extra Condensed.
+    // Logo do Leo (B com bola + BROMBILA BRASFOOT) no lugar do titulo em texto.
+    private BufferedImage logoCache, sombraCache;
+    // verde do logo na barrinha e no icone do item selecionado (o resto do jogo segue dourado)
+    static final Color ACENTO = new Color(0x4CD93F);
+
     private void titulo(Graphics2D g, float u, float seg) {
-        float e = entrada(seg, 0.2f, 0.9f);
+        float e = entrada(seg, 0.2f, 1.1f);
         if (e <= 0f) return;
+        BufferedImage lo = Logo.branco();
+        int alt = Math.round(19f * u);
+        int larg = Math.round(alt * lo.getWidth() / (float) lo.getHeight());
+        if (logoCache == null || logoCache.getHeight() != alt) {
+            logoCache = Logo.reduz(lo, larg, alt);
+            sombraCache = Logo.sombra(logoCache, Math.max(2, Math.round(0.9f * u)));
+        }
+        int w = getWidth();
+        float x = (w - larg) / 2f, y = 3.4f * u + (1f - e) * 1.2f * u;
         Graphics2D g2 = (Graphics2D) g.create();
+        comAlfa(g2, e * 0.85f);
+        int m = (sombraCache.getWidth() - larg) / 2;
+        g2.drawImage(sombraCache, Math.round(x) - m, Math.round(y + 0.35f * u) - m, null);
         comAlfa(g2, e);
-        g2.translate(0, (1f - e) * 1.4f * u);
-        Font f = Estreia.titulo(8.4f * u);
-        float x = 6.5f * u;
-        float linha = 0.84f * 8.4f * u;
-        TextLayout l1 = new TextLayout("BROMBILA", f, g2.getFontRenderContext());
-        TextLayout l2 = new TextLayout("BRASFOOT", f, g2.getFontRenderContext());
-        float meio = (linha - (l1.getAscent() + l1.getDescent())) / 2f;
-        float b1 = 8.4f * u + meio + l1.getAscent();
-        g2.setColor(Estreia.BRANCO);
-        l1.draw(g2, x, b1);
-        Shape contorno = l2.getOutline(AffineTransform.getTranslateInstance(x, b1 + linha));
-        g2.setStroke(new BasicStroke(Math.max(1f, 0.1f * u), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g2.draw(contorno);
+        g2.drawImage(logoCache, Math.round(x), Math.round(y), null);
+        // brilho que atravessa o logo: na entrada e depois a cada 9 s
+        float p = seg < 1.2f ? -1f : ((seg - 1.2f) % 9f) / 1.6f;
+        if (p >= 0f && p <= 1f) g2.drawImage(Logo.brilho(logoCache, Animacao.suave(p)), Math.round(x), Math.round(y), null);
         g2.dispose();
+        // filete dourado embaixo do logo
+        float fe = entrada(seg, 0.7f, 0.9f);
+        if (fe > 0f) {
+            Graphics2D g3 = (Graphics2D) g.create();
+            float lf = 16f * u * Animacao.suave(fe), yf = y + alt + 1.6f * u;
+            g3.setPaint(new LinearGradientPaint(w / 2f - lf / 2f, 0, w / 2f + lf / 2f + 0.01f, 0, new float[] {0f, 0.5f, 1f},
+                new Color[] {Tema.alfa(Estreia.OURO, 0), Tema.alfa(Estreia.OURO, 170), Tema.alfa(Estreia.OURO, 0)}));
+            g3.fill(new java.awt.geom.Rectangle2D.Float(w / 2f - lf / 2f, yf, lf, Math.max(1f, 0.12f * u)));
+            g3.dispose();
+        }
     }
 
     private void menu(Graphics2D g, float u, int h, float seg) {
@@ -303,36 +323,40 @@ public class MenuInicial extends JComponent {
         FontMetrics fm = g.getFontMetrics(fNome);
         float alt = fm.getHeight() + 1.6f * u, gap = 0.3f * u;
         float total = itens.size() * alt + (itens.size() - 1) * gap;
-        float y = h - 6.5f * u - total;
-        float x0 = 6.5f * u, largura = 40f * u;
+        float y = h - 8f * u - total;
+        int w = getWidth();
+        float largura = 30f * u;
         for (int i = 0; i < itens.size(); i++) {
             Item it = itens.get(i);
             float top = y + i * (alt + gap);
-            areas[i] = new Rectangle(Math.round(x0 - 3f * u), Math.round(top), Math.round(largura + 4.2f * u), Math.round(alt));
+            float lado = 2f * u;
+            float grupo = lado + 1.6f * u + fm.stringWidth(it.nome);
+            float x0 = (w - grupo) / 2f;
+            areas[i] = new Rectangle(Math.round((w - largura) / 2f), Math.round(top), Math.round(largura), Math.round(alt));
             float e = entrada(seg, 0.45f + 0.08f * i, 0.7f);
             if (e <= 0f) continue;
             float a = Animacao.suave(it.ativo);
             Graphics2D g2 = (Graphics2D) g.create();
             comAlfa(g2, e);
-            g2.translate(1.2f * u * a, (1f - e) * 1.4f * u);
+            g2.translate(0, (1f - e) * 1.4f * u);
             float meio = top + alt / 2f;
-            // barra dourada a esquerda
-            float bh = 2.4f * u * a;
-            if (bh > 0.5f) {
-                g2.setColor(Estreia.OURO);
-                g2.fill(new java.awt.geom.Rectangle2D.Float(x0 - 2.4f * u, meio - bh / 2f, Math.max(2f, 0.3f * u), bh));
+            // sublinhado verde que abre do centro no item selecionado
+            float sl = grupo * a;
+            if (sl > 1f) {
+                g2.setColor(ACENTO);
+                g2.fill(new java.awt.geom.Rectangle2D.Float(w / 2f - sl / 2f, meio + fm.getHeight() / 2f + 0.15f * u, sl, Math.max(1.5f, 0.18f * u)));
             }
             Color cor = Tema.mistura(Estreia.FRACO, Estreia.BRANCO, a);
-            float lado = 2f * u;
-            Estreia.icone(g2, it.icone, x0, meio - lado / 2f, lado, Tema.mistura(Estreia.FRACO, Estreia.OURO, a));
+            Estreia.icone(g2, it.icone, x0, meio - lado / 2f, lado, Tema.mistura(Estreia.FRACO, ACENTO, a));
             g2.setFont(fNome);
             g2.setColor(cor);
             g2.drawString(it.nome, x0 + lado + 1.6f * u, meio - fm.getHeight() / 2f + fm.getAscent());
             if (a > 0.01f) {
+                // dica do item selecionado, centrada embaixo do menu
                 g2.setFont(fDica);
                 FontMetrics fd = g2.getFontMetrics();
-                g2.setColor(Tema.alfa(Estreia.BRANCO, Math.round(102 * a)));
-                g2.drawString(it.dica, x0 + largura - fd.stringWidth(it.dica), meio - fd.getHeight() / 2f + fd.getAscent());
+                g2.setColor(Tema.alfa(Estreia.BRANCO, Math.round(110 * a)));
+                g2.drawString(it.dica, (w - fd.stringWidth(it.dica)) / 2f, y + total + 2.6f * u);
             }
             g2.dispose();
         }

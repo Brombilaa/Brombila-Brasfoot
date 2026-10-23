@@ -19,6 +19,11 @@ public class Boot {
             t.printStackTrace();
         }
         try {
+            Carregando.liga();  // aviso "Carregando" quando o jogo trava a tela
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        try {
             Tempo.liga();       // avisa as novidades do mod quando passa um dia/semana/temporada
         } catch (Throwable t) {
             t.printStackTrace();
