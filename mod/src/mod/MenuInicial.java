@@ -63,6 +63,8 @@ public class MenuInicial extends JComponent {
     static final float ABERTURA = 3.7f;
     private long inicioMenu = "0".equals(System.getProperty("brombila.abertura")) ? inicio : inicio + Math.round(ABERTURA * 1000);
     private static final float[][] POEIRA = poeira(46);
+    // som da abertura (tools/som/abertura.py); a torcida continua um pouco no menu
+    private final Som som = inicioMenu > inicio ? Som.carrega("/mod/sons/abertura.wav") : null;
     private long ultimoQuadro = inicio;
     // a abertura conta a partir do primeiro desenho (no Windows a janela demora a aparecer)
     private boolean pintou;
@@ -89,6 +91,12 @@ public class MenuInicial extends JComponent {
             gq.getRootPane().setBackground(Estreia.NOITE);
             gq.setContentPane(m);
             gq.setSize(w, h);
+            // logo grande e foto ja prontos antes da janela aparecer (a janela ainda esta
+            // invisivel): o primeiro quadro sai na hora, sem tela escura
+            if (m.inicioMenu > m.inicio) {
+                m.preparaAbertura(h, w / 100f);
+                Estreia.foto();
+            }
             gq.setLocationRelativeTo(null);
             gq.validate();
             m.requestFocusInWindow();
@@ -152,22 +160,24 @@ public class MenuInicial extends JComponent {
         });
     }
 
-    // Intervalo do proximo quadro conforme o que esta mexendo: entrada e troca de item a
-    // 60 quadros/s, brilho do logo a 30, faixa de luz (bem suave) a 20 e so o zoom lento
-    // do estadio a 12.
+    // Intervalo do proximo quadro conforme o que esta mexendo: entrada, troca de item,
+    // brilho do logo e faixa de luz a 60 quadros/s; parado (so o zoom lento do estadio,
+    // que anda menos de 1 px por quadro) a 12.
     // Cada tique do relogio custa, entao o relogio tambem desacelera (nao so o desenho).
+    // Os relogios sao os mesmos do desenho: faixa pelo inicio, brilho pelo do titulo.
     private long intervalo() {
         if (naAbertura()) return Animacao.QUADRO_MS;
-        float seg = (System.currentTimeMillis() - inicioMenu) / 1000f;
+        long agora = System.currentTimeMillis();
+        float seg = (agora - inicioMenu) / 1000f;
         if (seg < 2.5f) return Animacao.QUADRO_MS;
         for (int i = 0; i < itens.size(); i++) {
             float a = itens.get(i).ativo;
             if (a != (i == selecionado ? 1f : 0f)) return Animacao.QUADRO_MS;
         }
-        float faixa = ((seg - 1.5f) % 7f) / 7f;
-        float brilho = ((seg - 1.2f) % 9f) / 1.6f;
-        if (brilho <= 1.05f) return 30;
-        if (faixa > 0.53f) return 50;
+        float fundo = (agora - inicio) / 1000f;
+        float faixa = ((fundo - 1.5f) % 7f) / 7f;
+        float brilho = ((segTitulo(seg) - 1.2f) % 9f) / 1.6f;
+        if (brilho <= 1.05f || faixa > 0.53f) return Animacao.QUADRO_MS;
         return 80;
     }
 
@@ -211,6 +221,7 @@ public class MenuInicial extends JComponent {
 
     private void pula() {
         inicioMenu = System.currentTimeMillis();
+        if (som != null) som.some(250);
         acorda();
         repaint();
     }
@@ -233,10 +244,26 @@ public class MenuInicial extends JComponent {
     // -> brilho e flashes de camera -> o logo sobe e diminui ate o lugar do logo do menu.
     private static final float BATE = 1.1f, SOBE = 2.6f;
 
+    private static float alturaAbertura(int h, float u) { return Math.min(44f * u, h * 0.72f); }
+
+    // Logo grande da abertura, sem a bola, a bola e a sombra (devolve a altura).
+    private int preparaAbertura(int h, float u) {
+        int a0 = Math.round(alturaAbertura(h, u));
+        if (aberturaSem == null || aberturaSem.getHeight() != a0) {
+            BufferedImage lo = Logo.branco();
+            BufferedImage cheio = Logo.reduz(lo, Math.round(a0 * lo.getWidth() / (float) lo.getHeight()), a0);
+            BufferedImage[] p = Logo.separa(cheio);
+            aberturaSem = p[0];
+            aberturaBola = p[1];
+            aberturaSombra = Logo.sombra(cheio, Math.max(2, Math.round(0.9f * u)));
+        }
+        return a0;
+    }
+
     private void abertura(Graphics2D g, int w, int h, float u, float seg, float t) {
         g.setColor(Estreia.NOITE);
         g.fillRect(0, 0, w, h);
-        float mv = Animacao.suave((t - SOBE) / 1.05f);
+        float mv = vaiEVem((t - SOBE) / 1.05f);
         // estadio: ja comeca visivel (meio apagado) e acende de vez quando o logo sobe
         float est = Math.min(1f, t / 0.25f) * (0.5f + 0.5f * Animacao.suave((t - 1.3f) / 1.6f));
         if (est > 0f) {
@@ -247,18 +274,10 @@ public class MenuInicial extends JComponent {
         }
         // logo: grande no centro, depois vai para o lugar do menu (alt 19u, topo 3.4u)
         float alt1 = 19f * u, y1 = 3.4f * u;
-        float alt0 = Math.min(44f * u, h * 0.72f);
+        float alt0 = alturaAbertura(h, u);
         float alt = alt0 + (alt1 - alt0) * mv;
         float cx = w / 2f, cy = h * 0.48f + (y1 + alt1 / 2f - h * 0.48f) * mv;
-        BufferedImage lo = Logo.branco();
-        int a0 = Math.round(alt0);
-        if (aberturaSem == null || aberturaSem.getHeight() != a0) {
-            BufferedImage cheio = Logo.reduz(lo, Math.round(a0 * lo.getWidth() / (float) lo.getHeight()), a0);
-            BufferedImage[] p = Logo.separa(cheio);
-            aberturaSem = p[0];
-            aberturaBola = p[1];
-            aberturaSombra = Logo.sombra(cheio, Math.max(2, Math.round(0.9f * u)));
-        }
+        int a0 = preparaAbertura(h, u);
         // pulinho do logo inteiro na batida
         float pulo = (t > BATE && t < BATE + 0.32f) ? 0.045f * (float) Math.sin(Math.PI * (t - BATE) / 0.32f) : 0f;
         float esc = alt / a0 * (1f + pulo);
@@ -267,7 +286,7 @@ public class MenuInicial extends JComponent {
         float bx1 = lx + Logo.BOLA_X * lw, by1 = ly + Logo.BOLA_Y * lh, tam1 = aberturaBola.getWidth() * esc;
 
         // refletor dourado atras do logo
-        float luz = Animacao.suave(t / 0.5f) * (1f - 0.65f * mv);
+        float luz = Animacao.suave(t / 0.5f) * (1f - mv);
         if (luz > 0f) {
             float r = 46f * u;
             g.setPaint(new RadialGradientPaint(new Point2D.Float(cx, cy), r, new float[] {0f, 0.45f, 1f},
@@ -367,6 +386,9 @@ public class MenuInicial extends JComponent {
                 new Color[] {Tema.alfa(Estreia.OURO, 0), Tema.alfa(Estreia.OURO, 170), Tema.alfa(Estreia.OURO, 0)}));
             g.fill(new java.awt.geom.Rectangle2D.Float(cx - lf / 2f, yf, lf, Math.max(1f, 0.12f * u)));
         }
+        // o menu comeca a entrar enquanto o logo termina de chegar
+        float sm = t - ABERTURA + ENTRA;
+        if (sm > 0.4f) menu(g, u, h, sm);
         // aviso discreto de que da para pular
         float av = Animacao.suave((t - 0.4f) / 0.5f) * (1f - mv);
         if (av > 0f) {
@@ -376,6 +398,20 @@ public class MenuInicial extends JComponent {
             g.setColor(Tema.alfa(Estreia.BRANCO, Math.round(90 * av)));
             g.drawString(dica, w - 3f * u - fm.stringWidth(dica), h - 2.8f * u);
         }
+    }
+
+    // Depois da abertura o menu ja comecou a entrar no fim dela (ENTRA s antes): segue dali.
+    private static final float ENTRA = 0.75f;
+
+    private float segMenu(float ms) { return inicioMenu > inicio ? ms + ENTRA : ms; }
+
+    // Depois da abertura o logo ja esta no lugar: o titulo pula a entrada e o primeiro brilho.
+    private float segTitulo(float ms) { return inicioMenu > inicio ? ms + 3f : ms; }
+
+    // Comeca devagar, acelera e chega devagar (sem tranco na saida).
+    private static float vaiEVem(float k) {
+        k = Math.max(0f, Math.min(1f, k));
+        return k < 0.5f ? 4f * k * k * k : 1f - (float) Math.pow(-2f * k + 2f, 3) / 2f;
     }
 
     // Andamento do voo (0..1): rapido no comeco, ainda com velocidade na batida.
@@ -404,10 +440,17 @@ public class MenuInicial extends JComponent {
 
     @Override
     protected void paintComponent(Graphics g) {
+        if (!pintou && inicioMenu > inicio) {
+            // prepara o logo grande antes de comecar a contar, para o 1o quadro nao atrasar
+            preparaAbertura(getHeight(), getWidth() / 100f);
+            Estreia.foto();
+        }
         long agora = System.currentTimeMillis();
         if (!pintou) {
             pintou = true;
             if (inicioMenu > inicio) inicioMenu = agora + Math.round(ABERTURA * 1000);
+            if (som != null) som.toca(agora);
+            if (inicioMenu > agora) aquece(getWidth(), getHeight());
         }
         float dt = Math.min(0.1f, (agora - ultimoQuadro) / 1000f);
         ultimoQuadro = agora;
@@ -436,9 +479,9 @@ public class MenuInicial extends JComponent {
             float ms = (agora - inicioMenu) / 1000f;
             fundo(g2, w, h, seg);
             // depois da abertura o logo ja esta no lugar: sem entrada e sem brilho logo de cara
-            titulo(g2, u, inicioMenu > inicio ? ms + 3f : ms);
-            menu(g2, u, h, ms);
-            rodape(g2, u, h, ms);
+            titulo(g2, u, segTitulo(ms));
+            menu(g2, u, h, segMenu(ms));
+            rodape(g2, u, h, segMenu(ms));
 
             g2.setColor(new Color(255, 255, 255, 22));
             g2.drawRect(0, 0, w - 1, h - 1);
@@ -535,19 +578,53 @@ public class MenuInicial extends JComponent {
     // verde do logo na barrinha e no icone do item selecionado (o resto do jogo segue dourado)
     static final Color ACENTO = new Color(0x4CD93F);
 
-    private void titulo(Graphics2D g, float u, float seg) {
-        float e = entrada(seg, 0.2f, 1.1f);
-        if (e <= 0f) return;
+    private synchronized void preparaTitulo(float u) {
         BufferedImage lo = Logo.branco();
         int alt = Math.round(19f * u);
         int larg = Math.round(alt * lo.getWidth() / (float) lo.getHeight());
         if (logoCache == null || logoCache.getHeight() != alt) {
-            logoCache = Logo.reduz(lo, larg, alt);
-            sombraCache = Logo.sombra(logoCache, Math.max(2, Math.round(0.9f * u)));
-            BufferedImage[] p = Logo.separa(logoCache);
+            BufferedImage cheio = Logo.reduz(lo, larg, alt);
+            sombraCache = Logo.sombra(cheio, Math.max(2, Math.round(0.9f * u)));
+            BufferedImage[] p = Logo.separa(cheio);
             logoSem = p[0];
             logoBola = p[1];
+            logoCache = cheio;
         }
+    }
+
+    // Durante a abertura, prepara numa thread o que o primeiro quadro do menu teria que
+    // fazer (logo reduzido, sombra, letras e icones); sem isso a passagem para o menu da
+    // um tranco de ~0,2 s.
+    private void aquece(final int w, final int h) {
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    float u = w / 100f;
+                    preparaTitulo(u);
+                    BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+                    Graphics2D g = img.createGraphics();
+                    g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                    g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+                    g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+                    menu(g, u, h, 5f);
+                    rodape(g, u, h, 5f);
+                    g.dispose();
+                } catch (Throwable x) {
+                    // so perde o aquecimento
+                }
+            }
+        }, "brombila-menu");
+        t.setDaemon(true);
+        t.setPriority(Thread.MIN_PRIORITY);
+        t.start();
+    }
+
+    private void titulo(Graphics2D g, float u, float seg) {
+        float e = entrada(seg, 0.2f, 1.1f);
+        if (e <= 0f) return;
+        preparaTitulo(u);
+        int alt = logoCache.getHeight(), larg = logoCache.getWidth();
         int w = getWidth();
         float x = (w - larg) / 2f, y = 3.4f * u + (1f - e) * 1.2f * u;
         Graphics2D g2 = (Graphics2D) g.create();
