@@ -115,6 +115,8 @@ final class Carregando {
             Thread.sleep(16);
         }
         janela.setVisible(false);
+        if (System.getProperty("brombila.travas") != null)
+            System.err.println("TRAVA " + (System.currentTimeMillis() - ini + ATRASO) + " ms");
     }
 
     static void desenha(Graphics2D g, float t) {
