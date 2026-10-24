@@ -38,7 +38,7 @@ public final class Cabe {
 
     // Janela principal sendo montada: liga a rolagem do jogo antes da primeira troca de tela.
     static void principal() {
-        if (!pequena()) return;
+        if (!pequena() || Encolhe.ativa()) return;
         try {
             java.lang.reflect.Field f = Class.forName("best.S").getDeclaredField("gJ");
             f.setAccessible(true);
@@ -46,6 +46,26 @@ public final class Cabe {
         } catch (Throwable t) {
             // versao do jogo diferente: fica como estava
         }
+    }
+
+    // Com a escala ligada a tela inteira cabe: se o jogo ja embrulhou a tela numa rolagem
+    // (ele faz isso sozinho abaixo de 700 px), desembrulha e desliga a rolagem dele.
+    static void semRolagem(javax.swing.JViewport vp, Component tela) {
+        if (!Encolhe.ativa() || !tela.getClass().getName().equals("components.E")) return;
+        if (!(vp.getParent() instanceof JScrollPane)) return;
+        JScrollPane rola = (JScrollPane) vp.getParent();
+        Container cp = rola.getParent();
+        if (cp == null || !(SwingUtilities.getWindowAncestor(cp) instanceof javax.swing.JFrame)) return;
+        try {
+            java.lang.reflect.Field f = Class.forName("best.S").getDeclaredField("gJ");
+            f.setAccessible(true);
+            f.setBoolean(null, false);
+        } catch (Throwable t) {
+            return;
+        }
+        cp.remove(rola);
+        cp.add(tela, java.awt.BorderLayout.CENTER);
+        cp.revalidate();
     }
 
     static boolean rolagemLigada() {
@@ -122,6 +142,11 @@ public final class Cabe {
                 Window j = SwingUtilities.getWindowAncestor(tela);
                 if (j == null || tela.getClientProperty("brombila.tamanho") != null) return;
                 tela.putClientProperty("brombila.tamanho", Boolean.TRUE);
+                if (Encolhe.ativa()) {
+                    Encolhe.tamanho(j, w, h);
+                    j.setLocationRelativeTo(null);
+                    return;
+                }
                 Rectangle a = area();
                 j.setSize(Math.min(w, a.width), Math.min(h, a.height));
                 j.setLocationRelativeTo(null);

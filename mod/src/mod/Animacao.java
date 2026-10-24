@@ -359,11 +359,13 @@ final class Animacao {
         final javax.swing.JLayeredPane camadas = dono.getRootPane().getLayeredPane();
         final Point p;
         try {
-            p = new Point(r.x, r.y);
-            SwingUtilities.convertPointFromScreen(p, camadas);
+            p = Encolhe.daTela(new Point(r.x, r.y), camadas);
         } catch (Throwable t) {
             return;
         }
+        // a foto e da tela de verdade; numa janela reduzida ela entra menor
+        final double k = Encolhe.paraVirtual(camadas);
+        final int iw = (int) Math.ceil(img.getWidth() * k), ih = (int) Math.ceil(img.getHeight() * k);
         final long[] inicio = {0};
         final JComponent veu = new JComponent() {
             protected void paintComponent(Graphics g0) {
@@ -373,6 +375,10 @@ final class Animacao {
                 float t = inicio[0] == 0 ? 0f : Math.min(1f, (agora - inicio[0]) / 150f);
                 Graphics2D g = (Graphics2D) g0.create();
                 g.translate(p.x, p.y + Math.round(8 * suave(t)));
+                if (k != 1) {
+                    g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                    g.scale(k, k);
+                }
                 if (forma != null) g.clip(forma);
                 g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 1f - suave(t)));
                 g.drawImage(img, 0, 0, null);
@@ -390,10 +396,10 @@ final class Animacao {
                 if (inicio[0] < 0 || agora - inicio[0] >= 150) {
                     timer.stop();
                     camadas.remove(veu);
-                    camadas.repaint(p.x, p.y, img.getWidth(), img.getHeight() + 10);
+                    camadas.repaint(p.x, p.y, iw, ih + 10);
                     return;
                 }
-                camadas.repaint(p.x, p.y, img.getWidth(), img.getHeight() + 10);
+                camadas.repaint(p.x, p.y, iw, ih + 10);
             }
         });
         timer.start();

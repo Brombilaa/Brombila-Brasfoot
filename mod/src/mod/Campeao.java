@@ -261,8 +261,8 @@ final class Campeao {
             // a janela do jogo tem 306 x 413: aumenta e centraliza
             SwingUtilities.invokeLater(() -> {
                 Window w = SwingUtilities.getWindowAncestor(this);
-                if (w != null && w.getWidth() < W) {
-                    w.setSize(W, H);
+                if (w != null && Encolhe.virtual(w).width < W) {
+                    Encolhe.tamanho(w, W, H);
                     w.setLocationRelativeTo(w.getOwner());
                     w.validate();
                 }

@@ -789,9 +789,8 @@ final class Temporada {
             public void run() {
                 if (campoLance instanceof Component && ((Component) campoLance).isVisible()) return;
                 java.awt.Window w = SwingUtilities.getWindowAncestor(ix);
-                if (w == null || w.getHeight() < 500) return;
-                java.awt.Rectangle r = w.getBounds();
-                w.setBounds(r.x, r.y + (r.height - 418) / 2, r.width, 418);
+                if (w == null || Encolhe.virtual(w).height < 500) return;
+                Encolhe.tamanho(w, Encolhe.virtual(w).width, 418);
                 w.validate();
             }
         });
@@ -981,9 +980,8 @@ final class Temporada {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 java.awt.Window w = SwingUtilities.getWindowAncestor(dz);
-                if (w == null || w.getWidth() < LW + 40) return;
-                java.awt.Rectangle r = w.getBounds();
-                w.setBounds(r.x + (r.width - LW) / 2, r.y + (r.height - LH) / 2, LW, LH);
+                if (w == null || Encolhe.virtual(w).width < LW + 40) return;
+                Encolhe.tamanho(w, LW, LH);
                 w.validate();
             }
         });

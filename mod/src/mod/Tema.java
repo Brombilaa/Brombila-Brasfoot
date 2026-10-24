@@ -268,6 +268,7 @@ public final class Tema {
         try { escureceDefaults(); } catch (Throwable t) {}
 
         try { Janela.instala(); } catch (Throwable t) {}  // F11: modo janela / tela cheia
+        try { Encolhe.inicia(); } catch (Throwable t) { t.printStackTrace(); }  // telas pequenas: tudo menor
 
         long mask = AWTEvent.CONTAINER_EVENT_MASK | AWTEvent.WINDOW_EVENT_MASK;
         Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
@@ -287,6 +288,10 @@ public final class Tema {
                     Classificacao.linhas(((ContainerEvent) e).getContainer());
                 }
                 if (e instanceof ContainerEvent && e.getID() == ContainerEvent.COMPONENT_ADDED) {
+                    Component filho = ((ContainerEvent) e).getChild();
+                    if (filho instanceof javax.swing.JRootPane && e.getSource() instanceof Window) Encolhe.instala((Window) e.getSource());
+                    Encolhe.viewport(filho);
+                    if (e.getSource() instanceof javax.swing.JViewport) Cabe.semRolagem((javax.swing.JViewport) e.getSource(), filho);
                     // pergunta (JOptionPane) entrando na janela: tira a barra do Windows antes de abrir
                     if (((ContainerEvent) e).getChild() instanceof javax.swing.JOptionPane) {
                         Pergunta.prepara((javax.swing.JOptionPane) ((ContainerEvent) e).getChild());
@@ -317,6 +322,7 @@ public final class Tema {
                         w.pack();
                         w.setLocationRelativeTo(w.getOwner() != null && w.getOwner().isShowing() ? w.getOwner() : null);
                     }
+                    Encolhe.abriu(w);
                     Animacao.fadeIn(w);
                     Carimbo.aviso(w);
                     Cabe.janela(w);
