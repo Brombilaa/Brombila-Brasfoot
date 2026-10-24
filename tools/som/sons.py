@@ -894,6 +894,80 @@ def trave3(v):
     return normaliza(junta((x, 0, 1.0), (u, 0.1, 0.6)), -1, rms_db=-16)
 
 
+# ------------------------------------------------------------------ versao 4: gol, gol sofrido, contusao, intervalo, fim
+# Aprovados na v3: quase gol, penalti e expulsao (curtos, um clima so). As opcoes abaixo
+# seguem o mesmo jeito.
+
+def gol4(v):
+    """'a' = explosao curta e seca (2,8 s); 'b' = explosao e a torcida cantando no ritmo do surdo."""
+    if v == 'a':
+        dur = 2.8
+        x = torcida(dur, [(0, 0.05), (0.08, 0.9), (0.3, 1.0), (1.6, 0.8), (dur, 0)], (230, 380),
+                    [(0, 'a'), (0.3, 'o')], n_vozes=280, rugido=0.4, longe=0.45, sopro=0.5,
+                    curva_tom=[(0, 0.8), (0.25, 1.15), (dur, 0.95)])
+        p = palmas(int(2.2 * SR), 300) * curva(int(2.2 * SR), [(0, 0), (0.4, 1), (2.2, 0)])
+        x = junta((cama(CAMA + 0.1), 0, 0.5), (x, CAMA, 4.5), (p, CAMA + 0.5, 2.5))
+    else:
+        dur = 5.5
+        x = torcida(2.6, [(0, 0.05), (0.08, 0.9), (0.3, 1.0), (1.8, 0.7), (2.6, 0.2)], (230, 380),
+                    [(0, 'a'), (0.3, 'o')], n_vozes=280, rugido=0.4, longe=0.45, sopro=0.5,
+                    curva_tom=[(0, 0.8), (0.25, 1.15), (2.6, 0.95)])
+        # canto: a torcida grita junto no tempo do surdo (2 por segundo)
+        n = int(3.6 * SR)
+        batida = lambda t: np.clip(np.sin(np.pi * ((t * 2.0) % 1.0)) * 1.4, 0, 1) ** 2 * np.interp(t, [0, 0.3, 3.0, 3.6], [0, 1, 1, 0])
+        canto = torcida(3.6, [(0, 1), (3.6, 1)], (180, 300), [(0, 'e'), (0.25, 'o')], n_vozes=200,
+                        rugido=0.3, longe=0.5, sopro=0.45)
+        canto = canto[:, :n] * batida(np.arange(n) / SR)
+        s = filtra(filtra(surdo(n, 120), 'pb', 700), 'pa', 120)
+        x = junta((cama(CAMA + 0.1), 0, 0.5), (x, CAMA, 4.5), (canto, CAMA + 1.8, 1.8), (s, CAMA + 1.8, 1.4))
+    return final(x)
+
+
+def lamento4(v):
+    """'a' = "aaahh" coletivo forte e curto, depois quase silencio; 'b' = o mesmo com
+    assobios de irritacao e uma vaia curta."""
+    queda = torcida(1.3, [(0, 0), (0.05, 1.0), (0.35, 0.6), (1.3, 0)], (115, 200), [(0, 'a')],
+                    n_vozes=240, rugido=0.4, longe=0.5, sopro=0.55, curva_tom=[(0, 1.12), (1.3, 0.7)])
+    partes = [(cama(CAMA + 0.1), 0, 0.5), (queda, CAMA, 2.2),
+              (torcida(1.6, [(0, 0), (0.4, 0.3), (1.6, 0.2)], (100, 190), [(0, 'e')], n_vozes=96,
+                       rugido=0.8, longe=0.9, fala=4.0), CAMA + 1.0, 0.22)]
+    if v == 'b':
+        partes.append((assobios(1.8, 14), CAMA + 0.7, 0.8))
+        partes.append((vaia2(0.6, 1.4), CAMA + 0.8, 0.7))
+    return final(junta(*partes))
+
+
+def contusao4(v):
+    """'a' = apito e um "ohh" de pena (grave, caindo); 'b' = apito e palmas de apoio."""
+    a = apitos2([(0, 0.3, 0.85)], 'bolinha')
+    if v == 'a':
+        oh = torcida(1.6, [(0, 0), (0.15, 0.8), (0.6, 0.6), (1.6, 0)], (120, 210), [(0, 'o')], n_vozes=200,
+                     rugido=0.45, longe=0.6, sopro=0.55, curva_tom=[(0, 1.05), (1.6, 0.78)])
+        x = junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.2), (oh, CAMA + 0.35, 1.3))
+    else:
+        p = palmas(int(2.2 * SR), 260) * curva(int(2.2 * SR), [(0, 0), (0.3, 1), (1.6, 0.8), (2.2, 0)])
+        x = junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.2), (p, CAMA + 0.5, 4.0))
+    return final(x)
+
+
+def intervalo4(v):
+    """'a' = so os dois apitos com o eco do estadio; 'b' = apitos e aplausos."""
+    a = apitos2([(0, 0.35, 1.0), (0.5, 0.9, 1.0)], 'bolinha', longe=0.6)
+    if v == 'a':
+        return final(junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.8)))
+    p = palmas(int(2.4 * SR), 320) * curva(int(2.4 * SR), [(0, 0), (0.4, 1), (2.4, 0)])
+    return final(junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.8), (p, CAMA + 1.3, 4.0)))
+
+
+def fimjogo4(v):
+    """'a' = so os tres apitos com o eco; 'b' = apitos e aplausos."""
+    a = apitos2([(0, 0.22, 1.0), (0.34, 0.22, 1.0), (0.7, 1.3, 1.0)], 'bolinha', longe=0.6)
+    if v == 'a':
+        return final(junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.8)))
+    p = palmas(int(3.0 * SR), 360) * curva(int(3.0 * SR), [(0, 0), (0.5, 1), (3.0, 0)])
+    return final(junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.8), (p, CAMA + 1.9, 4.5)))
+
+
 SONS = {
     # partida (nomes do jogo)
     'gol1': gol, 'goladv': lamento, 'penalty': penalti, 'expulsao': expulsao,
@@ -914,6 +988,12 @@ for _v in 'ab':
 SONS.update({'gol1_3': gol3, 'goladv_3': lamento3, 'uuuh_3': uuuh3, 'penalty_3': penalti3,
              'expulsao_3': expulsao3, 'contusao_3': contusao3, 'intervalo_3': intervalo3,
              'fimjogo_3': fimjogo3, 'trave_3a': lambda: trave3('a'), 'trave_3b': lambda: trave3('b')})
+
+# versao 4
+for _v in 'ab':
+    for _n, _f in [('gol1', gol4), ('goladv', lamento4), ('contusao', contusao4),
+                   ('intervalo', intervalo4), ('fimjogo', fimjogo4)]:
+        SONS[_n + '_4' + _v] = (lambda f, v: (lambda: f(v)))(_f, _v)
 
 if __name__ == '__main__':
     pasta = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', '..', 'mod', 'assets', 'mod', 'sons')
