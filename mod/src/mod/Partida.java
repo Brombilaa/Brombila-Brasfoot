@@ -587,7 +587,7 @@ public class Partida extends JComponent implements ActionListener {
 
     public void actionPerformed(ActionEvent e) {
         if (dv.isDisplayable()) foiMostrado = true;
-        else if (foiMostrado) { relogio.stop(); retoma(); return; }
+        else if (foiMostrado) { relogio.stop(); retoma(); Sons.ambiente(false); return; }
         long agora = System.currentTimeMillis();
         double dt = ultimoQuadro == 0 ? 0.03 : Math.min(0.1, (agora - ultimoQuadro) / 1000.0);
         ultimoQuadro = agora;
@@ -654,6 +654,8 @@ public class Partida extends JComponent implements ActionListener {
         gt = m;
         tempo = t;
         fim = false;
+        Sons.toca("inicio");
+        Sons.ambiente(true);
         golAte = 0;
         cores();
         transmissao.novoJogo();
@@ -1116,6 +1118,9 @@ public class Partida extends JComponent implements ActionListener {
             Anuncio an = it.next();
             if (an.em > agora) continue;
             it.remove();
+            // "uuuh" da torcida quando a chance do nosso time aparece na cena
+            if (agora != Long.MAX_VALUE && an.linha != null && (an.linha.tipo == DEFENDE || an.linha.tipo == FORA)
+                && an.linha.lado == humano && isShowing()) Sons.toca("uuuh");
             if (an.linha != null) lances.add(0, an.linha);
             if (an.linha != null && an.linha.tipo == GOL) dv.repaint();   // o placar de cima conta o gol agora
             legenda = an.texto;
@@ -1167,11 +1172,13 @@ public class Partida extends JComponent implements ActionListener {
         dono = saida(1);
         aviso = "Segundo tempo";
         avisoAte = agora + 1600;
+        Sons.toca("inicio");
     }
 
     void termina(long agora) {
         anuncia(Long.MAX_VALUE);
         fim = true;
+        Sons.ambiente(false);
         Object g0 = chama(jogo, "hu"), g1 = chama(jogo, "hw");
         lances.add(0, new Linha("Fim", "Fim de jogo: " + time(0) + " " + inteiro(g0) + " x " + inteiro(g1) + " " + time(1) + ".", 20, 0));
         legenda = "Fim de jogo.";

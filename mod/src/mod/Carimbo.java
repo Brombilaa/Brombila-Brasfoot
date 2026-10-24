@@ -88,6 +88,12 @@ public final class Carimbo {
             final float escala) {
         final long inicio = System.currentTimeMillis();
         final boolean anima = Animacao.ligada();
+        // som na batida no papel (0,26 s)
+        javax.swing.Timer bate = new javax.swing.Timer(anima ? 240 : 1, new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent e) { Sons.toca("carimbo"); }
+        });
+        bate.setRepeats(false);
+        bate.start();
         final JComponent c = new JComponent() {
             @Override
             public boolean contains(int x, int y) {

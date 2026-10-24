@@ -123,7 +123,7 @@ public final class Penaltis extends JComponent {
         final Escolha e = new Escolha();
         long t0;                     // inicio (relogio da cena)
         int resultado = -1;
-        boolean avisouFim;
+        boolean avisouFim, chutou;
         // trajetoria
         double tx, ty, tz;           // alvo da bola
         double arco = 0.25, voo = 380; // altura extra no meio do caminho, duracao do voo
@@ -346,8 +346,13 @@ public final class Penaltis extends JComponent {
             k.resultado = r;
             planeja(k);
         }
+        if (!k.chutou && t >= CONTATO) {
+            k.chutou = true;
+            Sons.toca("chute");
+        }
         if (k.resultado >= 0 && k.chegou < 0 && t >= CONTATO + (long) k.voo) {
             k.chegou = t;
+            Sons.toca(k.resultado == GOL ? "rede" : k.resultado == DEFESA ? "defesa" : k.resultado == TRAVE ? "trave" : "uuuh");
             if (disputa) {
                 marcas[k.lado].add(k.resultado == GOL ? 1 : 0);
                 if (k.resultado == GOL) gols[k.lado]++;

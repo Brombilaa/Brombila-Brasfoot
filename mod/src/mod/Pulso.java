@@ -35,6 +35,7 @@ final class Pulso extends BasicLabelUI {
     private void confere(JLabel l, String chave) {
         int n = numero(l.getText());
         Integer antes = ultimo.put(chave, n);
+        if (antes != null && n > antes) Sons.toca("mensagem");
         if (antes != null && n > antes && Animacao.ligada()) {
             inicio = System.currentTimeMillis();
             Animacao.repinta(l);

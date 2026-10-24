@@ -767,7 +767,7 @@ final class Dialogos {
             // animacoes do mod e abertura do menu inicial (brombila.ini)
             adiciona(fb, Animacao.chave("Animações", "animacoes", "Janelas, menus, abas e barras animados"), 432, 20, 112, 26);
             adiciona(fb, Animacao.chave("Abertura", "abertura", "Animação do logo ao abrir o jogo"), 548, 20, 98, 26);
-            adiciona(fb, Animacao.chave("Som da abertura", "som", "Som da animação de abertura"), 650, 20, 136, 26);
+            adiciona(fb, Sons.botaoPreferencias(), 652, 18, 96, 30);
         }
 
         Object esq = campo(fb, "vd"), dir = campo(fb, "we");
