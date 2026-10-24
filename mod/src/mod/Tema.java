@@ -275,6 +275,16 @@ public final class Tema {
                 if (e instanceof ContainerEvent && e.getID() == ContainerEvent.COMPONENT_REMOVED) {
                     // tela grande saindo da janela principal: some com fade por cima da nova
                     Animacao.trocaTela((ContainerEvent) e);
+                    // tela principal trocou (antes e depois de cada rodada): retrato da classificacao
+                    if (((ContainerEvent) e).getChild().getClass().getName().equals("components.E")) {
+                        SwingUtilities.invokeLater(new Runnable() {
+                            public void run() { Classificacao.registraTudo(); }
+                        });
+                    }
+                }
+                if (e instanceof ContainerEvent && e.getID() == ContainerEvent.COMPONENT_ADDED
+                        && ((ContainerEvent) e).getChild() instanceof components.au) {
+                    Classificacao.linhas(((ContainerEvent) e).getContainer());
                 }
                 if (e instanceof ContainerEvent && e.getID() == ContainerEvent.COMPONENT_ADDED) {
                     // pergunta (JOptionPane) entrando na janela: tira a barra do Windows antes de abrir
@@ -307,6 +317,7 @@ public final class Tema {
                         w.setLocationRelativeTo(w.getOwner() != null && w.getOwner().isShowing() ? w.getOwner() : null);
                     }
                     Animacao.fadeIn(w);
+                    Carimbo.aviso(w);
                 }
                 if (e.getID() == WindowEvent.WINDOW_CLOSED) Animacao.fechou((Window) e.getSource());
                 final Object src = (e instanceof ContainerEvent) ? ((ContainerEvent) e).getChild() : e.getSource();
