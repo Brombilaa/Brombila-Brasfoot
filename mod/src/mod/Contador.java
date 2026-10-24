@@ -48,6 +48,7 @@ final class Contador {
         if (chave != null) ultimo.put(chave, depois);
         String de = guardado != null ? guardado : antes;
         if (de == null && doZero) de = zera(depois);
+        if ("caixa".equals(chave) && guardado != null && !guardado.equals(depois)) Sons.toca("moedas");
         if (de == null || de.equals(depois) || !Animacao.ligada()) return;
         anima(l, de, depois);
     }

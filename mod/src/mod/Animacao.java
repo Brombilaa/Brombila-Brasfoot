@@ -220,6 +220,7 @@ final class Animacao {
                         conteudo.paint(g);
                         g.dispose();
                         img[0] = i;
+                        Sons.toca("janela");
                         inicio[0] = System.currentTimeMillis();
                     } catch (Throwable t) {
                         inicio[0] = 1; // sem foto: tira o veu ja

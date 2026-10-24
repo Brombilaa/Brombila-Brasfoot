@@ -753,8 +753,13 @@ def final(x):
 
 
 
+SEM_CAMA = False  # no jogo a torcida ambiente ja esta tocando: tools/som/monta.py liga isto
+
+
 def cama(dur, nivel=1.0):
-    """Torcida de fundo: conversa e rugido baixo."""
+    """Torcida de fundo: conversa e rugido baixo (so nas previas)."""
+    if SEM_CAMA:
+        return np.zeros((2, int(dur * SR)))
     x = torcida(dur, [(0, 0.5), (dur, 0.5)], (110, 230), [(0, 'e')], n_vozes=128, rugido=0.7,
                 longe=0.85, fala=5.0)
     return x * nivel

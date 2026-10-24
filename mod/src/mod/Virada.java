@@ -109,7 +109,7 @@ final class Virada {
         final JLayeredPane camadas = rp.getLayeredPane();
         final BufferedImage[] nova = {null}, fundo = {null};
         final long[] inicio = {0};
-        final boolean[] refeita = {false};
+        final boolean[] refeita = {false}, tocou = {false};
         final JComponent c = new JComponent() {
             @Override
             protected void paintComponent(Graphics g0) {
@@ -121,6 +121,10 @@ final class Virada {
                     inicio[0] = System.currentTimeMillis() + ESPERA;
                 }
                 float t = Math.max(0f, (System.currentTimeMillis() - inicio[0]) / (float) MS);
+                if (t > 0f && !tocou[0]) {
+                    tocou[0] = true;
+                    Sons.toca("carta");
+                }
                 // o verso e fotografado de novo na hora de aparecer: no comeco a tela ainda
                 // esta entrando e o cartao sai mais claro
                 if (t >= 0.5f && !refeita[0]) {

@@ -12,6 +12,8 @@ public class Boot {
         if (System.getProperty("java.locale.providers") == null) System.setProperty("java.locale.providers", "COMPAT,CLDR");
         java.util.Locale.setDefault(java.util.Locale.Category.FORMAT, new java.util.Locale("pt", "BR"));
         atualizaFundos();
+        Sons.instalaJogo();
+        Sons.instalaCliques();
         try {
             Tema.instalar();
         } catch (Throwable t) {

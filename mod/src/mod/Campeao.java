@@ -353,23 +353,7 @@ final class Campeao {
         }
 
         void torcida() {
-            try {
-                if (c.a.SR == null || !c.a.SR.isUsaSons()) return;
-                java.io.File f = new java.io.File(System.getProperty("user.dir"), "sons/gol1.wav");
-                if (!f.exists()) return;
-                new Thread(() -> {
-                    try {
-                        javax.sound.sampled.AudioInputStream in = javax.sound.sampled.AudioSystem.getAudioInputStream(f);
-                        javax.sound.sampled.Clip clip = javax.sound.sampled.AudioSystem.getClip();
-                        clip.open(in);
-                        clip.start();
-                    } catch (Throwable e) {
-                        // sem som
-                    }
-                }, "campeao-som").start();
-            } catch (Throwable e) {
-                // sem som
-            }
+            Sons.toca("fanfarra");
         }
 
         // ------------------------------------------------------------------ pintura
