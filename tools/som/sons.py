@@ -532,6 +532,204 @@ def fanfarra():
     return normaliza(x, -1, rms_db=-14)
 
 
+# ------------------------------------------------------------------ versao 2 (torcida e apitos)
+# A torcida da v1 era um coro de vozes "limpas" e soava artificial. Aqui a voz de cada
+# torcedor tem sopro, tremor de tom e de volume, e cada grupo tem formantes proprios; por
+# baixo vai um rugido de ruido com o espectro de estadio, e tudo passa pela distancia
+# (menos agudo) e por um eco grande.
+
+def torcida(dur, intensidade, tom, vogais, n_vozes=240, grupos=16, sopro=0.45,
+            rugido=0.6, longe=0.5, curva_tom=None):
+    """intensidade: [(t, 0..1)], tom: (lo, hi) Hz, vogais: [(t, 'a'|'o'|'u'|'e')]."""
+    n = int(dur * SR)
+    t = np.arange(n) / SR
+    forca = curva(n, intensidade)
+    onda = curva(n, curva_tom) if curva_tom else np.ones(n)
+    voz = np.zeros((2, n))
+    for g in range(grupos):
+        esc = rng.uniform(0.86, 1.18)  # tamanho do trato vocal do grupo
+        soma = np.zeros(n)
+        for _ in range(n_vozes // grupos):
+            f = rng.uniform(*tom)
+            treme = 1 + 0.035 * filtra(rng.standard_normal(n), 'pb', 6) * 25
+            fv = f * onda * treme
+            fase = np.cumsum(fv) / SR
+            serra = 2 * (fase % 1) - 1
+            pulso = serra - np.roll(serra, 1) * 0.3
+            ar = rng.standard_normal(n)
+            exc = pulso * (1 - sopro) + ar * sopro * 0.8
+            # cada um entra e sai num tempo um pouco diferente
+            atraso = rng.uniform(0, 0.25)
+            vol = np.interp(t - atraso, t, forca, left=0) * np.clip(1 + 0.5 * filtra(rng.standard_normal(n), 'pb', 3) * 20, 0.2, 1.6)
+            soma += exc * vol * rng.uniform(0.4, 1.0)
+        filtradas = {}
+        for _, v in vogais:
+            if v not in filtradas:
+                o = np.zeros(n)
+                for fr, ga in VOGAIS[v]:
+                    o += filtra(soma, 'bp', fr * esc, 4) * ga
+                filtradas[v] = o
+        if len(vogais) == 1:
+            sg = filtradas[vogais[0][1]]
+        else:
+            sg = np.zeros(n)
+            for i, (t0, v) in enumerate(vogais):
+                t1 = vogais[i + 1][0] if i + 1 < len(vogais) else dur + 1
+                w = np.clip((t - t0) / 0.15 + 1, 0, 1) if i > 0 else np.ones(n)
+                w = w * np.clip((t1 - t) / 0.15, 0, 1)
+                sg += filtradas[v] * w
+        voz += estereo(sg, rng.uniform(-0.85, 0.85))
+    voz /= (n_vozes ** 0.5)
+    # rugido: ruido com espectro de estadio, mexendo junto com a intensidade
+    r = np.zeros((2, n))
+    for c in range(2):
+        x = filtra(banda(rosa(n), 220, 3800), 'pico', 850, 0.8, 5)
+        mod = np.clip(1 + 0.25 * filtra(rng.standard_normal(n), 'pb', 5) * 25, 0.5, 1.5)
+        r[c] = x * mod * forca
+    voz /= np.sqrt((voz ** 2).mean()) + 1e-9
+    r /= np.sqrt((r ** 2).mean()) + 1e-9
+    x = voz * (1 - rugido) + r * rugido
+    # som de torcida gravada quase nao tem grave (abaixo de ~250 Hz) e tem o pico perto de 1 kHz
+    x = filtra(filtra(x, 'pa', 270), 'pa', 270)
+    x = filtra(x, 'pico', 1000, 0.9, 3)
+    # distancia: tira agudo e poe eco grande
+    x = filtra(x, 'pb', 6500 - 3500 * longe)
+    x = reverb(x, seg=1.8 + 1.4 * longe, mix=0.25 + 0.3 * longe, brilho=4500)
+    return x
+
+
+def rojao(n_estouros=5):
+    partes = []
+    tt = 0.0
+    for _ in range(n_estouros):
+        d = int(0.9 * SR)
+        t = np.arange(d) / SR
+        x = rng.standard_normal(d) * np.exp(-t / 0.03)
+        x = filtra(x, 'pb', 2500) + filtra(rng.standard_normal(d), 'pb', 200) * np.exp(-t / 0.06) * 2
+        partes.append((estereo(x, rng.uniform(-0.6, 0.6)), tt, rng.uniform(0.5, 1.0)))
+        tt += rng.uniform(0.15, 0.45)
+    return reverb(junta(*partes), seg=2.5, mix=0.45, brilho=3000)
+
+
+def apito_fox(dur, forca=1.0):
+    """Apito sem bolinha (tipo Fox 40): tres tons proximos batendo, ataque forte."""
+    t = tempo(dur)
+    n = len(t)
+    x = np.zeros(n)
+    for f, a in [(2720, 1.0), (3080, 0.8), (3410, 0.6)]:
+        fv = f * (1 + 0.004 * np.sin(2 * np.pi * 3 * t)) + 120 * np.exp(-t / 0.03)
+        fase = 2 * np.pi * np.cumsum(fv) / SR
+        x += a * (np.sin(fase) + 0.15 * np.sin(2 * fase))
+    x += filtra(rng.standard_normal(n), 'bp', 3000, 3) * 0.35
+    return x * envelope(n, 0.01, 0.06, 0.7) * forca * 0.6
+
+
+def apitos2(sequencia, tipo='bolinha', longe=0.5):
+    f = apito_fox if tipo == 'fox' else (lambda d, g: apito(d, g, 2900))
+    x = junta(*[(f(d, g), i, 1.0) for i, d, g in sequencia])
+    x = np.hstack([x, np.zeros((2, int(0.3 * SR)))])
+    x = filtra(x, 'pb', 9000 - 3000 * longe)
+    return reverb(x, seg=1.2 + 1.2 * longe, mix=0.18 + 0.25 * longe, brilho=6000)
+
+
+# variantes: 'a' = estadio cheio, de longe (mais rugido, mais eco); 'b' = perto da torcida
+def gol2(v):
+    if v == 'a':
+        x = torcida(5.0, [(0, 0.05), (0.15, 0.7), (0.5, 1.0), (3.4, 0.85), (5.0, 0.1)], (200, 340),
+                    [(0, 'a'), (0.45, 'o')], rugido=0.65, longe=0.75,
+                    curva_tom=[(0, 0.85), (0.4, 1.08), (3.5, 1.04), (5, 0.9)])
+        s = filtra(filtra(surdo(int(5 * SR), 126, inicio=1.2), 'pb', 700), 'pa', 120) * curva(int(5 * SR), [(0, 0), (1.2, 0.5), (5, 0.4)])
+        x = junta((x, 0, 1.0), (s, 0, 0.5), (palmas(int(4.5 * SR), 300) * 0.25, 0.5, 1.0))
+    else:
+        x = torcida(5.0, [(0, 0.05), (0.12, 0.8), (0.4, 1.0), (3.4, 0.9), (5.0, 0.1)], (210, 360),
+                    [(0, 'a'), (0.35, 'o'), (3.0, 'o')], rugido=0.45, longe=0.3, sopro=0.55,
+                    curva_tom=[(0, 0.85), (0.35, 1.1), (3.5, 1.05), (5, 0.9)])
+        x = junta((x, 0, 1.0), (rojao(6), 0.9, 0.35), (palmas(int(4.5 * SR), 350) * 0.3, 0.6, 1.0))
+    return normaliza(x, -1, rms_db=-13)
+
+
+def lamento2(v):
+    longe = 0.75 if v == 'a' else 0.35
+    x = torcida(3.2, [(0, 0), (0.1, 1.0), (0.6, 0.75), (2.4, 0.25), (3.2, 0)], (150, 250),
+                [(0, 'o'), (0.8, 'u')], rugido=0.55, longe=longe,
+                curva_tom=[(0, 1.15), (0.3, 1.05), (3.2, 0.78)])
+    # a torcida visitante comemorando la longe
+    vis = torcida(3.2, [(0, 0), (0.3, 0.6), (2.6, 0.5), (3.2, 0)], (230, 330), [(0, 'a')],
+                  n_vozes=96, rugido=0.6, longe=1.0)
+    vis = filtra(vis, 'pb', 1500)
+    return normaliza(junta((x, 0, 1.0), (vis, 0, 0.3)), -2, rms_db=-17)
+
+
+def uuuh2(v, dur=2.4):
+    longe = 0.7 if v == 'a' else 0.35
+    x = torcida(dur, [(0, 0), (0.15, 0.75), (0.45, 1.0), (1.3, 0.55), (dur, 0)], (170, 290),
+                [(0, 'u'), (0.6, 'o')], rugido=0.5 if v == 'a' else 0.35, longe=longe, sopro=0.5,
+                curva_tom=[(0, 0.88), (0.45, 1.2), (dur, 0.86)])
+    return normaliza(x, -2, rms_db=-16)
+
+
+def vaia2(longe, dur=2.6):
+    return torcida(dur, [(0, 0), (0.3, 1.0), (1.9, 0.85), (dur, 0)], (105, 185), [(0, 'u')],
+                   rugido=0.5, longe=longe, sopro=0.4, curva_tom=[(0, 1.0), (dur, 0.93)])
+
+
+def murmurio(longe, dur=2.2):
+    return torcida(dur, [(0, 0), (0.3, 0.7), (1.3, 0.4), (dur, 0)], (150, 230), [(0, 'o')],
+                   n_vozes=160, rugido=0.6, longe=longe, curva_tom=[(0, 1.05), (dur, 0.86)])
+
+
+# apitos: 'a' = apito de bolinha (trinado), 'b' = apito sem bolinha (Fox 40)
+def tipo_apito(v):
+    return 'bolinha' if v == 'a' else 'fox'
+
+
+def intervalo2(v):
+    return normaliza(apitos2([(0, 0.35, 1.0), (0.5, 0.9, 1.0)], tipo_apito(v)), -1, rms_db=-16)
+
+
+def fimjogo2(v):
+    a = apitos2([(0, 0.22, 1.0), (0.34, 0.22, 1.0), (0.7, 1.3, 1.0)], tipo_apito(v))
+    m = torcida(3.0, [(0, 0), (0.5, 0.6), (3.0, 0)], (180, 280), [(0, 'a')], n_vozes=128, rugido=0.7, longe=0.8)
+    p = palmas(int(2.8 * SR), 160) * curva(int(2.8 * SR), [(0, 0), (0.6, 1), (2.8, 0)])
+    return normaliza(junta((a, 0, 1.0), (m, 1.4, 0.35), (p, 1.5, 0.25)), -1, rms_db=-16)
+
+
+def penalti2(v):
+    a = apitos2([(0, 0.6, 1.0)], tipo_apito(v))
+    m = torcida(2.6, [(0, 0), (0.5, 0.8), (1.6, 0.6), (2.6, 0)], (180, 280), [(0, 'o')], n_vozes=160,
+                rugido=0.55, longe=0.6, curva_tom=[(0, 0.95), (2.6, 1.1)])
+    return normaliza(junta((a, 0, 1.0), (m, 0.4, 0.5)), -1, rms_db=-15)
+
+
+def expulsao2(v):
+    a = apitos2([(0, 0.17, 1.0), (0.26, 0.55, 1.0)], tipo_apito(v))
+    return normaliza(junta((a, 0, 1.0), (vaia2(0.6), 0.55, 0.5)), -1, rms_db=-15)
+
+
+def contusao2(v):
+    a = apitos2([(0, 0.3, 0.85)], tipo_apito(v))
+    return normaliza(junta((a, 0, 1.0), (murmurio(0.6), 0.3, 0.4)), -1, rms_db=-17)
+
+
+def trave2(v):
+    """'a' = trave de aluminio, som surdo e curto ("tonc"); 'b' = mais metalico ("ping")."""
+    d = int(1.2 * SR)
+    t = np.arange(d) / SR
+    x = np.zeros(d)
+    if v == 'a':
+        modos = [(310, 1.0, 0.16), (742, 0.55, 0.09), (1290, 0.35, 0.05), (2050, 0.2, 0.03)]
+    else:
+        modos = [(620, 0.8, 0.35), (1480, 0.6, 0.22), (2390, 0.45, 0.14), (3570, 0.25, 0.08)]
+    for f, a, tau in modos:
+        x += a * np.sin(2 * np.pi * f * t + rng.uniform(0, 6)) * np.exp(-t / tau)
+    # a bola batendo (couro) por cima
+    x += np.sin(2 * np.pi * np.cumsum(80 + 90 * np.exp(-t / 0.01)) / SR) * np.exp(-t / 0.04) * 0.8
+    x += filtra(rng.standard_normal(d), 'bp', 1500, 1.2) * np.exp(-t / 0.006) * 0.7
+    x = reverb(x, seg=1.6, mix=0.3, brilho=5000)
+    return normaliza(junta((x, 0, 1.0), (uuuh2('a', 2.2), 0.12, 0.55)), -1, rms_db=-15)
+
+
+
 SONS = {
     # partida (nomes do jogo)
     'gol1': gol, 'goladv': lamento, 'penalty': penalti, 'expulsao': expulsao,
@@ -542,6 +740,12 @@ SONS = {
     'clique': clique, 'passa': passa, 'moedas': moedas, 'mensagem': mensagem,
     'carimbo': carimbo, 'carta': carta, 'janela': janela, 'fanfarra': fanfarra,
 }
+# versao 2: opcoes para o Leo escolher (nome_a, nome_b)
+for _v in 'ab':
+    for _n, _f in [('gol1', gol2), ('goladv', lamento2), ('uuuh', uuuh2), ('intervalo', intervalo2),
+                   ('fimjogo', fimjogo2), ('penalty', penalti2), ('expulsao', expulsao2),
+                   ('contusao', contusao2), ('trave', trave2)]:
+        SONS[_n + '_' + _v] = (lambda f, v: (lambda: f(v)))(_f, _v)
 
 if __name__ == '__main__':
     pasta = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', '..', 'mod', 'assets', 'mod', 'sons')
@@ -550,5 +754,6 @@ if __name__ == '__main__':
     for nome, f in SONS.items():
         if so and nome not in so:
             continue
+        rng = np.random.default_rng(sum(map(ord, nome)) * 7919)
         grava(nome, f(), pasta)
         print(nome)
