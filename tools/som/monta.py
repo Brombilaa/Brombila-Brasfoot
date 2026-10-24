@@ -22,7 +22,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 DESTINO = os.path.join(AQUI, '..', '..', 'mod', 'assets', 'mod', 'sons')
 
 # nome no jogo -> nome em sons.SONS
-JOGO = {'goladv': 'goladv_5a', 'penalty': 'penalty_3', 'expulsao': 'expulsao_3',
+JOGO = {'goladv': 'goladv_5b', 'penalty': 'penalty_3', 'expulsao': 'expulsao_3',
         'contusao': 'contusao_4a', 'intervalo': 'intervalo_4a', 'fimjogo': 'fimjogo_4b'}
 NOVOS = {'inicio': 'inicio', 'ambiente': 'ambiente', 'chute': 'chute', 'rede': 'rede',
          'trave': 'trave_3a', 'defesa': 'defesa', 'clique': 'clique', 'passa': 'passa',
