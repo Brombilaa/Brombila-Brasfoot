@@ -45,8 +45,8 @@ public final class Escala {
         return g.drawImage(img, x, y, w, h, obs);
     }
 
-    // "0" desliga; A sutil, B com aura dourada, C vidro (so para a previa)
-    static String ESTILO = System.getProperty("brombila.escudo", "A");
+    // "0" desliga; A sutil, B aura dourada (padrao), C vidro
+    static String ESTILO = System.getProperty("brombila.escudo", "B");
 
     static Image reduz(Image img, int w, int h) {
         Image atual = img;
