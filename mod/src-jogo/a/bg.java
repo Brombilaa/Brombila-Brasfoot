@@ -53,12 +53,7 @@ extends JPanel {
             public void actionPerformed(java.awt.event.ActionEvent e) { }
         });
         // o jogo abre a janela no tamanho da tela antiga: aumenta para a cena
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                Window w = SwingUtilities.getWindowAncestor(bg.this);
-                if (w != null) { w.setSize(980, 600); w.setLocationRelativeTo(null); }
-            }
-        });
+        mod.Cabe.tamanho(this, 980, 600);
         this.nJ();
     }
 

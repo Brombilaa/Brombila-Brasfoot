@@ -59,12 +59,7 @@ extends JPanel {
         this.getActionMap().put("st", new AbstractAction() {
             public void actionPerformed(java.awt.event.ActionEvent e) { }
         });
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                Window w = SwingUtilities.getWindowAncestor(gb.this);
-                if (w != null) { w.setSize(900, 540); w.setLocationRelativeTo(null); }
-            }
-        });
+        mod.Cabe.tamanho(this, 900, 540);
         List<?> escalados = null;
         try {
             escalados = this.JQ == 1 ? v2.tR().hp() : v2.tR().hq();

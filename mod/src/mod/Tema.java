@@ -301,6 +301,7 @@ public final class Tema {
                     if (w != null && w.getClass().getName().equals("a.gq") && !w.isShowing()) MenuInicial.prepara(w);
                     // janela principal do jogo sendo montada: modo janela, se foi o escolhido
                     if (w != null && w.getClass() == javax.swing.JFrame.class && !w.isDisplayable() && Janela.ehPrincipal(w)) {
+                        Cabe.principal();
                         Janela.antesDeMostrar((javax.swing.JFrame) w);
                     }
                 }
@@ -318,6 +319,7 @@ public final class Tema {
                     }
                     Animacao.fadeIn(w);
                     Carimbo.aviso(w);
+                    Cabe.janela(w);
                 }
                 if (e.getID() == WindowEvent.WINDOW_CLOSED) Animacao.fechou((Window) e.getSource());
                 final Object src = (e instanceof ContainerEvent) ? ((ContainerEvent) e).getChild() : e.getSource();
