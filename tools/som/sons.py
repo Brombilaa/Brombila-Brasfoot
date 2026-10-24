@@ -968,6 +968,70 @@ def fimjogo4(v):
     return final(junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.8), (p, CAMA + 1.9, 4.5)))
 
 
+# ------------------------------------------------------------------ versao 5: gols
+# Os gols com vozes segurando vogal nao convenceram. Aqui o gol vem do que soa real em
+# sintese (rugido, palmas, assobios, rojao, surdo) e de gritos curtos, como o "OH!" e o
+# "UUUH!" aprovados; o gol sofrido usa o silencio da torcida.
+
+def festa_assobios(dur, quantos=30):
+    """Assobios de festa: curtos e subindo."""
+    n = int(dur * SR)
+    out = np.zeros((2, n))
+    for _ in range(quantos):
+        d = rng.uniform(0.25, 0.6)
+        k = int(d * SR)
+        i = int(rng.uniform(0, dur - d) * SR)
+        tt = np.arange(k) / SR
+        f0 = rng.uniform(2000, 3000)
+        f = f0 * (1 + 0.25 * tt / d)
+        x = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.interp(tt, [0, 0.03, d - 0.05, d], [0, 1, 0.9, 0])
+        out[:, i: i + k] += estereo(x, rng.uniform(-0.9, 0.9)) * rng.uniform(0.2, 0.6)
+    return reverb(filtra(out, 'pb', 5000), seg=2.2, mix=0.4)
+
+
+def gol5(v):
+    """'a' = rugido do estadio: barulho que sobe de uma vez, palmas, assobios e rojoes;
+    'b' = um "E!" curto de todos juntos e a festa (palmas, surdo, rojoes)."""
+    dur = 3.6
+    n = int(dur * SR)
+    if v == 'a':
+        r = torcida(dur, [(0, 0.05), (0.1, 0.9), (0.4, 1.0), (2.2, 0.75), (dur, 0)], (220, 360),
+                    [(0, 'a')], n_vozes=160, rugido=0.85, longe=0.5, sopro=0.6,
+                    curva_tom=[(0, 0.85), (0.3, 1.1), (dur, 0.95)])
+        p = palmas(n, 420) * curva(n, [(0, 0), (0.3, 1), (2.6, 0.8), (dur, 0)])
+        x = junta((cama(CAMA + 0.1), 0, 0.5), (r, CAMA, 3.5), (p, CAMA + 0.2, 3.0),
+                  (festa_assobios(dur, 30), CAMA + 0.3, 1.0), (rojao(5), CAMA + 0.6, 0.8))
+    else:
+        e = torcida(0.9, [(0, 0), (0.04, 1.0), (0.3, 0.7), (0.9, 0)], (230, 360), [(0, 'e')],
+                    n_vozes=240, rugido=0.35, longe=0.45, sopro=0.55,
+                    curva_tom=[(0, 0.9), (0.15, 1.15), (0.9, 1.0)])
+        resto = torcida(dur, [(0, 0.6), (2.6, 0.5), (dur, 0)], (200, 320), [(0, 'a')], n_vozes=128,
+                        rugido=0.85, longe=0.65)
+        p = palmas(n, 420) * curva(n, [(0, 0), (0.2, 1), (2.8, 0.8), (dur, 0)])
+        s = filtra(filtra(surdo(n, 128), 'pb', 700), 'pa', 120) * curva(n, [(0, 0), (0.3, 1), (dur, 0.6)])
+        x = junta((cama(CAMA + 0.1), 0, 0.5), (e, CAMA, 3.2), (resto, CAMA + 0.5, 1.6), (p, CAMA + 0.4, 3.0),
+                  (s, CAMA + 0.5, 1.4), (rojao(5), CAMA + 0.7, 0.8))
+    return final(x)
+
+
+def lamento5(v):
+    """'a' = um "Ô" curto que cai (como o "OH!" do penalti) e a torcida murcha;
+    'b' = a torcida para de uma vez e so se ouve a outra comemorando la longe."""
+    if v == 'a':
+        o = torcida(0.8, [(0, 0), (0.04, 1.0), (0.25, 0.5), (0.8, 0)], (130, 220), [(0, 'o')],
+                    n_vozes=200, rugido=0.4, longe=0.5, sopro=0.55, curva_tom=[(0, 1.05), (0.8, 0.78)])
+        resto = torcida(2.4, [(0, 0), (0.4, 0.3), (2.4, 0.25)], (100, 190), [(0, 'e')], n_vozes=96,
+                        rugido=0.85, longe=0.9, fala=3.5)
+        return final(junta((cama(CAMA + 0.1), 0, 0.6), (o, CAMA, 1.6), (resto, CAMA + 0.5, 0.25)))
+    vis = torcida(3.0, [(0, 0), (0.2, 1.0), (2.2, 0.8), (3.0, 0)], (230, 340), [(0, 'a')],
+                  n_vozes=128, rugido=0.8, longe=1.0)
+    vis = filtra(vis, 'pb', 1400)
+    p = filtra(palmas(int(2.6 * SR), 200), 'pb', 1600)
+    resto = torcida(3.0, [(0, 0.15), (3.0, 0.15)], (100, 190), [(0, 'e')], n_vozes=64,
+                    rugido=0.9, longe=0.95, fala=3.0)
+    return final(junta((cama(CAMA), 0, 1.0), (resto, CAMA, 0.25), (vis, CAMA + 0.1, 0.22), (p, CAMA + 0.3, 0.35)))
+
+
 SONS = {
     # partida (nomes do jogo)
     'gol1': gol, 'goladv': lamento, 'penalty': penalti, 'expulsao': expulsao,
@@ -994,6 +1058,11 @@ for _v in 'ab':
     for _n, _f in [('gol1', gol4), ('goladv', lamento4), ('contusao', contusao4),
                    ('intervalo', intervalo4), ('fimjogo', fimjogo4)]:
         SONS[_n + '_4' + _v] = (lambda f, v: (lambda: f(v)))(_f, _v)
+
+# versao 5
+for _v in 'ab':
+    SONS['gol1_5' + _v] = (lambda v: (lambda: gol5(v)))(_v)
+    SONS['goladv_5' + _v] = (lambda v: (lambda: lamento5(v)))(_v)
 
 if __name__ == '__main__':
     pasta = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', '..', 'mod', 'assets', 'mod', 'sons')
