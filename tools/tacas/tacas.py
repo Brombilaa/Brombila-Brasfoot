@@ -9,7 +9,7 @@ import sys
 import numpy as np
 from PIL import Image
 
-W, H, AA = 440, 640, 2          # tamanho final e supersampling
+W, H, AA = 440, 640, 3          # tamanho final e supersampling
 ESCALA = 1.0 / 2.9               # unidades do mundo por pixel final * W
 INCL = np.radians(9)             # camera um pouco acima
 LARG = 2.3                       # largura da cena em unidades
@@ -61,18 +61,26 @@ def oco(p, perfil, yfundo, ytopo, parede=0.035):
     return torno(p, dentro, yfundo, ytopo + 0.2)
 
 
+# aneis e alcas sao anotados aqui para ganhar o material de detalhe (ouro acetinado)
+DETALHES = []
+
+
 def toro_v(p, c, R, r, lado):
     """Alca: meio anel vertical no plano xy, do lado +1 (direita) ou -1."""
     q = p - np.array(c)
     a = np.hypot(q[..., 0], q[..., 1]) - R
     d = np.hypot(a, q[..., 2]) - r
-    return np.maximum(d, -lado * p[..., 0])
+    d = np.maximum(d, -lado * p[..., 0])
+    DETALHES.append(d)
+    return d
 
 
 def toro_h(p, y, R, r):
     q = p.copy()
     a = np.hypot(q[..., 0], q[..., 2]) - R
-    return np.hypot(a, q[..., 1] - y) - r
+    d = np.hypot(a, q[..., 1] - y) - r
+    DETALHES.append(d)
+    return d
 
 
 def esfera(p, c, r):
@@ -235,11 +243,15 @@ def cena(p, modelo):
     k = TAMANHO[modelo]
     q = p / k
     q[..., 1] = (p[..., 1] - BASE_TOPO) / k + BASE_TOPO
+    DETALHES.clear()
     t = MODELOS[modelo](q) * k
+    det = np.min(DETALHES, axis=0) * k if DETALHES else np.full(t.shape, 9.0)
+    DETALHES.clear()
     preto, filete = base(p)
     ouro = np.minimum(t, filete)
     d = np.minimum(ouro, preto)
     mat = (preto < ouro).astype(np.int8)  # 1 = base escura
+    mat[(mat == 0) & ((det <= t + 2e-4) | (filete < t))] = 2  # 2 = aneis, alcas e filetes
     return d, mat
 
 
@@ -259,11 +271,13 @@ def ambiente(r):
     x = r[..., 0]
     z = r[..., 2]
     c = 0.02 + 0.06 * np.clip(y, 0, 1)
-    caixa1 = np.exp(-((x + 0.55) ** 2 / 0.05 + (y - 0.35) ** 2 / 0.12)) * 2.2 * (z < 0.3)
-    caixa2 = np.exp(-((x - 0.65) ** 2 / 0.03 + (y - 0.15) ** 2 / 0.25)) * 1.6 * (z < 0.4)
+    caixa1 = np.exp(-((x + 0.55) ** 2 / 0.018 + (y - 0.35) ** 2 / 0.12)) * 3.0 * (z < 0.3)
+    caixa2 = np.exp(-((x - 0.65) ** 2 / 0.012 + (y - 0.15) ** 2 / 0.25)) * 2.2 * (z < 0.4)
     topo = np.exp(-((y - 0.95) ** 2) / 0.02) * 1.2
     chao = 0.25 * np.clip(-y, 0, 1)
-    return c + caixa1 + caixa2 + topo + chao
+    # luzes de recorte atras, dos dois lados: acendem o contorno da taca
+    recorte = (np.exp(-((x + 0.85) ** 2) / 0.02) + np.exp(-((x - 0.85) ** 2) / 0.02)) * np.clip(z, 0, 1) * 1.8
+    return c + caixa1 + caixa2 + topo + chao + recorte
 
 
 def render(modelo):
@@ -307,11 +321,17 @@ def render(modelo):
     # oclusao barata: distancia a cena um pouco fora da superficie
     ao = np.clip(cena(p + nn * 0.06, modelo)[0] / 0.06, 0, 1) ** 0.6
     ouro = np.array([1.0, 0.76, 0.33])
-    cor_ouro = ouro[None] * (0.10 + 0.95 * env[:, None]) * (0.55 + 0.45 * ao[:, None]) + fres[:, None] * 0.25 * ouro[None]
+    cor_ouro = ouro[None] * (0.06 + 1.0 * env[:, None]) * (0.55 + 0.45 * ao[:, None]) + fres[:, None] * 0.25 * ouro[None]
     cor_ouro += np.clip(env - 1.2, 0, None)[:, None] * np.array([1.0, 0.95, 0.85]) * 0.5
     preto = np.array([0.055, 0.06, 0.058])
     cor_preto = preto[None] * (0.6 + 1.2 * dif[:, None]) * ao[:, None] + 0.10 * np.clip(env - 0.6, 0, None)[:, None] * np.array([1, 0.95, 0.85])
-    cor = np.where(mat[:, None] == 1, cor_preto, cor_ouro)
+    # laca preta: reflexo nitido das softboxes pelo fresnel
+    cor_preto += (0.04 + 0.6 * (1 - np.clip(np.sum(nn * v, -1), 0, 1)) ** 5)[:, None] * np.clip(env, 0, 2.5)[:, None] * 0.35
+    # ouro acetinado dos detalhes: mais escuro e menos espelhado
+    ouro2 = np.array([0.86, 0.58, 0.22])
+    env2 = 0.35 + 0.65 * env / (1 + 0.5 * env)
+    cor_det = ouro2[None] * (0.18 + 0.85 * env2[:, None]) * (0.6 + 0.4 * ao[:, None]) + fres[:, None] * 0.2 * ouro2[None]
+    cor = np.where(mat[:, None] == 1, cor_preto, np.where(mat[:, None] == 2, cor_det, cor_ouro))
     # tonemap suave
     cor = cor / (1 + 0.35 * cor)
     cor = np.clip(cor * 1.15, 0, 1) ** (1 / 1.25)

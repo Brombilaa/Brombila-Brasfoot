@@ -261,6 +261,13 @@ final class Temporada {
         pos(campo(cr, "DN"), 209, 658, 190, 38);
         avancar(campo(cr, "DO"), "Iniciar novo ano");
         pos(campo(cr, "DO"), 1002 - 210, 658, 210, 38);
+        // entrada: titulo, as tres colunas uma depois da outra (a lista desenrola) e os botoes
+        Cascata.quandoAparecer(cr,
+            new Cascata.Bloco(0, 0, 1024, 66, 0, null),
+            new Cascata.Bloco(27, 68, 319, 576, 140, new java.awt.Rectangle(29, 114, 315, 528)),
+            new Cascata.Bloco(360, 68, 319, 576, 280, new java.awt.Rectangle(362, 114, 315, 528)),
+            new Cascata.Bloco(693, 68, 311, 576, 420, new java.awt.Rectangle(695, 114, 307, 528)),
+            new Cascata.Bloco(0, 648, 1024, 70, 700, null));
         cr.revalidate();
         cr.repaint();
     }
@@ -735,6 +742,25 @@ final class Temporada {
         Dialogos.fonte(res, Estreia.texto(14f), Estreia.FRACO);
         esquerda(res);
         pos(res, 28, 336, 548, 58);
+        // martelo batido: carimbo VENDIDO sobre a ficha quando a janela ja entrou
+        if (res instanceof JLabel) {
+            final JLabel rl = (JLabel) res;
+            final JPanel vdF = vd;
+            final long desde = System.currentTimeMillis();
+            final javax.swing.Timer tc = new javax.swing.Timer(Animacao.ligada() ? 320 : 50, null);
+            tc.addActionListener(new java.awt.event.ActionListener() {
+                public void actionPerformed(java.awt.event.ActionEvent e) {
+                    if (System.currentTimeMillis() - desde > 4000 || vdF.getClientProperty(Carimbo.CHAVE) != null) {
+                        tc.stop();
+                        return;
+                    }
+                    if (!vdF.isShowing() || rl.getText() == null || !rl.getText().contains("comprou por")) return;
+                    tc.stop();
+                    vdF.putClientProperty(Carimbo.CHAVE, Carimbo.sobre(vdF, "VENDIDO", Carimbo.VERMELHO, 250, 200, 1f));
+                }
+            });
+            tc.start();
+        }
 
         // lances (jogo com mais de um tecnico humano)
         Object caixa = campo(ix, "zP");
@@ -886,11 +912,21 @@ final class Temporada {
                 public void run() {
                     boolean aberto = cl.isVisible();
                     dica.setVisible(aberto);
+                    Object antigo = we instanceof JComponent ? ((JComponent) we).getClientProperty(Carimbo.CHAVE) : null;
                     if (aberto) {
                         Dialogos.fonte(ecoF, Estreia.negrito(13f), Estreia.OURO);
                         pos(ecoF, 228, 442, 368, 18);
+                        // leilao novo: o carimbo do anterior sai
+                        if (antigo instanceof JComponent) Carimbo.tira((JComponent) antigo);
+                        if (we instanceof JComponent) ((JComponent) we).putClientProperty(Carimbo.CHAVE, null);
                     } else {
-                        if (ecoF instanceof JLabel && texto(ecoF).toLowerCase().startsWith("vendido")) ((JLabel) ecoF).setText("Vendido para");
+                        boolean vendido = ecoF instanceof JLabel && texto(ecoF).toLowerCase().startsWith("vendido");
+                        if (vendido) ((JLabel) ecoF).setText("Vendido para");
+                        if (vendido && antigo == null && we instanceof JComponent) {
+                            // martelo batido: carimbo VENDIDO em cima da ficha do jogador
+                            ((JComponent) we).putClientProperty(Carimbo.CHAVE,
+                                Carimbo.sobre((Component) we, "VENDIDO", Carimbo.VERMELHO, 200, 190, 1f));
+                        }
                         Dialogos.rotulo(ecoF);
                         pos(ecoF, 44, 402, 360, 16);
                     }
