@@ -57,6 +57,7 @@ final class Dialogos {
         else if (n.equals("a.jp")) sobre(p);
         else if (n.equals("a.C") || n.equals("a.gh")) batedores(p);
         else if (n.equals("a.cD")) Intervalo.aplica(p);
+        else if (n.equals("a.hk")) FimDeJogo.aplica(p);
         else if (n.equals("a.hz")) Espera.aplica(p);
         else if (!Outras.aplica(p, n) && !Temporada.aplica(p, n)) Fichas.aplica(p, n);
     }
