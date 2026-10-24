@@ -272,6 +272,10 @@ public final class Tema {
         long mask = AWTEvent.CONTAINER_EVENT_MASK | AWTEvent.WINDOW_EVENT_MASK;
         Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
             public void eventDispatched(AWTEvent e) {
+                if (e instanceof ContainerEvent && e.getID() == ContainerEvent.COMPONENT_REMOVED) {
+                    // tela grande saindo da janela principal: some com fade por cima da nova
+                    Animacao.trocaTela((ContainerEvent) e);
+                }
                 if (e instanceof ContainerEvent && e.getID() == ContainerEvent.COMPONENT_ADDED) {
                     // pergunta (JOptionPane) entrando na janela: tira a barra do Windows antes de abrir
                     if (((ContainerEvent) e).getChild() instanceof javax.swing.JOptionPane) {

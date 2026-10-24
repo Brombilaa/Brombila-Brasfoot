@@ -7,6 +7,7 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.Window;
@@ -24,6 +25,7 @@ import javax.swing.JRootPane;
 import javax.swing.JTable;
 import javax.swing.JWindow;
 import javax.swing.RootPaneContainer;
+import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 
 // Pequenas animacoes: janelas entrando e saindo, valores que deslizam (abas, barras...)
@@ -139,6 +141,7 @@ final class Animacao {
     // Janelas com borda nao aceitam opacidade no Java, entao nelas so o conteudo anima.
     static void fadeIn(final Window w) {
         if (marcada(w)) return;
+        ordem.put(w, ++aberturas);
         boolean dialogo = w instanceof Dialog || (w instanceof JWindow && w.getOwner() != null);
         boolean fade = semBorda(w) && translucida();
         if (dialogo && fade && w instanceof RootPaneContainer) ((RootPaneContainer) w).getRootPane().putClientProperty(SAI, Boolean.TRUE);
@@ -176,23 +179,20 @@ final class Animacao {
         final Component conteudo = rp.getContentPane();
         final int larg = camadas.getWidth(), alt = camadas.getHeight();
         if (larg <= 0 || alt <= 0) return;
-        final BufferedImage img = new BufferedImage(larg, alt, BufferedImage.TYPE_INT_ARGB);
-        try {
-            Graphics2D g = img.createGraphics();
-            conteudo.paint(g);
-            g.dispose();
-        } catch (Throwable t) {
-            return;
-        }
-        final long inicio = System.currentTimeMillis();
+        // A foto do conteudo sai no primeiro quadro, depois que o tema ja vestiu a janela
+        // (o tema entra na fila logo depois deste evento); ate la, so o fundo escuro.
+        final BufferedImage[] img = {null};
+        final long[] inicio = {0};
         final JComponent veu = new JComponent() {
             protected void paintComponent(Graphics g0) {
-                float t = suave((System.currentTimeMillis() - inicio) / 220f);
                 Graphics2D g = (Graphics2D) g0.create();
                 g.setColor(Estreia.NOITE);
                 g.fillRect(0, 0, getWidth(), getHeight());
-                g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, t));
-                g.drawImage(img, 0, Math.round(12 * (1f - t)), null);
+                if (img[0] != null) {
+                    float t = suave((System.currentTimeMillis() - inicio[0]) / 220f);
+                    g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, t));
+                    g.drawImage(img[0], 0, Math.round(12 * (1f - t)), null);
+                }
                 g.dispose();
             }
         };
@@ -201,7 +201,83 @@ final class Animacao {
         final Timer timer = new Timer(QUADRO_MS, null);
         timer.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                if (System.currentTimeMillis() - inicio >= 230) {
+                if (img[0] == null) {
+                    try {
+                        BufferedImage i = new BufferedImage(larg, alt, BufferedImage.TYPE_INT_ARGB);
+                        Graphics2D g = i.createGraphics();
+                        conteudo.paint(g);
+                        g.dispose();
+                        img[0] = i;
+                        inicio[0] = System.currentTimeMillis();
+                    } catch (Throwable t) {
+                        inicio[0] = 1; // sem foto: tira o veu ja
+                    }
+                }
+                if (System.currentTimeMillis() - inicio[0] >= 230) {
+                    timer.stop();
+                    camadas.remove(veu);
+                    camadas.repaint();
+                    return;
+                }
+                veu.repaint();
+            }
+        });
+        timer.start();
+    }
+
+    // ------------------------------------------------------------ troca de tela
+
+    private static long ultimaTroca;
+
+    // Uma tela grande (mais da metade da janela) saiu da janela principal (ex.: Jogar >> troca
+    // a tela do time pela partida): a imagem dela fica por cima, numa camada que nao pega clique,
+    // e some em 0,22 s. A imagem e desenhada do componente que acabou de sair (ainda inteiro,
+    // so fora da janela). O fade so comeca no primeiro quadro, depois que o tema vestiu a tela
+    // nova, entao a tela ainda sem tema nunca aparece.
+    static void trocaTela(java.awt.event.ContainerEvent e) {
+        if (!ligada()) return;
+        final Component velho = e.getChild();
+        java.awt.Container pai = e.getContainer();
+        // as camadas do proprio mod (veus) saem do JLayeredPane: nao sao troca de tela
+        if (pai instanceof javax.swing.JLayeredPane || pai instanceof javax.swing.CellRendererPane) return;
+        Window w = SwingUtilities.getWindowAncestor(pai);
+        if (!Janela.ehPrincipal(w) || !(w instanceof RootPaneContainer) || !w.isShowing()) return;
+        int larg = velho.getWidth(), alt = velho.getHeight();
+        JRootPane rp = ((RootPaneContainer) w).getRootPane();
+        final javax.swing.JLayeredPane camadas = rp.getLayeredPane();
+        if (larg * alt < camadas.getWidth() * camadas.getHeight() / 2) return;
+        long agora = System.currentTimeMillis();
+        if (agora - ultimaTroca < 400) return; // varias pecas saindo juntas: uma troca so
+        ultimaTroca = agora;
+        final BufferedImage img;
+        final Point onde;
+        try {
+            onde = SwingUtilities.convertPoint(pai, velho.getX(), velho.getY(), camadas);
+            img = new BufferedImage(larg, alt, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g = img.createGraphics();
+            velho.paint(g);
+            g.dispose();
+        } catch (Throwable t) {
+            return;
+        }
+        final long[] inicio = {0};
+        final JComponent veu = new JComponent() {
+            protected void paintComponent(Graphics g0) {
+                float t = inicio[0] == 0 ? 0f : suave((System.currentTimeMillis() - inicio[0]) / 220f);
+                Graphics2D g = (Graphics2D) g0.create();
+                g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 1f - t));
+                g.drawImage(img, onde.x, onde.y, null);
+                g.dispose();
+            }
+        };
+        veu.setBounds(0, 0, camadas.getWidth(), camadas.getHeight());
+        camadas.add(veu, javax.swing.JLayeredPane.DRAG_LAYER);
+        final Timer timer = new Timer(QUADRO_MS, null);
+        timer.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent ev) {
+                long t = System.currentTimeMillis();
+                if (inicio[0] == 0) inicio[0] = t;
+                if (t - inicio[0] >= 240) {
                     timer.stop();
                     camadas.remove(veu);
                     camadas.repaint();
@@ -217,8 +293,20 @@ final class Animacao {
 
     // Janela fechou (WINDOW_CLOSED, depois do dispose): se entrou animada, sai animada.
     static void fechou(Window w) {
-        if (w instanceof RootPaneContainer && ((RootPaneContainer) w).getRootPane().getClientProperty(SAI) != null) sai(w);
+        Long n = ordem.remove(w);
+        if (!(w instanceof RootPaneContainer) || ((RootPaneContainer) w).getRootPane().getClientProperty(SAI) == null) return;
+        // Se outra janela abriu depois desta e esta na tela, esta ja tinha sido escondida antes
+        // do dispose (ex.: Escalar -> Jogar): nada de fantasma por cima da tela nova.
+        if (n != null) {
+            for (java.util.Map.Entry<Window, Long> e : ordem.entrySet()) {
+                if (e.getValue() > n && e.getKey().isShowing()) return;
+            }
+        }
+        sai(w);
     }
+
+    private static final java.util.Map<Window, Long> ordem = new java.util.WeakHashMap<Window, Long>();
+    private static long aberturas;
 
     // Dialogo fechou: um "fantasma" com a imagem dele fica no lugar e some em 0,15 s,
     // descendo um pouco. A janela de verdade ja foi embora, entao nada espera por isso.
@@ -236,9 +324,83 @@ final class Animacao {
             return;
         }
         final Rectangle r = w.getBounds();
-        Shape forma = null;
-        try { forma = w.getShape(); } catch (Throwable t) {}
-        final JWindow f = new JWindow(w.getOwner());
+        Shape s = null;
+        try { s = w.getShape(); } catch (Throwable t) {}
+        final Shape forma = s;
+        final Window dono = w.getOwner();
+        final long fechou = System.currentTimeMillis();
+        // Dialogo por cima da janela do jogo: o fantasma e desenhado dentro dela, sem janela
+        // nova (que leva um quadro ou dois para aparecer e deixaria a tela piscar).
+        if (dono instanceof RootPaneContainer && dono.isShowing() && dentro(dono, r)) {
+            fantasmaDentro(img, r, forma, (RootPaneContainer) dono, fechou);
+            return;
+        }
+        // O fantasma sai na proxima volta da fila: se o jogo prender a tela logo depois do
+        // dispose (ex.: Jogar >> montando a partida), ja passou da hora e nem aparece.
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                if (System.currentTimeMillis() - fechou <= 60) fantasma(img, r, forma, dono);
+            }
+        });
+    }
+
+    private static boolean dentro(Window dono, Rectangle r) {
+        try {
+            Rectangle d = dono.getBounds();
+            d.grow(2, 2);
+            return d.contains(r);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    private static void fantasmaDentro(final BufferedImage img, Rectangle r, final Shape forma, RootPaneContainer dono,
+            final long fechou) {
+        final javax.swing.JLayeredPane camadas = dono.getRootPane().getLayeredPane();
+        final Point p;
+        try {
+            p = new Point(r.x, r.y);
+            SwingUtilities.convertPointFromScreen(p, camadas);
+        } catch (Throwable t) {
+            return;
+        }
+        final long[] inicio = {0};
+        final JComponent veu = new JComponent() {
+            protected void paintComponent(Graphics g0) {
+                long agora = System.currentTimeMillis();
+                // o jogo prendeu a tela depois de fechar: nada de fantasma atrasado
+                if (inicio[0] == 0 && agora - fechou > 60 || inicio[0] < 0) return;
+                float t = inicio[0] == 0 ? 0f : Math.min(1f, (agora - inicio[0]) / 150f);
+                Graphics2D g = (Graphics2D) g0.create();
+                g.translate(p.x, p.y + Math.round(8 * suave(t)));
+                if (forma != null) g.clip(forma);
+                g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 1f - suave(t)));
+                g.drawImage(img, 0, 0, null);
+                g.dispose();
+            }
+        };
+        veu.setBounds(0, 0, camadas.getWidth(), camadas.getHeight());
+        camadas.add(veu, javax.swing.JLayeredPane.DRAG_LAYER);
+        final Timer timer = new Timer(QUADRO_MS, null);
+        timer.addActionListener(new ActionListener() {
+            public void actionPerformed(ActionEvent e) {
+                long agora = System.currentTimeMillis();
+                // a tela ficou presa (o jogo montando a proxima): some de uma vez
+                if (inicio[0] == 0) inicio[0] = agora - fechou > 60 ? -1 : agora;
+                if (inicio[0] < 0 || agora - inicio[0] >= 150) {
+                    timer.stop();
+                    camadas.remove(veu);
+                    camadas.repaint(p.x, p.y, img.getWidth(), img.getHeight() + 10);
+                    return;
+                }
+                camadas.repaint(p.x, p.y, img.getWidth(), img.getHeight() + 10);
+            }
+        });
+        timer.start();
+    }
+
+    private static void fantasma(final BufferedImage img, final Rectangle r, Shape forma, Window dono) {
+        final JWindow f = new JWindow(dono);
         f.getRootPane().putClientProperty(SEM, Boolean.TRUE);
         f.setFocusableWindowState(false);
         f.setContentPane(new JComponent() {
@@ -252,11 +414,25 @@ final class Animacao {
             return;
         }
         f.setVisible(true);
-        final long inicio = System.currentTimeMillis();
+        // pinta ja, antes de o jogo seguir: se ele prender a tela logo depois (ex.: montando
+        // a partida), o fantasma fica com a imagem certa em vez de um quadro cinza
+        f.getRootPane().paintImmediately(0, 0, r.width, r.height);
+        java.awt.Toolkit.getDefaultToolkit().sync();
+        final long criado = System.currentTimeMillis();
+        final long[] inicio = {0};
         final Timer timer = new Timer(QUADRO_MS, null);
         timer.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                float t = (System.currentTimeMillis() - inicio) / 150f;
+                long agora = System.currentTimeMillis();
+                if (inicio[0] == 0) {
+                    if (agora - criado > 90) { // a tela ficou presa: deixa pra la
+                        timer.stop();
+                        f.dispose();
+                        return;
+                    }
+                    inicio[0] = agora;
+                }
+                float t = (agora - inicio[0]) / 150f;
                 if (t >= 1f) {
                     timer.stop();
                     f.dispose();
