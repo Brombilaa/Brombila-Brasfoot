@@ -183,15 +183,27 @@ final class Animacao {
         // (o tema entra na fila logo depois deste evento); ate la, so o fundo escuro.
         final BufferedImage[] img = {null};
         final long[] inicio = {0};
+        // perguntas (Sim/Nao) e avisos entram com zoom; demissao e convite, com mais impacto
+        final int tipo = marcante(conteudo) ? 2 : temPergunta(conteudo) ? 1 : 0;
+        final int dura = tipo == 2 ? 420 : tipo == 1 ? 260 : 220;
         final JComponent veu = new JComponent() {
             protected void paintComponent(Graphics g0) {
                 Graphics2D g = (Graphics2D) g0.create();
                 g.setColor(Estreia.NOITE);
                 g.fillRect(0, 0, getWidth(), getHeight());
                 if (img[0] != null) {
-                    float t = suave((System.currentTimeMillis() - inicio[0]) / 220f);
-                    g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, t));
-                    g.drawImage(img[0], 0, Math.round(12 * (1f - t)), null);
+                    float x = (System.currentTimeMillis() - inicio[0]) / (float) dura;
+                    float t = suave(x);
+                    g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, Math.min(1f, t * 1.3f)));
+                    if (tipo == 0) {
+                        g.drawImage(img[0], 0, Math.round(12 * (1f - t)), null);
+                    } else {
+                        double z = tipo == 1 ? 0.9 + 0.1 * t : 0.8 + 0.2 * sobra(Math.min(1f, x));
+                        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                        g.translate(getWidth() / 2.0, getHeight() / 2.0);
+                        g.scale(z, z);
+                        g.drawImage(img[0], -img[0].getWidth() / 2, -img[0].getHeight() / 2, null);
+                    }
                 }
                 g.dispose();
             }
@@ -213,7 +225,7 @@ final class Animacao {
                         inicio[0] = 1; // sem foto: tira o veu ja
                     }
                 }
-                if (System.currentTimeMillis() - inicio[0] >= 230) {
+                if (System.currentTimeMillis() - inicio[0] >= dura + 10) {
                     timer.stop();
                     camadas.remove(veu);
                     camadas.repaint();
@@ -223,6 +235,29 @@ final class Animacao {
             }
         });
         timer.start();
+    }
+
+    // Curva que passa um pouco do fim e volta (entrada com impacto).
+    static float sobra(float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        float u = t - 1f, k = 1.9f;
+        return 1f + (k + 1f) * u * u * u + k * u * u;
+    }
+
+    private static boolean temPergunta(Component c) {
+        if (c instanceof javax.swing.JOptionPane) return true;
+        if (c instanceof java.awt.Container)
+            for (Component k : ((java.awt.Container) c).getComponents()) if (temPergunta(k)) return true;
+        return false;
+    }
+
+    // demissoes da rodada (a.bl) e convites para ser tecnico (a.gO)
+    private static boolean marcante(Component c) {
+        String n = c.getClass().getName();
+        if (n.equals("a.bl") || n.equals("a.gO")) return true;
+        if (c instanceof java.awt.Container)
+            for (Component k : ((java.awt.Container) c).getComponents()) if (marcante(k)) return true;
+        return false;
     }
 
     // ------------------------------------------------------------ troca de tela

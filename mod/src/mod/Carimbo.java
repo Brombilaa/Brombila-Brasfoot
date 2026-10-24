@@ -63,7 +63,18 @@ public final class Carimbo {
         if (!(w instanceof RootPaneContainer)) return null;
         JLayeredPane camadas = ((RootPaneContainer) w).getRootPane().getLayeredPane();
         Point p = SwingUtilities.convertPoint(alvo, cx, cy, camadas);
-        return poe(camadas, texto, cor, p.x, p.y, escala);
+        final JComponent c = poe(camadas, texto, cor, p.x, p.y, escala);
+        // a tela do carimbo saiu (ex.: leilao -> Continuar): o carimbo sai junto
+        alvo.addHierarchyListener(new java.awt.event.HierarchyListener() {
+            public void hierarchyChanged(java.awt.event.HierarchyEvent e) {
+                if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) == 0 || e.getChanged().isShowing()) return;
+                if (!e.getComponent().isShowing()) {
+                    e.getComponent().removeHierarchyListener(this);
+                    tira(c);
+                }
+            }
+        });
+        return c;
     }
 
     public static void tira(JComponent c) {
