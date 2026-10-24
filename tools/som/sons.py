@@ -539,7 +539,7 @@ def fanfarra():
 # (menos agudo) e por um eco grande.
 
 def torcida(dur, intensidade, tom, vogais, n_vozes=240, grupos=16, sopro=0.45,
-            rugido=0.6, longe=0.5, curva_tom=None):
+            rugido=0.6, longe=0.5, curva_tom=None, fala=0.0):
     """intensidade: [(t, 0..1)], tom: (lo, hi) Hz, vogais: [(t, 'a'|'o'|'u'|'e')]."""
     n = int(dur * SR)
     t = np.arange(n) / SR
@@ -561,6 +561,10 @@ def torcida(dur, intensidade, tom, vogais, n_vozes=240, grupos=16, sopro=0.45,
             # cada um entra e sai num tempo um pouco diferente
             atraso = rng.uniform(0, 0.25)
             vol = np.interp(t - atraso, t, forca, left=0) * np.clip(1 + 0.5 * filtra(rng.standard_normal(n), 'pb', 3) * 20, 0.2, 1.6)
+            if fala > 0:
+                # conversa: cada um fala em silabas soltas, nao segura a vogal
+                g = filtra(rng.standard_normal(n), 'pb', fala) * np.sqrt(SR / fala) * 0.25
+                vol = vol * np.clip(g + rng.uniform(-0.6, 0.2), 0, 1) ** 1.5
             soma += exc * vol * rng.uniform(0.4, 1.0)
         filtradas = {}
         for _, v in vogais:
@@ -730,6 +734,166 @@ def trave2(v):
 
 
 
+# ------------------------------------------------------------------ versao 3: cada reacao com o seu clima
+# Na v2 todas as reacoes soavam como comemoracao (vozes agudas segurando "a/o" bem alto).
+# Aqui cada uma muda o que a torcida esta fazendo: comemorar, lamentar e calar, prender o
+# ar, vaiar com assobios, conversar preocupada. Todas comecam com 0,6 s da torcida de
+# fundo, para ouvir a mudanca de clima (no jogo a torcida ambiente ja estara tocando).
+
+CAMA = 0.6
+# volume fixo para todas as reacoes (a torcida de fundo fica em ~-27 dB); assim o gol e
+# alto e o gol sofrido e baixo, em vez de todas terem o mesmo volume
+GANHO = 0.126
+
+
+def final(x):
+    x = x * GANHO
+    p = np.abs(x).max()
+    return x * (0.89 / p) if p > 0.89 else x
+
+
+
+def cama(dur, nivel=1.0):
+    """Torcida de fundo: conversa e rugido baixo."""
+    x = torcida(dur, [(0, 0.5), (dur, 0.5)], (110, 230), [(0, 'e')], n_vozes=128, rugido=0.7,
+                longe=0.85, fala=5.0)
+    return x * nivel
+
+
+def assobios(dur, quantos=40, inicio=0.0):
+    """Assobio de dedo: tom alto deslizando (de vaia)."""
+    n = int(dur * SR)
+    out = np.zeros((2, n))
+    for _ in range(quantos):
+        d = rng.uniform(0.35, 1.1)
+        k = int(d * SR)
+        i = int(rng.uniform(inicio, max(inicio, dur - d)) * SR)
+        if i + k > n:
+            continue
+        tt = np.arange(k) / SR
+        f0 = rng.uniform(1900, 3100)
+        forma = rng.integers(0, 3)
+        if forma == 0:
+            f = f0 * (1 + 0.12 * np.sin(np.pi * tt / d))  # sobe e desce
+        elif forma == 1:
+            f = f0 * (1 - 0.15 * tt / d)  # cai
+        else:
+            f = f0 * np.ones(k)  # reto
+        f *= 1 + 0.01 * np.sin(2 * np.pi * rng.uniform(4, 7) * tt)
+        x = np.sin(2 * np.pi * np.cumsum(f) / SR) + filtra(rng.standard_normal(k), 'bp', f0, 6) * 0.3
+        x *= np.interp(tt, [0, 0.04, d - 0.08, d], [0, 1, 0.9, 0])
+        out[:, i: i + k] += estereo(x, rng.uniform(-0.9, 0.9)) * rng.uniform(0.2, 0.6)
+    return reverb(filtra(out, 'pb', 5000), seg=2.2, mix=0.4)
+
+
+def gol3():
+    """Comemoracao: grito subindo rapido para um "GOOOL" longo, rojoes, surdo e palmas."""
+    dur = 5.2
+    x = torcida(dur, [(0, 0.05), (0.12, 0.8), (0.45, 1.0), (3.6, 0.9), (dur, 0.1)], (220, 380),
+                [(0, 'a'), (0.35, 'o')], rugido=0.45, longe=0.4, sopro=0.5,
+                curva_tom=[(0, 0.8), (0.35, 1.12), (3.6, 1.06), (dur, 0.9)])
+    n = int(dur * SR)
+    s = filtra(filtra(surdo(n, 128, inicio=1.3), 'pb', 700), 'pa', 120) * curva(n, [(0, 0), (1.3, 0.6), (dur, 0.5)])
+    x = junta((cama(CAMA + 0.1), 0, 0.5), (x, CAMA, 3.0), (rojao(6), CAMA + 0.9, 0.9), (s, CAMA, 1.2),
+              (palmas(int(4.6 * SR), 350) * 0.7, CAMA + 0.6, 1.0))
+    return final(x)
+
+
+def lamento3():
+    """Gol sofrido: um "aaahh" grave caindo, a torcida cala e fica so o burburinho; la longe
+    os visitantes comemoram."""
+    dur = 4.0
+    queda = torcida(1.6, [(0, 0), (0.06, 1.0), (0.5, 0.5), (1.6, 0)], (110, 190), [(0, 'a'), (0.3, 'o')],
+                    n_vozes=200, rugido=0.5, longe=0.55, sopro=0.6,
+                    curva_tom=[(0, 1.1), (1.6, 0.72)])
+    resto = torcida(dur - 1.0, [(0, 0), (0.5, 0.35), (dur - 1.0, 0.3)], (100, 200), [(0, 'e')],
+                    n_vozes=96, rugido=0.75, longe=0.9, fala=4.0)
+    vis = torcida(dur, [(0, 0), (0.3, 0.8), (3.0, 0.6), (dur, 0.2)], (230, 340), [(0, 'o')],
+                  n_vozes=96, rugido=0.6, longe=1.0)
+    vis = filtra(vis, 'pb', 1300)
+    x = junta((cama(CAMA + 0.15), 0, 0.5), (queda, CAMA, 1.6), (resto, CAMA + 1.0, 0.25), (vis, CAMA + 0.2, 0.25))
+    return final(x)
+
+
+def uuuh3():
+    """Quase gol: "UUUH!" curto e de susto (sobe rapido, cai), depois palmas de incentivo."""
+    dur = 1.5
+    u = torcida(dur, [(0, 0), (0.08, 0.9), (0.35, 1.0), (0.8, 0.35), (dur, 0)], (150, 260),
+                [(0, 'u')], n_vozes=200, rugido=0.35, longe=0.5, sopro=0.55,
+                curva_tom=[(0, 0.85), (0.3, 1.22), (dur, 0.8)])
+    p = palmas(int(2.0 * SR), 220) * curva(int(2.0 * SR), [(0, 0), (0.3, 1), (2.0, 0)])
+    x = junta((cama(CAMA + 0.1), 0, 0.5), (u, CAMA, 2.0), (p, CAMA + 0.9, 0.5), (cama(1.8), CAMA + 1.2, 0.45))
+    return final(x)
+
+
+def penalti3():
+    """Apito, um "OH!" curto e a torcida prendendo o ar: o barulho cai e sobra o murmurio."""
+    a = apitos2([(0, 0.6, 1.0)], 'bolinha')
+    oh = torcida(1.0, [(0, 0), (0.05, 1.0), (0.3, 0.6), (1.0, 0)], (170, 270), [(0, 'o')], n_vozes=160,
+                 rugido=0.4, longe=0.5, curva_tom=[(0, 1.0), (1.0, 0.85)])
+    tenso = torcida(2.6, [(0, 0), (0.4, 0.4), (2.6, 0.25)], (100, 180), [(0, 'e')], n_vozes=128,
+                    rugido=0.8, longe=0.85, fala=6.0)
+    x = junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.5), (oh, CAMA + 0.15, 1.3), (tenso, CAMA + 0.9, 0.3))
+    return final(x)
+
+
+def expulsao3():
+    """Dois apitos, vaia grave e assobios."""
+    a = apitos2([(0, 0.17, 1.0), (0.26, 0.55, 1.0)], 'bolinha')
+    v = torcida(3.0, [(0, 0), (0.35, 1.0), (2.3, 0.85), (3.0, 0)], (95, 165), [(0, 'u')],
+                rugido=0.5, longe=0.55, sopro=0.35, curva_tom=[(0, 1.0), (3.0, 0.95)])
+    x = junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.5), (v, CAMA + 0.5, 1.6), (assobios(3.0, 45), CAMA + 0.5, 1.2))
+    return final(x)
+
+
+def contusao3():
+    """Apito curto, a torcida baixa a voz e conversa preocupada; palmas quando o jogador levanta."""
+    a = apitos2([(0, 0.3, 0.85)], 'bolinha')
+    m = torcida(2.8, [(0, 0), (0.4, 0.35), (2.8, 0.25)], (100, 190), [(0, 'o'), (0.6, 'e')], n_vozes=128,
+                rugido=0.7, longe=0.8, fala=4.5)
+    p = palmas(int(1.6 * SR), 140) * curva(int(1.6 * SR), [(0, 0), (0.3, 1), (1.6, 0)])
+    x = junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.2), (m, CAMA + 0.3, 0.35), (p, CAMA + 2.0, 0.4))
+    return final(x)
+
+
+def intervalo3():
+    """Dois apitos e a torcida se ajeita: conversa e algumas palmas (sem comemorar)."""
+    a = apitos2([(0, 0.35, 1.0), (0.5, 0.9, 1.0)], 'bolinha')
+    m = torcida(2.6, [(0, 0.3), (0.6, 0.5), (2.6, 0)], (110, 220), [(0, 'e')], n_vozes=128,
+                rugido=0.7, longe=0.85, fala=5.0)
+    p = palmas(int(2.0 * SR), 90) * curva(int(2.0 * SR), [(0, 0), (0.5, 1), (2.0, 0)])
+    x = junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.5), (m, CAMA + 1.2, 0.45), (p, CAMA + 1.3, 0.4))
+    return final(x)
+
+
+def fimjogo3():
+    """Dois curtos e um longo; a torcida aplaude e comeca a ir embora (sem gritar)."""
+    a = apitos2([(0, 0.22, 1.0), (0.34, 0.22, 1.0), (0.7, 1.3, 1.0)], 'bolinha')
+    m = torcida(3.2, [(0, 0.3), (0.8, 0.55), (3.2, 0)], (110, 220), [(0, 'e')], n_vozes=128,
+                rugido=0.7, longe=0.85, fala=5.0)
+    p = palmas(int(3.0 * SR), 200) * curva(int(3.0 * SR), [(0, 0), (0.6, 1), (3.0, 0)])
+    x = junta((cama(CAMA + 0.1), 0, 0.5), (a, CAMA, 2.5), (m, CAMA + 1.6, 0.45), (p, CAMA + 1.7, 0.6))
+    return final(x)
+
+
+def trave3(v):
+    """Bola na trave ('a' = "tonc" surdo, 'b' = "ping" metalico) e o "UUUH!" novo."""
+    d = int(1.2 * SR)
+    t = np.arange(d) / SR
+    x = np.zeros(d)
+    modos = ([(310, 1.0, 0.16), (742, 0.55, 0.09), (1290, 0.35, 0.05), (2050, 0.2, 0.03)] if v == 'a'
+             else [(620, 0.8, 0.35), (1480, 0.6, 0.22), (2390, 0.45, 0.14), (3570, 0.25, 0.08)])
+    for f, a, tau in modos:
+        x += a * np.sin(2 * np.pi * f * t + rng.uniform(0, 6)) * np.exp(-t / tau)
+    x += np.sin(2 * np.pi * np.cumsum(80 + 90 * np.exp(-t / 0.01)) / SR) * np.exp(-t / 0.04) * 0.8
+    x += filtra(rng.standard_normal(d), 'bp', 1500, 1.2) * np.exp(-t / 0.006) * 0.7
+    x = reverb(x, seg=1.6, mix=0.3, brilho=5000)
+    u = torcida(1.5, [(0, 0), (0.08, 0.9), (0.35, 1.0), (0.8, 0.35), (1.5, 0)], (150, 260),
+                [(0, 'u')], n_vozes=200, rugido=0.35, longe=0.5, sopro=0.55,
+                curva_tom=[(0, 0.85), (0.3, 1.22), (1.5, 0.8)])
+    return normaliza(junta((x, 0, 1.0), (u, 0.1, 0.6)), -1, rms_db=-16)
+
+
 SONS = {
     # partida (nomes do jogo)
     'gol1': gol, 'goladv': lamento, 'penalty': penalti, 'expulsao': expulsao,
@@ -746,6 +910,10 @@ for _v in 'ab':
                    ('fimjogo', fimjogo2), ('penalty', penalti2), ('expulsao', expulsao2),
                    ('contusao', contusao2), ('trave', trave2)]:
         SONS[_n + '_' + _v] = (lambda f, v: (lambda: f(v)))(_f, _v)
+# versao 3: um clima para cada reacao
+SONS.update({'gol1_3': gol3, 'goladv_3': lamento3, 'uuuh_3': uuuh3, 'penalty_3': penalti3,
+             'expulsao_3': expulsao3, 'contusao_3': contusao3, 'intervalo_3': intervalo3,
+             'fimjogo_3': fimjogo3, 'trave_3a': lambda: trave3('a'), 'trave_3b': lambda: trave3('b')})
 
 if __name__ == '__main__':
     pasta = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '..', '..', 'mod', 'assets', 'mod', 'sons')
