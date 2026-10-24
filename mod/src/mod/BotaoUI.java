@@ -46,6 +46,10 @@ public class BotaoUI extends BasicButtonUI {
     private float ox, oy;
     private int mx = -1;
     private AbstractButton botao;
+    // pulinho do icone quando o mouse chega (botoes so de icone, barra de cima)
+    private long pulo;
+    private boolean dentro;
+    private static final int PULO_MS = 420;
 
     public static ComponentUI createUI(JComponent c) {
         return new BotaoUI();
@@ -116,8 +120,10 @@ public class BotaoUI extends BasicButtonUI {
         float alvoA = (m.isArmed() && m.isPressed()) ? 1f : 0f;
         hover = aproxima(hover, alvoH, 0.09f);   // ~170 ms
         aperto = aproxima(aperto, alvoA, 0.25f); // ~60 ms
+        if (alvoH == 1f && !dentro && !botao.isContentAreaFilled() && Animacao.ligada()) pulo = System.currentTimeMillis();
+        dentro = alvoH == 1f;
         botao.repaint();
-        boolean onda = System.currentTimeMillis() - clique < ONDA_MS;
+        boolean onda = System.currentTimeMillis() - clique < ONDA_MS || System.currentTimeMillis() - pulo < PULO_MS;
         if (hover == alvoH && aperto == alvoA && !onda) timer.stop();
     }
 
@@ -163,6 +169,21 @@ public class BotaoUI extends BasicButtonUI {
             g2.dispose();
         }
         paint(g, c);
+    }
+
+    @Override
+    protected void paintIcon(Graphics g, JComponent c, java.awt.Rectangle r) {
+        float t = (System.currentTimeMillis() - pulo) / (float) PULO_MS;
+        if (pulo == 0 || t >= 1f) {
+            super.paintIcon(g, c, r);
+            return;
+        }
+        // sobe rapido, desce e da um quiquezinho
+        double dy = t < 0.62f ? -4 * Math.sin(Math.PI * t / 0.62f) : -1.2 * Math.sin(Math.PI * (t - 0.62f) / 0.38f);
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.translate(0, dy);
+        super.paintIcon(g2, c, r);
+        g2.dispose();
     }
 
     // Pilula dourada (principal) ou contorno claro, como no modelo "Noite de estreia".

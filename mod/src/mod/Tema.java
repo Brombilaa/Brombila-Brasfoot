@@ -622,6 +622,7 @@ public final class Tema {
             };
             t.addMouseListener(m);
             t.addMouseMotionListener(m);
+            Barrinha.instala(t);
         }
     }
 

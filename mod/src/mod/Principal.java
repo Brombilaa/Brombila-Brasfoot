@@ -62,6 +62,8 @@ final class Principal {
         Object elenco = campo(eg, "Ef");
         if (elenco instanceof JComponent) Editor.cor(elenco, ((JComponent) elenco).getFont(), Estreia.BRANCO);
         pos(campo(eg, "Iw"), 14, 88, 225, 21);
+        Contador.liga(campo(eg, "Iw"), "caixa", false);
+        Pulso.liga(campo(eg, "ze"), "mensagens");
         pos(campo(eg, "ze"), 243, 86, 40, 23);
         Object divisao = campo(eg, "uh");
         Editor.cor(divisao, Estreia.semi(12f), Estreia.FRACO);
@@ -84,6 +86,7 @@ final class Principal {
         pos(comp, 84, 268, 200, 17);
         pos(campo(eg, "zb"), 247, 230, 30, 39);
         wf.revalidate();
+        Virada.liga(wf, rival);
     }
 
     // Rotulo dourado em caixa alta; "Proximo Jogo - Fora" vira "PROXIMO JOGO · FORA".

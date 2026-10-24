@@ -297,6 +297,7 @@ final class Outras {
             Object o = campo(cw, s);
             if (o instanceof JLabel) ((JLabel) o).setUI(new Valor());
             Dialogos.fonte(o, Estreia.semi(13f), Estreia.BRANCO);
+            Contador.liga(o, null, true);
         }
         pos(campo(cw, "Ec"), 25, 420, 350, 20);
         pos(campo(cw, "DZ"), 25, 442, 350, 20);
@@ -310,6 +311,7 @@ final class Outras {
                 Object o = campo(cw, s);
                 if (o instanceof JLabel) ((JLabel) o).setUI(new Valor());
                 Dialogos.fonte(o, Estreia.semi(12.5f), Estreia.BRANCO);
+                Contador.liga(o, null, true);
             }
             pos(campo(cw, "Ea"), 16, 40, 326, 20);
             pos(campo(cw, "Eb"), 16, 64, 326, 20);

@@ -184,12 +184,48 @@ public class Pergunta extends BasicOptionPaneUI {
         Sinal(String sinal, Color cor) { this.sinal = sinal; this.cor = cor; }
         public int getIconWidth() { return 56; }
         public int getIconHeight() { return 56; }
+        // 0 a 1 durante o pulso (comeca 0,25 s depois de aparecer e dura 0,8 s); -1 fora dele
+        private static float pulso(Component c) {
+            if (!(c instanceof javax.swing.JComponent) || !Animacao.ligada()) return -1f;
+            javax.swing.JComponent j = (javax.swing.JComponent) c;
+            Object o = j.getClientProperty("brombila.pulso");
+            long agora = System.currentTimeMillis();
+            if (!(o instanceof Long)) {
+                j.putClientProperty("brombila.pulso", agora);
+                o = agora;
+            }
+            float t = (agora - (Long) o - 320) / 800f;
+            if (t < 0f) {
+                // durante o zoom de entrada nao repinta (o veu da entrada esta por cima)
+                if (j.getClientProperty("brombila.pulsoEspera") == null) {
+                    j.putClientProperty("brombila.pulsoEspera", Boolean.TRUE);
+                    final Component alvo = c;
+                    javax.swing.Timer espera = new javax.swing.Timer((int) (-t * 800) + 10, new java.awt.event.ActionListener() {
+                        public void actionPerformed(java.awt.event.ActionEvent e) { alvo.repaint(); }
+                    });
+                    espera.setRepeats(false);
+                    espera.start();
+                }
+                return 0f;
+            }
+            if (t < 1f) Animacao.repinta(c);
+            return t;
+        }
+
         public void paintIcon(Component c, Graphics g0, int x, int y) {
             Graphics2D g = (Graphics2D) g0.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
             float cx = x + 28, cy = y + 28;
+            // depois do zoom de entrada, o halo pulsa uma vez: um anel sai do circulo e some
+            float p = pulso(c);
+            if (p > 0f && p < 1f) {
+                float r = 19 + 9 * Animacao.suave(p);
+                g.setColor(Tema.alfa(cor, Math.round(150 * (1f - p))));
+                g.setStroke(new BasicStroke(2.5f * (1f - p) + 0.5f));
+                g.draw(new Ellipse2D.Float(cx - r, cy - r, 2 * r, 2 * r));
+            }
             g.setPaint(new RadialGradientPaint(cx, cy, 28, new float[] {0.55f, 1f},
                 new Color[] {Tema.alfa(cor, 60), Tema.alfa(cor, 0)}));
             g.fill(new Ellipse2D.Float(x, y, 56, 56));
