@@ -2142,7 +2142,8 @@ public class Partida extends JComponent implements ActionListener {
         // legenda: teclas desenhadas e o simbolo de fora de posicao
         ly += 10;
         String[][] linhas = {{"1–5 + −", "Velocidade"}, {"Espaço", "Substituições"}, {"V", "Câmera 3D / prancheta"}, {"O", "Dar ordens"}, {"!", "Fora de posição (rende menos)"}};
-        if (ly + 40 < oy) {
+        // so com espaco para o titulo e ao menos uma tecla (telas baixas ficam sem a legenda)
+        if (ly + 34 + 24 <= oy - 6) {
             g.setColor(Tema.BORDA);
             g.draw(new Line2D.Double(x + 14, ly, x + w - 14, ly));
             g.setFont(Estreia.espacada(Estreia.semi(9.5f), 0.14f));

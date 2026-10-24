@@ -117,8 +117,7 @@ public final class Voo {
         // o que foi arrastado sai de onde o mouse o soltou
         Point mouse = null;
         try {
-            mouse = java.awt.MouseInfo.getPointerInfo().getLocation();
-            SwingUtilities.convertPointFromScreen(mouse, bp);
+            mouse = Encolhe.daTela(java.awt.MouseInfo.getPointerInfo().getLocation(), bp);
         } catch (Throwable t) {
             mouse = null;
         }

@@ -60,11 +60,11 @@ final class ConfigEstreia {
 
         // Fundo: foto do estadio escurecida ocupando a janela toda.
         Container pai = hU.getParent();
-        if (pai != null && !(pai instanceof Fundo)) {
+        if (pai != null && !(pai instanceof Fundo) && !(pai instanceof javax.swing.JViewport)) {
             pai.remove(hU);
             pai.setLayout(new BorderLayout());
             Fundo f = new Fundo(true);
-            f.add(hU);
+            f.centro(hU);
             pai.add(f, BorderLayout.CENTER);
             pai.revalidate();
             pai.repaint();
@@ -189,11 +189,11 @@ final class ConfigEstreia {
         bV.putClientProperty(TECNICO, Boolean.TRUE);
         bV.setOpaque(false);
         Container pai = bV.getParent();
-        if (pai != null && !(pai instanceof Fundo)) {
+        if (pai != null && !(pai instanceof Fundo) && !(pai instanceof javax.swing.JViewport)) {
             pai.remove(bV);
             pai.setLayout(new BorderLayout());
             Fundo f = new Fundo(false);
-            f.add(bV);
+            f.centro(bV);
             pai.add(f, BorderLayout.CENTER);
             pai.revalidate();
             pai.repaint();
@@ -369,6 +369,32 @@ final class ConfigEstreia {
             super(new GridBagLayout());
             if (marca) putClientProperty(Estreia.MARCA, Boolean.TRUE);
             setOpaque(true);
+        }
+
+        // Tela do jogo no meio do fundo. Em telas baixas (1280x720, 1366x768 com a barra do
+        // Windows) ela nao cabe: fica encostada em cima, do tamanho da area, e rola.
+        void centro(final JComponent tela) {
+            final javax.swing.JScrollPane rola = new javax.swing.JScrollPane(tela);
+            rola.setBorder(BorderFactory.createEmptyBorder());
+            rola.setViewportBorder(null);
+            rola.setOpaque(false);
+            rola.getViewport().setOpaque(false);
+            rola.getVerticalScrollBar().setUnitIncrement(24);
+            rola.setHorizontalScrollBarPolicy(javax.swing.JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+            setLayout(new java.awt.LayoutManager() {
+                public void addLayoutComponent(String n, Component c) {}
+                public void removeLayoutComponent(Component c) {}
+                public Dimension preferredLayoutSize(Container p) { return tela.getPreferredSize(); }
+                public Dimension minimumLayoutSize(Container p) { return new Dimension(0, 0); }
+                public void layoutContainer(Container p) {
+                    Dimension t = tela.getPreferredSize();
+                    int w = p.getWidth(), h = p.getHeight();
+                    int barra = t.height > h ? rola.getVerticalScrollBar().getPreferredSize().width : 0;
+                    int rw = Math.min(t.width + barra, w), rh = Math.min(t.height, h);
+                    rola.setBounds((w - rw) / 2, (h - rh) / 2, rw, rh);
+                }
+            });
+            add(rola);
         }
 
         @Override

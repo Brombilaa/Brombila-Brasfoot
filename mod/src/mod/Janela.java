@@ -136,6 +136,24 @@ public class Janela {
     }
 
     private static void segue(Component c) {
+        // telas pequenas: o jogo poe a tela dentro de uma rolagem (o painel entra depois na vista)
+        if (c instanceof JScrollPane) {
+            final JScrollPane rola = (JScrollPane) c;
+            rola.setBorder(BorderFactory.createEmptyBorder());
+            rola.getVerticalScrollBar().setUnitIncrement(24);
+            rola.getHorizontalScrollBar().setUnitIncrement(24);
+            rola.getViewport().addContainerListener(new ContainerAdapter() {
+                public void componentAdded(ContainerEvent e) { segue(e.getChild()); }
+            });
+            rola.getViewport().addComponentListener(new ComponentAdapter() {
+                public void componentResized(ComponentEvent e) {
+                    Component v = rola.getViewport().getView();
+                    if (v instanceof JPanel && v.getClass().getName().equals("components.E")) ajusta((JPanel) v);
+                }
+            });
+            if (rola.getViewport().getView() != null) segue(rola.getViewport().getView());
+            return;
+        }
         if (!(c instanceof JPanel) || !c.getClass().getName().equals("components.E")) return;
         final JPanel area = (JPanel) c;
         if (area.getClientProperty("brombila.segue") != null) return;
@@ -163,8 +181,16 @@ public class Janela {
 
     private static void ajusta(JPanel area) {
         int w = area.getWidth(), h = area.getHeight();
-        // o FlowLayout do painel deixa uma folga em cima; sem descontar, a tela passa da borda de baixo
-        if (area.getLayout() instanceof FlowLayout) h -= ((FlowLayout) area.getLayout()).getVgap();
+        Dimension vista = Cabe.vista(area);
+        if (vista != null && area.getLayout() instanceof FlowLayout) {
+            // dentro da rolagem: a tela cheia ocupa exatamente o que aparece (sem barra a toa)
+            FlowLayout fl = (FlowLayout) area.getLayout();
+            w = vista.width - 2 * fl.getHgap();
+            h = vista.height - 2 * fl.getVgap();
+        } else if (area.getLayout() instanceof FlowLayout) {
+            // o FlowLayout do painel deixa uma folga em cima; sem descontar, a tela passa da borda de baixo
+            h -= ((FlowLayout) area.getLayout()).getVgap();
+        }
         if (w <= 0 || h <= 0) return;
         int gS = estatico("gS", null), gT = estatico("gT", null);
         boolean mudou = false;
@@ -175,14 +201,28 @@ public class Janela {
             boolean cheia = j.getClientProperty("brombila.cheia") != null || (p.width == gS && p.height == gT);
             if (!cheia) continue;
             j.putClientProperty("brombila.cheia", Boolean.TRUE);
-            if (p.width != w || p.height != h) {
-                j.setPreferredSize(new Dimension(w, h));
+            int tw = w, th = h;
+            if (vista != null) {
+                // tela pequena: abaixo do minimo do layout do jogo a tela rola em vez de cortar
+                Dimension m = j.getMinimumSize();
+                tw = Math.max(w, m.width);
+                th = Math.max(h, m.height);
+            }
+            if (p.width != tw || p.height != th) {
+                j.setPreferredSize(new Dimension(tw, th));
                 mudou = true;
             }
         }
-        // telas criadas daqui para frente ja nascem do tamanho certo
-        estatico("gS", w);
-        estatico("gT", h);
+        // telas criadas daqui para frente ja nascem do tamanho certo; se elas vao entrar na
+        // rolagem (tela pequena) e esta ainda nao entrou, a vista vai ter as duas folgas
+        if (vista == null && Cabe.rolagemLigada() && area.getLayout() instanceof FlowLayout) {
+            FlowLayout fl = (FlowLayout) area.getLayout();
+            estatico("gS", w - 2 * fl.getHgap());
+            estatico("gT", h - fl.getVgap());
+        } else {
+            estatico("gS", w);
+            estatico("gT", h);
+        }
         if (mudou) area.revalidate();
     }
 
