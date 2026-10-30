@@ -226,6 +226,31 @@ public class Janela {
         if (mudou) area.revalidate();
     }
 
+    // Onde a tela do jogo vai ficar: a area livre do monitor (tela cheia) ou o lugar guardado
+    // da janela, sem as bordas do Windows. O menu inicial abre ali (uma so tela).
+    static Rectangle lugar(Window w) {
+        carrega();
+        Rectangle a = area(w);
+        if (!emJanela() || "1".equals(cfg.getProperty("maximizada"))) return a;
+        Rectangle r = medidas(a);
+        // barra de titulo do Windows (~31 px) e bordas (~8 px) ficam por fora no jogo
+        return new Rectangle(r.x + 8, r.y + 31, Math.max(800, r.width - 16), Math.max(450, r.height - 39));
+    }
+
+    private static Rectangle medidas(Rectangle a) {
+        int minL = Math.min(MIN_LARG, a.width), minA = Math.min(MIN_ALT, a.height);
+        int w = num("largura", Math.min(1366, a.width - 80));
+        int h = num("altura", Math.min(860, a.height - 40));
+        w = Math.max(minL, Math.min(w, a.width));
+        h = Math.max(minA, Math.min(h, a.height));
+        int x = num("x", a.x + (a.width - w) / 2), y = num("y", a.y + (a.height - h) / 2);
+        if (x < a.x - w / 2 || x > a.x + a.width - 80 || y < a.y - 10 || y > a.y + a.height - 60) {
+            x = a.x + (a.width - w) / 2;
+            y = a.y + (a.height - h) / 2;
+        }
+        return new Rectangle(x, y, w, h);
+    }
+
     private static void poeEmJanela(JFrame f) {
         Rectangle a = area(f);
         int minL = Math.min(MIN_LARG, a.width), minA = Math.min(MIN_ALT, a.height);

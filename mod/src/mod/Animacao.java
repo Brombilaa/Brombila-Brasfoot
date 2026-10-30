@@ -187,7 +187,9 @@ final class Animacao {
         final JRootPane rp = ((RootPaneContainer) d).getRootPane();
         final javax.swing.JLayeredPane camadas = rp.getLayeredPane();
         final Component conteudo = rp.getContentPane();
-        final int larg = camadas.getWidth(), alt = camadas.getHeight();
+        // uma so tela: o conteudo fica no meio da pagina, o veu cobre so ele
+        final Rectangle area = Pagina.eh(d) ? conteudo.getBounds() : new Rectangle(0, 0, camadas.getWidth(), camadas.getHeight());
+        final int larg = area.width, alt = area.height;
         if (larg <= 0 || alt <= 0) return;
         // A foto do conteudo sai no primeiro quadro, depois que o tema ja vestiu a janela
         // (o tema entra na fila logo depois deste evento); ate la, so o fundo escuro.
@@ -218,7 +220,7 @@ final class Animacao {
                 g.dispose();
             }
         };
-        veu.setBounds(0, 0, larg, alt);
+        veu.setBounds(area);
         camadas.add(veu, javax.swing.JLayeredPane.DRAG_LAYER);
         final Timer timer = new Timer(QUADRO_MS, null);
         timer.addActionListener(new ActionListener() {
@@ -357,7 +359,7 @@ final class Animacao {
     // Dialogo fechou: um "fantasma" com a imagem dele fica no lugar e some em 0,15 s,
     // descendo um pouco. A janela de verdade ja foi embora, entao nada espera por isso.
     static void sai(Window w) {
-        if (!ligada() || !translucida() || !(w instanceof RootPaneContainer)) return;
+        if (!ligada() || !translucida() || !(w instanceof RootPaneContainer) || Pagina.eh(w)) return;
         final int larg = w.getWidth(), alt = w.getHeight();
         if (larg <= 0 || alt <= 0 || larg * alt > 4000000) return;
         final BufferedImage img;

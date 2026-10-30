@@ -268,6 +268,7 @@ public final class Tema {
         try { escureceDefaults(); } catch (Throwable t) {}
 
         try { Janela.instala(); } catch (Throwable t) {}  // F11: modo janela / tela cheia
+        try { Pagina.instala(); } catch (Throwable t) { t.printStackTrace(); }  // uma so tela
         try { Encolhe.inicia(); } catch (Throwable t) { t.printStackTrace(); }  // telas pequenas: tudo menor
 
         long mask = AWTEvent.CONTAINER_EVENT_MASK | AWTEvent.WINDOW_EVENT_MASK;
