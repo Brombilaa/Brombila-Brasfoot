@@ -155,6 +155,13 @@ final class Animacao {
         boolean dialogo = w instanceof Dialog || (w instanceof JWindow && w.getOwner() != null);
         boolean fade = semBorda(w) && translucida();
         if (dialogo && fade && w instanceof RootPaneContainer) ((RootPaneContainer) w).getRootPane().putClientProperty(SAI, Boolean.TRUE);
+        if (!fade || !ligada()) {
+            // sem fade (Windows, ou animacoes desligadas): a janela que nasceu invisivel
+            // (o menu inicial, MenuInicial.prepara) tem que aparecer ja
+            try {
+                if (w.getOpacity() < 1f) w.setOpacity(1f);
+            } catch (Throwable t) {}
+        }
         if (!ligada()) return;
         if (w instanceof Dialog) entraConteudo((Dialog) w);
         if (!fade) return;
