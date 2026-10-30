@@ -2,6 +2,7 @@ package mod;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -60,7 +61,6 @@ public class BotaoUI extends BasicButtonUI {
         super.installUI(c);
         botao = (AbstractButton) c;
         botao.setRolloverEnabled(true);
-        LookAndFeel.installProperty(botao, "opaque", Boolean.FALSE);
         ouvinte = new ChangeListener() {
             public void stateChanged(ChangeEvent e) { anima(); }
         };
@@ -147,6 +147,14 @@ public class BotaoUI extends BasicButtonUI {
     @Override
     public void update(Graphics g, JComponent c) {
         AbstractButton b = (AbstractButton) c;
+        if (c instanceof javax.swing.plaf.metal.MetalComboBoxButton && !(((javax.swing.plaf.metal.MetalComboBoxButton) c).getComboIcon() instanceof SetaVazia)) {
+            // o Metal poe a setinha dele depois do UI; troca por um icone invisivel do mesmo tamanho
+            javax.swing.plaf.metal.MetalComboBoxButton cbb = (javax.swing.plaf.metal.MetalComboBoxButton) c;
+            cbb.setComboIcon(new SetaVazia(cbb.getComboIcon()));
+            cbb.setBorder(javax.swing.BorderFactory.createEmptyBorder());
+            cbb.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        }
+        if (c instanceof javax.swing.plaf.metal.MetalComboBoxButton) { combo(g, c); return; }
         Graphics2D g2 = (Graphics2D) g.create();
         try {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -184,6 +192,71 @@ public class BotaoUI extends BasicButtonUI {
         g2.translate(0, dy);
         super.paintIcon(g2, c, r);
         g2.dispose();
+    }
+
+    static class SetaVazia implements javax.swing.Icon {
+        final int w, h;
+        SetaVazia(javax.swing.Icon o) { w = 28; h = o == null ? 8 : o.getIconHeight(); }
+        public int getIconWidth() { return w; }
+        public int getIconHeight() { return h; }
+        public void paintIcon(Component k, Graphics g, int x, int y) { }
+    }
+
+    // Botao do combo: bolinha dourada proporcional (diametro = lado menor menos folga), sem moldura
+    private void combo(Graphics g0, JComponent c) {
+        Graphics2D g = (Graphics2D) g0.create();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        int w = c.getWidth(), h = c.getHeight();
+        Color fundo = new Color(18, 22, 20);
+        if (c.getParent() instanceof javax.swing.JComboBox) {
+            // mesma cor do campo ao lado, para nao sobrar um quadrado em volta da bolinha
+            @SuppressWarnings("unchecked")
+            javax.swing.JComboBox<Object> cb = (javax.swing.JComboBox<Object>) c.getParent();
+            fundo = cb.getBackground();
+            try {
+                Component r = cb.getRenderer().getListCellRendererComponent(new javax.swing.JList<Object>(), cb.getSelectedItem(), -1, false, false);
+                if (r != null && r.getBackground() != null && r.getBackground().getAlpha() == 255) fundo = r.getBackground();
+            } catch (Throwable t) { }
+        }
+        g.setColor(fundo);
+        g.fillRect(0, 0, w, h);
+        // a linha que o Metal risca um pixel antes do botao fica fora dele: alarga o clip para apagar
+        g.setClip(-2, 0, w + 2, h);
+        g.fillRect(-2, 1, 2, h - 2);
+        float hv = Animacao.suave(hover);
+        float d = Math.max(14, Math.min(w, h) - 8);
+        float x = (w - d) / 2f, y = (h - d) / 2f;
+        Color base = c.isEnabled() ? Estreia.OURO : Tema.alfa(Estreia.OURO, 90);
+        g.setColor(base);
+        g.fill(new java.awt.geom.Ellipse2D.Float(x, y, d, d));
+        if (hv > 0.01f) {
+            g.setColor(Tema.alfa(Color.WHITE, Math.round(70 * hv)));
+            g.fill(new java.awt.geom.Ellipse2D.Float(x, y, d, d));
+        }
+        float cx = w / 2f, cy = h / 2f + Math.round(aperto);
+        float k = d / 10f;
+        g.setColor(c.isEnabled() ? Estreia.OURO_ESCURO : Tema.alfa(Estreia.OURO_ESCURO, 120));
+        g.setStroke(new java.awt.BasicStroke(Math.max(1.6f, d / 11f), java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+        java.awt.geom.Path2D.Float p = new java.awt.geom.Path2D.Float();
+        p.moveTo(cx - 1.8f * k, cy - 0.7f * k); p.lineTo(cx, cy + 1.1f * k); p.lineTo(cx + 1.8f * k, cy - 0.7f * k);
+        g.draw(p);
+        g.dispose();
+    }
+
+    // Setinha do combo: V fino dourado, desenhado do zero (a de Metal e um triangulo minusculo)
+    private void seta(Graphics g0, JComponent c) {
+        Graphics2D g = (Graphics2D) g0.create();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        boolean hv = ((AbstractButton) c).getModel().isRollover() || ((AbstractButton) c).getModel().isArmed();
+        float cx = c.getWidth() / 2f, cy = c.getHeight() / 2f + (hv ? 1f : 0f);
+        g.setColor(c.isEnabled() ? Estreia.OURO_ESCURO : Tema.alfa(Estreia.OURO_ESCURO, 90));
+        g.setStroke(new java.awt.BasicStroke(2f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+        java.awt.geom.Path2D.Float p = new java.awt.geom.Path2D.Float();
+        p.moveTo(cx - 4, cy - 2); p.lineTo(cx, cy + 2); p.lineTo(cx + 4, cy - 2);
+        g.draw(p);
+        g.dispose();
     }
 
     // Pilula dourada (principal) ou contorno claro, como no modelo "Noite de estreia".

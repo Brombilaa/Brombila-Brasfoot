@@ -121,7 +121,17 @@ final class Animacao {
             || w instanceof JWindow;
     }
 
+    // No Windows a janela translucida (por pixel ou com setOpacity) desenha quadrados escuros atras de
+    // icones e botoes e apaga o texto; la as caixas ficam opacas e so o conteudo anima.
+    // -Dbrombila.opaco=1 forca o modo opaco em qualquer sistema, =0 forca o translucido.
+    static boolean opacoJanela() {
+        String o = System.getProperty("brombila.opaco");
+        if (o != null) return o.equals("1");
+        return System.getProperty("os.name", "").toLowerCase().contains("win");
+    }
+
     private static boolean translucida() {
+        if (opacoJanela()) return false;
         try {
             GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
             return gd.isWindowTranslucencySupported(GraphicsDevice.WindowTranslucency.TRANSLUCENT);
