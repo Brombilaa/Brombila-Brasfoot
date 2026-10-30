@@ -165,7 +165,7 @@ public class Pergunta extends BasicOptionPaneUI {
         try {
             d.setUndecorated(true);
             GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
-            if (gd.isWindowTranslucencySupported(GraphicsDevice.WindowTranslucency.PERPIXEL_TRANSLUCENT)) {
+            if (!Animacao.opacoJanela() && gd.isWindowTranslucencySupported(GraphicsDevice.WindowTranslucency.PERPIXEL_TRANSLUCENT)) {
                 d.setBackground(new Color(0, 0, 0, 0));
                 d.getRootPane().setOpaque(false);
                 ((JComponent) d.getContentPane()).setOpaque(false);

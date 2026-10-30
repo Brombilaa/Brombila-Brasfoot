@@ -2,6 +2,7 @@ package mod;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.GradientPaint;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -60,7 +61,6 @@ public class BotaoUI extends BasicButtonUI {
         super.installUI(c);
         botao = (AbstractButton) c;
         botao.setRolloverEnabled(true);
-        LookAndFeel.installProperty(botao, "opaque", Boolean.FALSE);
         ouvinte = new ChangeListener() {
             public void stateChanged(ChangeEvent e) { anima(); }
         };
@@ -147,6 +147,13 @@ public class BotaoUI extends BasicButtonUI {
     @Override
     public void update(Graphics g, JComponent c) {
         AbstractButton b = (AbstractButton) c;
+        if (c instanceof javax.swing.plaf.metal.MetalComboBoxButton && !(((javax.swing.plaf.metal.MetalComboBoxButton) c).getComboIcon() instanceof SetaVazia)) {
+            // o Metal poe a setinha dele depois do UI; troca por um icone invisivel do mesmo tamanho
+            javax.swing.plaf.metal.MetalComboBoxButton cbb = (javax.swing.plaf.metal.MetalComboBoxButton) c;
+            cbb.setComboIcon(new SetaVazia(cbb.getComboIcon()));
+            cbb.setBorder(javax.swing.BorderFactory.createEmptyBorder());
+            cbb.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        }
         Graphics2D g2 = (Graphics2D) g.create();
         try {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -169,6 +176,12 @@ public class BotaoUI extends BasicButtonUI {
             g2.dispose();
         }
         paint(g, c);
+        if (c instanceof javax.swing.plaf.metal.MetalComboBoxButton) {
+            // apaga a linha que o Metal risca entre o campo e o botao
+            g.setColor(c.getParent() instanceof javax.swing.JComboBox ? ((javax.swing.JComboBox<?>) c.getParent()).getBackground() : new Color(18, 22, 20));
+            g.fillRect(0, 0, 3, c.getHeight());
+            seta(g, c);
+        }
     }
 
     @Override
@@ -184,6 +197,29 @@ public class BotaoUI extends BasicButtonUI {
         g2.translate(0, dy);
         super.paintIcon(g2, c, r);
         g2.dispose();
+    }
+
+    static class SetaVazia implements javax.swing.Icon {
+        final int w, h;
+        SetaVazia(javax.swing.Icon o) { w = 26; h = o == null ? 8 : o.getIconHeight(); }
+        public int getIconWidth() { return w; }
+        public int getIconHeight() { return h; }
+        public void paintIcon(Component k, Graphics g, int x, int y) { }
+    }
+
+    // Setinha do combo: V fino dourado, desenhado do zero (a de Metal e um triangulo minusculo)
+    private void seta(Graphics g0, JComponent c) {
+        Graphics2D g = (Graphics2D) g0.create();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        boolean hv = ((AbstractButton) c).getModel().isRollover() || ((AbstractButton) c).getModel().isArmed();
+        float cx = c.getWidth() / 2f, cy = c.getHeight() / 2f + (hv ? 1f : 0f);
+        g.setColor(c.isEnabled() ? Estreia.OURO_ESCURO : Tema.alfa(Estreia.OURO_ESCURO, 90));
+        g.setStroke(new java.awt.BasicStroke(2f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+        java.awt.geom.Path2D.Float p = new java.awt.geom.Path2D.Float();
+        p.moveTo(cx - 4, cy - 2); p.lineTo(cx, cy + 2); p.lineTo(cx + 4, cy - 2);
+        g.draw(p);
+        g.dispose();
     }
 
     // Pilula dourada (principal) ou contorno claro, como no modelo "Noite de estreia".
