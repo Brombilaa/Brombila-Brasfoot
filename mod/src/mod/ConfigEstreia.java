@@ -405,7 +405,7 @@ final class ConfigEstreia {
             g.drawImage(cache, 0, 0, null);
         }
 
-        private static BufferedImage desenha(int w, int h) {
+        static BufferedImage desenha(int w, int h) {
             BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
             Graphics2D g = img.createGraphics();
             g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);

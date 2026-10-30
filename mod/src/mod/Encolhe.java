@@ -113,7 +113,7 @@ public final class Encolhe {
     // Janela acabou de abrir. Se o tamanho dela veio do jogo (setSize) e nao do pack, esse
     // tamanho e virtual: a janela encolhe na escala e fica centralizada onde estava.
     static void abriu(Window w) {
-        if (!ativa() || deFora(w)) return;
+        if (!ativa() || deFora(w) || Pagina.eh(w)) return;
         if (Janela.ehPrincipal(w)) {
             // tela cheia: o pack do jogo deixou a janela do tamanho do conteudo ja reduzido;
             // se o sistema nao maximizou, ocupa a area livre

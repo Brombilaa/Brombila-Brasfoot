@@ -89,6 +89,12 @@ public class MenuInicial extends JComponent {
             int w = Math.max(800, Math.min(1120, Math.round(tela.width * 0.64f)));
             w = Math.min(w, tela.width - 40);
             int h = Math.round(w * 9f / 16f);
+            // uma so tela: o menu ocupa o mesmo lugar que o jogo vai ocupar
+            Rectangle lugar = Pagina.ligada() ? Janela.lugar(gq) : null;
+            if (lugar != null) {
+                w = lugar.width;
+                h = lugar.height;
+            }
             gq.setBackground(Estreia.NOITE);
             gq.getRootPane().setBackground(Estreia.NOITE);
             gq.setContentPane(m);
@@ -99,7 +105,8 @@ public class MenuInicial extends JComponent {
                 m.preparaAbertura(h, w / 100f);
                 Estreia.foto();
             }
-            gq.setLocationRelativeTo(null);
+            if (lugar != null) gq.setLocation(lugar.x, lugar.y);
+            else gq.setLocationRelativeTo(null);
             gq.validate();
             m.requestFocusInWindow();
         } catch (Throwable t) {

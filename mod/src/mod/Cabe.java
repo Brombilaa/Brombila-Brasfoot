@@ -80,7 +80,7 @@ public final class Cabe {
 
     // Janela por cima que acabou de abrir: depois do tema e do layout, ve se cabe.
     static void janela(final Window w) {
-        if (!(w instanceof JDialog)) return;
+        if (!(w instanceof JDialog) || Pagina.eh(w)) return;
         SwingUtilities.invokeLater(new Runnable() {
             public void run() { encaixa((JDialog) w); }
         });
