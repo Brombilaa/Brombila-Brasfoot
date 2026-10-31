@@ -164,14 +164,18 @@ public class BotaoUI extends BasicButtonUI {
             if (b.isContentAreaFilled()) {
                 Shape corpo = estreia(g2, b, w, h, hv, dy);
                 if (b.isEnabled()) luz(g2, b, corpo, hv);
-            } else if (hv > 0.01f && b.isEnabled()) {
-                // botao so de icone: halo de refletor + sublinhado dourado
-                g2.setPaint(new RadialGradientPaint(w / 2f, h, Math.max(w, h) * 0.75f, new float[] {0f, 1f},
+            } else if (hv > 0.01f && b.isEnabled() && w > 0 && h > 0) {
+                // botao so de icone: halo de refletor + sublinhado dourado (num quadro proprio)
+                java.awt.image.BufferedImage im = new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+                Graphics2D k = im.createGraphics();
+                k.setPaint(new RadialGradientPaint(w / 2f, h, Math.max(w, h) * 0.75f, new float[] {0f, 1f},
                     new Color[] {Tema.alfa(Tema.DOURADO, Math.round(70 * hv)), Tema.alfa(Tema.DOURADO, 0)}));
-                g2.fillRect(0, 0, w, h);
-                g2.setColor(Tema.alfa(Tema.DOURADO, Math.round(255 * hv)));
+                k.fillRect(0, 0, w, h);
+                k.setColor(Tema.alfa(Tema.DOURADO, Math.round(255 * hv)));
                 int lw = Math.round((w - 16) * hv);
-                g2.fillRect((w - lw) / 2, h - 2, lw, 2);
+                k.fillRect((w - lw) / 2, h - 2, lw, 2);
+                k.dispose();
+                g2.drawImage(im, 0, 0, null);
             }
         } finally {
             g2.dispose();
@@ -266,24 +270,35 @@ public class BotaoUI extends BasicButtonUI {
         if (!Animacao.ligada()) return;
         boolean prim = primario(b);
         java.awt.Rectangle c = corpo.getBounds();
-        Graphics2D g2 = (Graphics2D) g.create();
-        g2.clip(corpo);
-        if (hv > 0.01f && mx >= 0) {
+        float t = (System.currentTimeMillis() - clique) / (float) ONDA_MS;
+        boolean brilho = hv > 0.01f && mx >= 0;
+        boolean onda = clique > 0 && t >= 0f && t < 1f;
+        if (!brilho && !onda) return;
+        // o brilho e a onda sao desenhados num quadro proprio e recortados pelo formato do botao
+        // na memoria; assim nao dependem do recorte nem do gradiente da placa de video
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(c.width, c.height, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = img.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.translate(-c.x, -c.y);
+        if (brilho) {
             float r = Math.max(c.height * 1.6f, 30f);
             Color cor = prim ? new Color(255, 248, 226) : Estreia.OURO;
             g2.setPaint(new RadialGradientPaint(mx, c.y + c.height / 2f, r, new float[] {0f, 1f},
                 new Color[] {Tema.alfa(cor, Math.round((prim ? 110 : 40) * hv)), Tema.alfa(cor, 0)}));
             g2.fill(c);
         }
-        float t = (System.currentTimeMillis() - clique) / (float) ONDA_MS;
-        if (clique > 0 && t >= 0f && t < 1f) {
+        if (onda) {
             float rmax = (float) Math.hypot(Math.max(ox - c.x, c.x + c.width - ox), Math.max(oy - c.y, c.y + c.height - oy));
             float r = 4f + (rmax - 4f) * Animacao.suave(t);
             Color cor = prim ? Color.WHITE : Estreia.OURO;
             g2.setColor(Tema.alfa(cor, Math.round((prim ? 110 : 70) * (1f - t))));
             g2.fill(new java.awt.geom.Ellipse2D.Float(ox - r, oy - r, 2 * r, 2 * r));
         }
+        g2.setComposite(java.awt.AlphaComposite.DstIn);
+        g2.setColor(Color.WHITE);
+        g2.fill(corpo);
         g2.dispose();
+        g.drawImage(img, c.x, c.y, null);
     }
 
     private static Shape estreia(Graphics2D g2, AbstractButton b, int w, int h, float hv, int dy) {
