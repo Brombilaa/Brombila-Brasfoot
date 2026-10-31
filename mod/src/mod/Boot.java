@@ -4,10 +4,6 @@ package mod;
 // e depois chama o main original do jogo (best.h2).
 public class Boot {
     public static void main(String[] args) throws Exception {
-        // O pipeline Direct3D do Java 8 no Windows desenha gradientes com transparencia e recortes
-        // arredondados errado (quadrados escuros em volta de botoes e icones, brilho a mais).
-        // Com ele desligado o desenho vai pelo caminho normal. -Dsun.java2d.d3d=true religa.
-        if (System.getProperty("sun.java2d.d3d") == null) System.setProperty("sun.java2d.d3d", "false");
         // Texto com antialiasing (fica bem mais suave no Windows).
         System.setProperty("awt.useSystemAAFontSettings", "lcd");
         System.setProperty("swing.aatext", "true");
